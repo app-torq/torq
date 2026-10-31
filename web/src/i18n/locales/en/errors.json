@@ -101,6 +101,8 @@
   },
   "catalog": {
     "hsn_invalid": "HSN must be exactly 4 digits.",
-    "tsn_invalid": "TSN must be exactly 3 letters or digits."
+    "tsn_invalid": "TSN must be exactly 3 letters or digits.",
+    "updates_disabled": "Online catalog updates are turned off on this server (TORQ_CATALOG_ONLINE_UPDATES).",
+    "update_running": "A catalog update is already running."
   }
 }

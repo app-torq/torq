@@ -1,7 +1,8 @@
-package main
+package catalogsync
 
 import (
 	"archive/zip"
+	"bytes"
 	"encoding/xml"
 	"errors"
 	"fmt"
@@ -41,12 +42,11 @@ type xlsxSheet struct {
 // readFZ6 reads the FZ 6 workbook with the standard library only (research
 // C7). The data sheet is the one whose header row names the HSN, TSN,
 // manufacturer and trade-name columns.
-func readFZ6(path string) ([]fz6Row, error) {
-	zr, err := zip.OpenReader(path)
+func readFZ6(xlsx []byte) ([]fz6Row, error) {
+	zr, err := zip.NewReader(bytes.NewReader(xlsx), int64(len(xlsx)))
 	if err != nil {
 		return nil, fmt.Errorf("fz6: %w", err)
 	}
-	defer func() { _ = zr.Close() }()
 	var sst []string
 	var sheets []*zip.File
 	for _, f := range zr.File {

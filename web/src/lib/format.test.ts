@@ -40,6 +40,15 @@ describe('createFormatter', () => {
     expect(nbsp(de.displacement(2148))).toBe('2.148 cm³')
     expect(nbsp(en.displacement(2148))).toBe('2,148 cm³')
     expect(kwToPs(105)).toBe(143)
+    expect(nbsp(en.powerShort(110))).toBe('110 kW')
+  })
+
+  it('shows PS first when preferred', () => {
+    const en = createFormatter({ ...point, powerUnit: 'ps' }, units)
+    const de = createFormatter({ ...comma, powerUnit: 'ps' }, units)
+    expect(nbsp(en.power(110))).toBe('150 PS (110 kW)')
+    expect(nbsp(de.power(1500))).toBe('2.039 PS (1.500 kW)')
+    expect(nbsp(en.powerShort(105))).toBe('143 PS')
   })
 
   it('keeps the entered quantity unit', () => {

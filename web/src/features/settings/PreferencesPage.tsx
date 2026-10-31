@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../lib/api'
 import { queryKeys } from '../../lib/queryKeys'
-import type { DateFormat, Locale, MeResponse, NumberFormat, User } from '../../lib/types'
+import type { DateFormat, Locale, MeResponse, NumberFormat, PowerUnit, User } from '../../lib/types'
 import { createFormatter } from '../../lib/format'
 import { fieldErrors, useErrorText } from '../../lib/errors'
 import { useSession } from '../../app/session'
@@ -25,6 +25,7 @@ export function PreferencesPage() {
   const [numberFormat, setNumberFormat] = useState<NumberFormat>(user.number_format)
   const [currencyCode, setCurrencyCode] = useState(user.currency_code)
   const [currencySymbol, setCurrencySymbol] = useState(user.currency_symbol ?? '')
+  const [powerUnit, setPowerUnit] = useState<PowerUnit>(user.power_unit)
 
   const save = useMutation({
     mutationFn: () =>
@@ -35,6 +36,7 @@ export function PreferencesPage() {
         number_format: numberFormat,
         currency_code: currencyCode,
         currency_symbol: currencySymbol,
+        power_unit: powerUnit,
       }),
     onSuccess: ({ user: updated }) => {
       qc.setQueryData<MeResponse | null>(queryKeys.me, (prev) => (prev ? { ...prev, user: updated } : prev))
@@ -44,7 +46,13 @@ export function PreferencesPage() {
   const fe = fieldErrors(save.error)
 
   const preview = createFormatter(
-    { dateFormat, numberFormat, currencyCode: /^[A-Z]{3}$/.test(currencyCode) ? currencyCode : 'EUR', currencySymbol: currencySymbol.trim() || null },
+    {
+      dateFormat,
+      numberFormat,
+      currencyCode: /^[A-Z]{3}$/.test(currencyCode) ? currencyCode : 'EUR',
+      currencySymbol: currencySymbol.trim() || null,
+      powerUnit,
+    },
     (u) => t(`common:units.${u}`),
   )
 
@@ -97,6 +105,17 @@ export function PreferencesPage() {
               error={fe.number_format}
             />
             <SelectField label={t('preferences.currency')} value={currencyCode} onChange={setCurrencyCode} options={currencyOptions} error={fe.currency_code} />
+            <SelectField
+              label={t('preferences.powerUnit')}
+              value={powerUnit}
+              onChange={(v) => { setPowerUnit(v as PowerUnit) }}
+              options={[
+                { value: 'kw', label: t('preferences.powerUnits.kw') },
+                { value: 'ps', label: t('preferences.powerUnits.ps') },
+              ]}
+              hint={t('preferences.powerUnitHint')}
+              error={fe.power_unit}
+            />
           </div>
           <TextField
             label={t('preferences.currencySymbol')}
@@ -110,7 +129,7 @@ export function PreferencesPage() {
           <div className="rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm">
             <span className="text-zinc-400">{t('preferences.preview')}: </span>
             <span className="tabular-nums text-zinc-200">
-              {[preview.date('2026-10-15'), preview.km(215000), preview.liters(6500), preview.money(8950)].join(' · ')}
+              {[preview.date('2026-10-15'), preview.km(215000), preview.liters(6500), preview.money(8950), preview.power(110)].join(' · ')}
             </span>
           </div>
           <Button type="submit" variant="primary" disabled={save.isPending}>

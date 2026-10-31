@@ -4,7 +4,7 @@ import { Undo2, Zap } from 'lucide-react'
 import type { KbaVariant } from '../../lib/types'
 import { useFormat } from '../../lib/useFormat'
 import { useQueryClient } from '@tanstack/react-query'
-import { HSN_RE, TSN_RE, kbaLookupOptions } from './catalog'
+import { HSN_RE, TSN_RE, kbaLookupOptions, useCatalogLang } from './catalog'
 
 interface Props {
   hsn: string
@@ -35,6 +35,7 @@ export function HsnTsnQuickFill({ hsn, tsn, onChange, onFill, canUndo, onUndo, h
   const id = useId()
   const tsnRef = useRef<HTMLInputElement>(null)
   const qc = useQueryClient()
+  const lang = useCatalogLang()
   // Latest requested key; answers for older keys are ignored.
   const latest = useRef<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -58,7 +59,7 @@ export function HsnTsnQuickFill({ hsn, tsn, onChange, onFill, canUndo, onUndo, h
       return
     }
     setLoading(true)
-    qc.query(kbaLookupOptions(nextHsn, nextTsn))
+    qc.query(kbaLookupOptions(nextHsn, nextTsn, lang))
       .then((items) => {
         if (latest.current !== nextKey) return
         setResult({ key: nextKey, variants: items })

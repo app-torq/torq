@@ -14,7 +14,7 @@
     "make": "Marke",
     "model": "Modell",
     "chassisCode": "Baureihe / Fahrgestellcode",
-    "chassisCodeHint": "z. B. S203, E46",
+    "chassisCodeHint": "z. B. W203, E46, Golf IV (1J)",
     "modelYear": "Modelljahr",
     "engineCode": "Motorkennung",
     "engineCodeHint": "z. B. OM646",
@@ -115,6 +115,15 @@
     "AE": "Cabriolet",
     "AF": "Mehrzweckfahrzeug",
     "AG": "Pkw-Pick-up"
+  },
+  "catalogBody": {
+    "sedan": "Limousine",
+    "hatchback": "Schrägheck",
+    "estate": "Kombi",
+    "coupe": "Coupé",
+    "cabriolet": "Cabrio",
+    "roadster": "Roadster",
+    "sportback": "Sportback"
   },
   "combobox": {
     "useCustom": "Eigenen Wert verwenden: '{{value}}'",

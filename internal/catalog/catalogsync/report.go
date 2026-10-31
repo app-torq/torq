@@ -1,4 +1,4 @@
-package main
+package catalogsync
 
 import (
 	"cmp"
@@ -11,20 +11,39 @@ import (
 	"github.com/marekbeckmann/torq/internal/catalog"
 )
 
-// report collects what the maintainer must review before committing a seed.
-type report struct {
+// Report collects what the maintainer must review before committing a seed.
+type Report struct {
 	unmapped    map[string]int64
 	unknownFuel map[string]int
+	chassisHits map[string][2]int // make → generations with a chassis code, all generations
 	rejected    int
 	matched     int
 	unmatched   int
 }
 
-func newReport() *report {
-	return &report{unmapped: map[string]int64{}, unknownFuel: map[string]int{}}
+func newReport() *Report {
+	return &Report{unmapped: map[string]int64{}, unknownFuel: map[string]int{}, chassisHits: map[string][2]int{}}
 }
 
-func (r *report) print(w io.Writer, doc catalog.SeedDoc, size int) error {
+// chassis counts a source generation of a make chassis.txt covers.
+func (r *Report) chassis(make string, found bool) {
+	mk := catalog.Key(make)
+	if a, ok := chassisMakeAliases[mk]; ok {
+		mk = a
+	}
+	if !chassis.hasMake(mk) {
+		return
+	}
+	c := r.chassisHits[make]
+	if found {
+		c[0]++
+	}
+	c[1]++
+	r.chassisHits[make] = c
+}
+
+// Print writes the review summary for a seed of size bytes.
+func (r *Report) Print(w io.Writer, doc catalog.SeedDoc, size int) error {
 	var b strings.Builder
 	makes := map[string]bool{}
 	for _, v := range doc.Vehicles {
@@ -38,6 +57,12 @@ func (r *report) print(w io.Writer, doc catalog.SeedDoc, size int) error {
 		size, len(doc.KBA), len(kbaMakes), len(doc.Vehicles), len(makes))
 	fmt.Fprintf(&b, "KBA model match: %d unique, %d none\n", r.matched, r.unmatched)
 	fmt.Fprintf(&b, "rejected source rows: %d\n", r.rejected)
+	if len(r.chassisHits) > 0 {
+		fmt.Fprintln(&b, "generations with a chassis code (extend chassis.txt for the rest):")
+		for _, mk := range slices.Sorted(maps.Keys(r.chassisHits)) {
+			fmt.Fprintf(&b, "  %-16s %d of %d\n", mk, r.chassisHits[mk][0], r.chassisHits[mk][1])
+		}
+	}
 	if len(r.unknownFuel) > 0 {
 		fmt.Fprintln(&b, "unknown fuel codes (mapped to other):")
 		for _, k := range slices.Sorted(maps.Keys(r.unknownFuel)) {

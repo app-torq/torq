@@ -1,13 +1,16 @@
 // Locale-aware formatting driven by the user's preferences (Constitution V).
-// Units are always metric; nothing here converts units.
+// Units are always metric. The only derived unit is PS from stored kW, for
+// display (Hard Non-Goals, "Metric only").
 
-import type { DateFormat, NumberFormat } from './types'
+import type { DateFormat, NumberFormat, PowerUnit } from './types'
 
 export interface FormatPrefs {
   dateFormat: DateFormat
   numberFormat: NumberFormat
   currencyCode: string
   currencySymbol: string | null
+  /** Primary power unit; the other one is shown as secondary info. Defaults to kW. */
+  powerUnit?: PowerUnit
 }
 
 export type UnitKey = 'km' | 'l' | 'ml' | 'nm' | 'bar' | 'cc' | 'kw' | 'ps'
@@ -18,6 +21,7 @@ export const defaultPrefs: FormatPrefs = {
   numberFormat: 'point',
   currencyCode: 'EUR',
   currencySymbol: null,
+  powerUnit: 'kw',
 }
 
 export function numberLocale(numberFormat: NumberFormat): string {
@@ -30,6 +34,8 @@ export interface Formatter {
   /** Formats fractional cents per km, e.g. 8 → "€0.08/km" style money value without the /km suffix. */
   moneyPrecise: (cents: number, decimals: number) => string
   date: (iso: string) => string
+  /** Date per preferences plus local time, e.g. "31.10.2026 21:05". */
+  dateTime: (iso: string) => string
   km: (n: number) => string
   liters: (ml: number) => string
   ml: (n: number) => string
@@ -39,8 +45,10 @@ export interface Formatter {
   quantity: (ml: number, unit: 'L' | 'mL') => string
   /** Engine displacement, e.g. "2.148 cm³". */
   displacement: (cc: number) => string
-  /** Power in kW with metric horsepower as secondary info, e.g. "110 kW (150 PS)". */
+  /** Power in the preferred unit with the other as secondary info, e.g. "110 kW (150 PS)" or "150 PS (110 kW)". */
   power: (kw: number) => string
+  /** Power in the preferred unit only, e.g. "150 PS". */
+  powerShort: (kw: number) => string
 }
 
 /** Metric horsepower (PS) for display only; PS is never stored or entered (FR-024). */
@@ -92,24 +100,34 @@ export function createFormatter(prefs: FormatPrefs, unit: UnitLabel): Formatter 
     timeZone: 'UTC',
   })
 
+  const timeFormat = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+
   const number = (n: number, opts?: { decimals?: number; maxDecimals?: number }) => {
     const min = opts?.decimals ?? 0
     const max = opts?.maxDecimals ?? opts?.decimals ?? 0
     return nf(min, Math.max(min, max)).format(n)
   }
 
+  const formatDate = (iso: string) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso)
+    if (!m) return iso
+    const parts = dateParts.formatToParts(new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]))))
+    const get = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value ?? ''
+    return prefs.dateFormat === 'DD.MM.YYYY'
+      ? [get('day'), get('month'), get('year')].join('.')
+      : [get('year'), get('month'), get('day')].join('-')
+  }
+
   return {
     number,
     money: (cents) => formatMoney(money2, cents / 100),
     moneyPrecise: (cents, decimals) => formatMoney(currency(decimals), cents / 100),
-    date: (iso) => {
-      const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso)
-      if (!m) return iso
-      const parts = dateParts.formatToParts(new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]))))
-      const get = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value ?? ''
-      return prefs.dateFormat === 'DD.MM.YYYY'
-        ? [get('day'), get('month'), get('year')].join('.')
-        : [get('year'), get('month'), get('day')].join('-')
+    date: formatDate,
+    dateTime: (iso) => {
+      const d = new Date(iso)
+      if (Number.isNaN(d.getTime())) return iso
+      const local = `${String(d.getFullYear())}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      return `${formatDate(local)} ${timeFormat.format(d)}`
     },
     km: (n) => `${number(n)} ${unit('km')}`,
     liters: (ml) => `${number(ml / 1000, { maxDecimals: 2 })} ${unit('l')}`,
@@ -118,7 +136,11 @@ export function createFormatter(prefs: FormatPrefs, unit: UnitLabel): Formatter 
     bar: (n) => `${number(n, { maxDecimals: 2 })} ${unit('bar')}`,
     quantity: (ml, u) => (u === 'L' ? `${number(ml / 1000, { maxDecimals: 3 })} ${unit('l')}` : `${number(ml)} ${unit('ml')}`),
     displacement: (cc) => `${number(cc)} ${unit('cc')}`,
-    power: (kw) => `${number(kw)} ${unit('kw')} (${number(kwToPs(kw))} ${unit('ps')})`,
+    power: (kw) =>
+      prefs.powerUnit === 'ps'
+        ? `${number(kwToPs(kw))} ${unit('ps')} (${number(kw)} ${unit('kw')})`
+        : `${number(kw)} ${unit('kw')} (${number(kwToPs(kw))} ${unit('ps')})`,
+    powerShort: (kw) => (prefs.powerUnit === 'ps' ? `${number(kwToPs(kw))} ${unit('ps')}` : `${number(kw)} ${unit('kw')}`),
   }
 }
 

@@ -101,6 +101,8 @@
   },
   "catalog": {
     "hsn_invalid": "Die HSN muss genau 4 Ziffern haben.",
-    "tsn_invalid": "Die TSN muss genau 3 Buchstaben oder Ziffern haben."
+    "tsn_invalid": "Die TSN muss genau 3 Buchstaben oder Ziffern haben.",
+    "updates_disabled": "Online-Aktualisierungen des Katalogs sind auf diesem Server abgeschaltet (TORQ_CATALOG_ONLINE_UPDATES).",
+    "update_running": "Es läuft bereits eine Katalog-Aktualisierung."
   }
 }

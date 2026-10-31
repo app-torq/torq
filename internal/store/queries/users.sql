@@ -21,7 +21,7 @@ UPDATE users SET username = ?, display_name = ?, updated_at = ? WHERE id = ? RET
 -- name: UpdateUserPreferences :one
 UPDATE users
 SET display_name = ?, locale = ?, date_format = ?, number_format = ?,
-    currency_code = ?, currency_symbol = ?, updated_at = ?
+    currency_code = ?, currency_symbol = ?, power_unit = ?, updated_at = ?
 WHERE id = ?
 RETURNING *;
 

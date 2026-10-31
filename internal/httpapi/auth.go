@@ -21,6 +21,7 @@ type userJSON struct {
 	NumberFormat   string  `json:"number_format"`
 	CurrencyCode   string  `json:"currency_code"`
 	CurrencySymbol *string `json:"currency_symbol"`
+	PowerUnit      string  `json:"power_unit"`
 	Disabled       bool    `json:"disabled"`
 }
 
@@ -28,7 +29,7 @@ func toUserJSON(u auth.User) userJSON {
 	out := userJSON{
 		ID: u.ID, Username: u.Username, DisplayName: u.DisplayName, Role: string(u.Role),
 		Locale: u.Prefs.Locale, DateFormat: u.Prefs.DateFormat, NumberFormat: u.Prefs.NumberFormat,
-		CurrencyCode: u.Prefs.CurrencyCode, Disabled: u.Disabled,
+		CurrencyCode: u.Prefs.CurrencyCode, PowerUnit: u.Prefs.PowerUnit, Disabled: u.Disabled,
 	}
 	if u.Prefs.CurrencySymbol != "" {
 		sym := u.Prefs.CurrencySymbol
@@ -165,6 +166,7 @@ func (s *Server) updatePreferences(w http.ResponseWriter, r *http.Request) error
 		NumberFormat   *string `json:"number_format"`
 		CurrencyCode   *string `json:"currency_code"`
 		CurrencySymbol *string `json:"currency_symbol"`
+		PowerUnit      *string `json:"power_unit"`
 	}
 	if err := decodeJSON(w, r, &in); err != nil {
 		return err
@@ -172,6 +174,7 @@ func (s *Server) updatePreferences(w http.ResponseWriter, r *http.Request) error
 	user, err := s.users.UpdatePreferences(r.Context(), currentUser(r).ID, auth.PreferencesPatch{
 		DisplayName: in.DisplayName, Locale: in.Locale, DateFormat: in.DateFormat,
 		NumberFormat: in.NumberFormat, CurrencyCode: in.CurrencyCode, CurrencySymbol: in.CurrencySymbol,
+		PowerUnit: in.PowerUnit,
 	})
 	if err != nil {
 		return err

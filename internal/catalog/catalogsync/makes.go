@@ -1,4 +1,4 @@
-package main
+package catalogsync
 
 import (
 	"regexp"

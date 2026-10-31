@@ -1,7 +1,9 @@
 # Vehicle catalog data: sources, licenses and transformations
 
 `catalog_seed.json.gz` in this directory is a database derived from the sources below.
-`cmd/catalog-sync` generates it (see `make catalog`).
+`cmd/catalog-sync` generates it (see `make catalog`). An admin-triggered online update in a running torq
+(Settings → About & data sources) builds the same database from freshly downloaded copies of sources 1 and 2,
+with the same transformations; its retrieval date and source commit are shown on the About page.
 
 The derived database is distributed under the **Open Database License (ODbL) 1.0**. The full text is in
 [`LICENSE-ODbL.txt`](./LICENSE-ODbL.txt). The torq program code is licensed separately; the ODbL applies to
@@ -39,7 +41,13 @@ this database only.
   and autoevolution.com, licensed under ODbL 1.0; changes were made.
 - **Transformations** (the data was changed):
   - Removed make prefixes and "and predecessors" from model names.
-  - Rebuilt generation labels as the remaining descriptor plus production years.
+  - Unified Mercedes-Benz model names, which the source spells in German and English ("C-Klasse T-Modell",
+    "C-Class Wagon", "C-CLASS"), into one model per class ("C-Class"), moved body words ("T-Modell", "Coupe")
+    into a body field and dropped the "AMG" suffix. Added German model names ("C-Klasse", BMW "3er").
+  - Replaced production-year generation labels with chassis codes ("W203", "E46", "Golf IV (1J)") from the
+    table `internal/catalog/catalogsync/chassis.txt` (Mercedes-Benz, BMW, Volkswagen, Audi, Porsche, Opel),
+    matched by model, body and first production year. Other generations keep the remaining descriptor plus
+    production years, with the descriptor translated into German ("Coupé (2016–2018)").
   - Removed the "(N HP)" suffix from engine labels.
   - Read power from the source's kW value (falling back to PS × 0.73549875) and stored it as whole kW only.
   - Rounded displacement to whole cm³.

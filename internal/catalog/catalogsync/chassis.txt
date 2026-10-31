@@ -1,0 +1,247 @@
+# Chassis codes for the vehicle catalog (Constitution VII). The bundled
+# sources only carry production years; this table turns a source generation
+# into the code enthusiasts use ("W203", "E46", "Golf IV (1J)", "Astra H").
+#
+# Format: make | models (comma-separated, English catalog names) | body | generations
+#   body         empty for the default, or a catalog.Bodies token (estate, coupe, …)
+#   generations  "CODE FROM-TO" separated by commas (TO empty: still built), or "-" for none
+#
+# A source generation gets the code that started last, but not after the
+# source generation's first year, and was still built in that year. A model
+# without its own line uses the line of its longest leading words ("911
+# Carrera 4S" → "911 Carrera"). Years follow the sources' generation starts,
+# which can differ from launch dates by a year. Unlisted models keep their
+# "descriptor (years)" label. Corrections are welcome; keep codes factual.
+
+# Mercedes-Benz (also used for Mercedes-AMG)
+Mercedes-Benz | A-Class | | W168 1997-2004, W169 2004-2012, W176 2012-2018, W177 2018-
+Mercedes-Benz | A-Class | sedan | V177 2018-
+Mercedes-Benz | B-Class | | W245 2005-2011, W246 2011-2018, W247 2018-
+Mercedes-Benz | C-Class | | W201 1982-1993, W202 1993-2000, W203 2000-2007, W204 2007-2014, W205 2014-2021, W206 2021-
+Mercedes-Benz | C-Class | estate | S202 1996-2001, S203 2001-2007, S204 2007-2014, S205 2014-2021, S206 2021-
+Mercedes-Benz | C-Class | coupe | CL203 2000-2011, C204 2011-2015, C205 2015-2023
+Mercedes-Benz | C-Class | cabriolet | A205 2016-2023
+Mercedes-Benz | C-Class All-Terrain | | S206 2021-
+Mercedes-Benz | C-Class EV | | -
+Mercedes-Benz | CL-Class | | W111 1961-1971, C107 1971-1981, C126 1981-1991, C140 1992-1998, C215 1999-2006, C216 2006-2014
+Mercedes-Benz | CLA | | C117 2013-2019, C118 2019-2025, C174 2025-
+Mercedes-Benz | CLA Shooting Brake, CLA 45 Shooting Brake | | X117 2015-2019, X118 2019-2025, X174 2025-
+Mercedes-Benz | CLE | coupe | C236 2023-
+Mercedes-Benz | CLE | cabriolet | A236 2023-
+Mercedes-Benz | CLK-Class | | C208 1997-2002, C209 2002-2010
+Mercedes-Benz | CLK-Class | cabriolet | A208 1998-2003, A209 2003-2010
+Mercedes-Benz | CLS-Class | | C219 2004-2010, C218 2010-2018, C257 2018-2023
+Mercedes-Benz | CLS Shooting Brake | | X218 2012-2018
+Mercedes-Benz | E-Class | | W136 1946-1955, W120 1953-1962, W110 1961-1968, W114 1968-1976, W123 1975-1985, W124 1984-1995, W210 1995-2002, W211 2002-2009, W212 2009-2016, W213 2016-2023, W214 2023-
+Mercedes-Benz | E-Class | estate | S123 1977-1986, S124 1985-1996, S210 1996-2003, S211 2003-2009, S212 2009-2016, S213 2016-2023, S214 2023-
+Mercedes-Benz | E-Class | coupe | C114 1968-1977, C123 1977-1985, C124 1987-1997, C208 1997-2002, C209 2002-2009, C207 2009-2016, C238 2016-2023
+Mercedes-Benz | E-Class | cabriolet | A124 1991-1997, A208 1998-2003, A209 2003-2010, A207 2010-2016, A238 2016-2024
+Mercedes-Benz | E-Class All-Terrain | | S213 2017-2023, S214 2023-
+Mercedes-Benz | G-Class | | W460 1979-1991, W463 1989-2018, W463A 2018-
+Mercedes-Benz | GL-Class | | X164 2006-2012, X166 2012-2016
+Mercedes-Benz | GLA | | X156 2013-2020, H247 2020-
+Mercedes-Benz | GLB | | X247 2019-
+Mercedes-Benz | GLC | | X253 2015-2022, X254 2022-
+Mercedes-Benz | GLC | coupe | C253 2016-2023, C254 2023-
+Mercedes-Benz | GLE | | W166 2015-2018, V167 2018-
+Mercedes-Benz | GLE | coupe | C292 2015-2019, C167 2019-
+Mercedes-Benz | GLK-Class | | X204 2008-2015
+Mercedes-Benz | GLS | | X166 2016-2019, X167 2019-
+Mercedes-Benz | GLS Maybach | | X167 2020-
+Mercedes-Benz | M-Class | | W163 1997-2005, W164 2005-2011, W166 2011-2015
+Mercedes-Benz | R-Class | | W251 2005-2013
+Mercedes-Benz | R-Class Long | | V251 2005-2013
+Mercedes-Benz | S-Class | | W116 1972-1980, W126 1979-1991, W140 1991-1998, W220 1998-2005, W221 2005-2013, W222 2013-2020, W223 2020-
+Mercedes-Benz | S-Class | coupe | C217 2014-2021
+Mercedes-Benz | S-Class | cabriolet | A217 2016-2021
+Mercedes-Benz | S-Class Maybach | | X222 2015-2020, Z223 2020-
+Mercedes-Benz | SL-Class | | W113 1963-1971, R107 1971-1989, R129 1989-2001, R230 2001-2012, R231 2012-2020, R232 2021-
+Mercedes-Benz | SLC | | R172 2016-2020
+Mercedes-Benz | SLK-Class | | R170 1996-2004, R171 2004-2011, R172 2011-2016
+Mercedes-Benz | SLR McLaren | | C199 2003-2009
+Mercedes-Benz | SLS AMG | | C197 2010-2015
+Mercedes-Benz | GT | | C190 2014-2021, C192 2023-
+Mercedes-Benz | GT | roadster | R190 2016-2021
+Mercedes-Benz | AMG GT 4-Door Coupe | | X290 2018-
+Mercedes-Benz | V-Class | | W638 1996-2003, W447 2014-
+Mercedes-Benz | Vito | | W447 2014-
+Mercedes-Benz | Viano | | W639 2003-2014
+Mercedes-Benz | Vaneo | | W414 2002-2006
+Mercedes-Benz | Citan, T-Class, EQT | | W420 2021-
+Mercedes-Benz | X-Class | | W470 2017-2020
+Mercedes-Benz | EQA | | H243 2021-
+Mercedes-Benz | EQB | | X243 2021-
+Mercedes-Benz | EQC | | N293 2019-
+Mercedes-Benz | EQE | | V295 2021-
+Mercedes-Benz | EQE SUV | | X294 2022-
+Mercedes-Benz | EQS | | V297 2021-
+Mercedes-Benz | EQS SUV | | X296 2022-
+Mercedes-Benz | EQV | | W447 2019-
+
+# BMW
+BMW | 1 Series | | E87 2004-2011, F20 2011-2019, F40 2019-2024, F70 2024-
+BMW | 1 Series | hatchback | E81 2007-2011, F21 2012-2019
+BMW | 1 Series | coupe | E82 2007-2013
+BMW | 1 Series | cabriolet | E88 2008-2013
+BMW | 1 Series | sedan | F52 2017-
+BMW | 1 Series M | | E82 2010-2012
+BMW | 2 Series | coupe | F22 2013-2021, G42 2021-
+BMW | 2 Series | cabriolet | F23 2014-2021
+BMW | 2 Series Active Tourer | | F45 2014-2021, U06 2021-
+BMW | 2 Series Gran Tourer | | F46 2015-2022
+BMW | 2 Series Gran Coupe | | F44 2019-2024, F74 2024-
+BMW | 3 Series | | E21 1975-1983, E30 1982-1994, E36 1990-2000, E46 1998-2006, E90 2005-2012, F30 2012-2019, G20 2018-
+BMW | 3 Series | estate | E30 1987-1994, E36 1995-1999, E46 1999-2005, E91 2005-2012, F31 2012-2019, G21 2019-
+BMW | 3 Series | coupe | E21 1975-1983, E30 1982-1992, E36 1992-1999, E46 1999-2006, E92 2006-2013
+BMW | 3 Series | cabriolet | E30 1985-1993, E36 1993-1999, E46 2000-2007, E93 2007-2013
+BMW | 3 Series Compact | | E36/5 1994-2000, E46/5 2001-2005
+BMW | 3 Series Gran Turismo | | F34 2013-2020
+BMW | 4 Series | | F32 2013-2020, G22 2020-
+BMW | 4 Series | cabriolet | F33 2014-2020, G23 2020-
+BMW | 4 Series Gran Coupe | | F36 2014-2021, G26 2021-
+BMW | 5 Series | | E12 1972-1981, E28 1981-1988, E34 1988-1996, E39 1995-2004, E60 2003-2010, F10 2009-2017, G30 2016-2023, G60 2023-
+BMW | 5 Series | estate | E34 1992-1996, E39 1997-2004, E61 2004-2010, F11 2010-2017, G31 2017-2024, G61 2024-
+BMW | 5 Series Gran Turismo | | F07 2009-2017
+BMW | 6 Series | | E24 1976-1989, E63 2003-2011, F13 2011-2018
+BMW | 6 Series | cabriolet | E64 2004-2010, F12 2011-2018
+BMW | 6 Series Gran Coupe | | F06 2012-2018
+BMW | 6 Series Gran Turismo | | G32 2017-
+BMW | 7 Series | | E23 1977-1986, E32 1986-1994, E38 1994-2001, E65 2001-2008, F01 2008-2015, G11 2015-2022, G70 2022-
+BMW | 8 Series | | E31 1989-1999, G15 2018-
+BMW | 8 Series | cabriolet | G14 2018-
+BMW | 8 Series Gran Coupe | | G16 2019-
+BMW | i3 | | I01 2013-2022
+BMW | i4 | | G26 2021-
+BMW | i5 | | G60 2023-
+BMW | i5 | estate | G61 2024-
+BMW | i7 | | G70 2022-
+BMW | i8 | | I12 2014-2020
+BMW | i8 | roadster | I15 2018-2020
+BMW | iX | | I20 2021-
+BMW | iX1 | | U11 2022-
+BMW | iX2 | | U10 2023-
+BMW | iX3 | | G08 2020-2025
+BMW | M1 | | E26 1978-1981
+BMW | M2 | | F87 2015-2021, G87 2022-
+BMW | M3 | | E30 1986-1991, E36 1992-1999, E46 2000-2006, E92 2007-2013, F80 2014-2018, G80 2020-
+BMW | M3 | sedan | E36 1994-1998, E90 2008-2011, F80 2014-2018, G80 2020-
+BMW | M3 | cabriolet | E36 1994-1999, E46 2001-2007, E93 2008-2013
+BMW | M3 | estate | G81 2022-
+BMW | M4 | | F82 2014-2020, G82 2020-
+BMW | M4 | cabriolet | F83 2014-2020, G83 2021-
+BMW | M5 | | E28 1985-1988, E34 1988-1995, E39 1998-2004, E60 2005-2010, F10 2011-2017, F90 2017-2023, G90 2024-
+BMW | M5 | estate | E34 1992-1996, E61 2007-2010, G99 2024-
+BMW | M6 | | E24 1983-1989, E63 2005-2010, F13 2012-2018
+BMW | M6 Cabrio | | E64 2006-2010, F12 2012-2018
+BMW | M6 Gran Coupe | | F06 2013-2018
+BMW | M8 | | F92 2019-
+BMW | M8 | cabriolet | F91 2019-
+BMW | M8 Gran Coupe | | F93 2019-
+BMW | X1 | | E84 2009-2015, F48 2015-2022, U11 2022-
+BMW | X2 | | F39 2018-2023, U10 2023-
+BMW | X3 | | E83 2003-2010, F25 2010-2017, G01 2017-2024, G45 2024-
+BMW | X3 M | | F97 2019-2024
+BMW | X4 | | F26 2014-2018, G02 2018-
+BMW | X4 M | | F98 2019-2025
+BMW | X5 | | E53 1999-2006, E70 2006-2013, F15 2013-2018, G05 2018-
+BMW | X5 M | | E70 2009-2013, F85 2014-2018, F95 2019-
+BMW | X6 | | E71 2008-2014, F16 2014-2019, G06 2019-
+BMW | X6 M | | E71 2009-2014, F86 2014-2019, F96 2019-
+BMW | X7 | | G07 2018-
+BMW | XM | | G09 2022-
+BMW | Z3 | | E36/7 1995-2003
+BMW | Z3 | coupe | E36/8 1998-2002
+BMW | Z4 | | E85 2002-2008, E89 2009-2016, G29 2018-
+BMW | Z4 | coupe | E86 2006-2009
+BMW | Z8 | | E52 2000-2003
+BMW | 2002 | | E10 1966-1977
+
+# Volkswagen (generation names include the model, as they are usually written)
+Volkswagen | Golf | | Golf I (17) 1974-1983, Golf II (19E) 1983-1991, Golf III (1H) 1991-1997, Golf IV (1J) 1997-2003, Golf V (1K) 2003-2008, Golf VI (5K) 2008-2012, Golf VII (5G) 2012-2019, Golf VIII (CD) 2019-
+Volkswagen | Golf | estate | Golf III (1H) 1993-1999, Golf IV (1J) 1999-2006, Golf V (1K) 2007-2009, Golf VI (AJ5) 2009-2013, Golf VII (BA5) 2013-2020, Golf VIII (CD) 2020-
+Volkswagen | Golf | cabriolet | Golf III (1E) 1993-1998, Golf IV (1E) 1998-2002, Golf VI (1K) 2011-2016
+Volkswagen | Golf Alltrack | | Golf VII (BA5) 2014-2020, Golf VIII (CD) 2020-
+Volkswagen | Golf Plus | | Golf Plus (5M) 2005-2014
+Volkswagen | Golf Sportsvan | | Golf Sportsvan (AM) 2014-2020
+Volkswagen | e-Golf | | Golf VII (5G) 2014-2021
+Volkswagen | Polo | | Polo I (86) 1975-1981, Polo II (86C) 1981-1994, Polo III (6N) 1994-2001, Polo IV (9N) 2001-2009, Polo V (6R) 2009-2017, Polo VI (AW) 2017-
+Volkswagen | Passat | | Passat B1 (32) 1973-1980, Passat B2 (32B) 1980-1988, Passat B3 (35i) 1988-1993, Passat B4 (3A) 1993-1996, Passat B5 (3B) 1996-2005, Passat B6 (3C) 2005-2010, Passat B7 (3C) 2010-2014, Passat B8 (3G) 2014-2023, Passat B9 (CN) 2023-
+Volkswagen | Arteon | | Arteon (3H) 2017-
+Volkswagen | Tiguan | | Tiguan I (5N) 2007-2016, Tiguan II (AD1) 2016-2024, Tiguan III (CT1) 2024-
+Volkswagen | Touareg | | Touareg I (7L) 2002-2010, Touareg II (7P) 2010-2018, Touareg III (CR) 2018-
+Volkswagen | Touran | | Touran I (1T) 2003-2015, Touran II (5T) 2015-
+Volkswagen | Sharan | | Sharan I (7M) 1995-2010, Sharan II (7N) 2010-2022
+Volkswagen | Caddy | | Caddy III (2K) 2004-2020, Caddy V (SB) 2020-
+Volkswagen | Scirocco | | Scirocco I (53) 1974-1981, Scirocco II (53B) 1981-1992, Scirocco III (13) 2008-2017
+Volkswagen | Beetle | | New Beetle (9C) 1997-2011, Beetle (5C) 2011-2019
+Volkswagen | Beetle | cabriolet | New Beetle (1Y) 2002-2011, Beetle (5C) 2012-2019
+Volkswagen | Lupo | | Lupo (6X) 1998-2005
+Volkswagen | Fox | | Fox (5Z) 2005-2011
+Volkswagen | Phaeton | | Phaeton (3D) 2002-2016
+Volkswagen | Eos | | Eos (1F) 2006-2015
+Volkswagen | Amarok | | Amarok I (2H) 2009-2020
+Volkswagen | Multivan, Transporter Kombi | | T5 (7H) 2003-2015, T6 (SG) 2015-2019, T6.1 (SH) 2019-2024, T7 (ST) 2021-
+Volkswagen | T-Cross | | T-Cross (C1) 2018-
+
+# Audi (platform codes as Audi drivers use them)
+Audi | 80, 80/ 90, 90 | | B2 1978-1986, B3 1986-1991, B4 1991-1996
+Audi | Coupe | | B2 1981-1988, B3 1988-1996
+Audi | Cabriolet | | B4 1991-2000
+Audi | 100, 100/ 200 | | C1 1968-1976, C2 1976-1982, C3 1982-1991, C4 1990-1994
+Audi | V8 | | D11 1988-1994
+Audi | A1, S1 | | 8X 2010-2018, GB 2018-
+Audi | A2 | | 8Z 1999-2005
+Audi | A3, S3 | | 8L 1996-2003, 8P 2003-2012, 8V 2012-2020, 8Y 2020-
+Audi | A3, S3 | cabriolet | 8P 2008-2013, 8V 2013-2020
+Audi | RS 3 | | 8P 2010-2012, 8V 2015-2020, 8Y 2021-
+Audi | A4, S4 | | B5 1994-2001, B6 2000-2004, B7 2004-2008, B8 2007-2015, B9 2015-
+Audi | RS 4 | | B5 2000-2001, B7 2005-2008, B8 2012-2015, B9 2017-
+Audi | A5, S5, RS 5 | | B8 2007-2016, B9 2016-2024, B10 2024-
+Audi | A6, S6, RS6 | | C4 1994-1997, C5 1997-2004, C6 2004-2011, C7 2011-2018, C8 2018-2025, C9 2025-
+Audi | A6 | sportback | -
+Audi | A7, S7, RS7 | | C7 2010-2018, C8 2018-
+Audi | A8, S8 | | D2 1994-2002, D3 2002-2010, D4 2010-2017, D5 2017-
+Audi | TT | | 8N 1998-2006, 8J 2006-2014, 8S 2014-2023
+Audi | Q2, SQ2 | | GA 2016-
+Audi | Q3, RS Q3 | | 8U 2011-2018, F3 2018-2024
+Audi | Q5, SQ5 | | 8R 2008-2017, FY 2016-2023
+Audi | Q7, SQ7 | | 4L 2006-2015, 4M 2015-
+Audi | Q8, SQ8, RS Q8 | | 4M 2018-
+Audi | e-tron, Q8 e-tron, SQ8 e-tron | | GE 2018-2025
+Audi | e-tron GT | | -
+Audi | Q4 e-tron, Q4 | | F4 2021-
+Audi | R8 | | 42 2007-2015, 4S 2015-2024
+
+# Porsche
+Porsche | 911 | | 964 1989-1994, 993 1993-1998, 996 1997-2006, 997 2004-2012, 991 2011-2019, 992 2019-
+Porsche | 911 Turbo | | 930 1974-1989, 964 1990-1994, 993 1995-1998, 996 2000-2006, 997 2006-2013, 991 2013-2019, 992 2020-
+Porsche | Boxster, Boxster S | | 986 1996-2004, 987 2004-2012, 981 2012-2016
+Porsche | 718 | | 982 2016-
+Porsche | Cayman, Cayman S, Cayman R | | 987 2005-2012, 981 2012-2016
+Porsche | Cayenne | | 9PA 2002-2010, 92A 2010-2017, 9Y0 2017-2025
+Porsche | Cayenne | coupe | 9Y3 2019-2025
+Porsche | Macan | | 95B 2014-2023
+Porsche | Panamera | | 970 2009-2016, 971 2016-2023, 976 2023-
+Porsche | Taycan | | J1 2019-
+Porsche | Carrera GT | | 980 2003-2006
+
+# Opel (generation letters, written with the model)
+Opel | Astra | | Astra F 1991-1998, Astra G 1998-2004, Astra H 2004-2010, Astra J 2009-2015, Astra K 2015-2021, Astra L 2021-
+Opel | Astra | cabriolet | Astra F 1993-1998, Astra G 2000-2006, Astra H 2006-2011
+Opel | Astra | coupe | Astra G 2000-2006
+Opel | Astra Twin Top | | Astra H 2006-2011
+Opel | Corsa | | Corsa A 1982-1993, Corsa B 1993-2000, Corsa C 2000-2006, Corsa D 2006-2014, Corsa E 2014-2019, Corsa F 2019-
+Opel | Vectra | | Vectra A 1988-1995, Vectra B 1995-2002, Vectra C 2002-2008
+Opel | Kadett | | Kadett E 1984-1993
+Opel | Omega | | Omega A 1986-1994, Omega B 1994-2003
+Opel | Rekord | | Rekord E 1977-1986
+Opel | Senator | | Senator A 1978-1987, Senator B 1987-1993
+Opel | Manta | | Manta B 1975-1988
+Opel | Insignia | | Insignia A 2008-2017, Insignia B 2017-2022
+Opel | Meriva | | Meriva A 2003-2010, Meriva B 2010-2017
+Opel | Zafira | | Zafira A 1999-2005, Zafira B 2005-2014, Zafira C 2011-2019, Zafira Life 2019-
+Opel | Agila | | Agila A 2000-2007, Agila B 2008-2015
+Opel | Tigra | | Tigra A 1994-2001, Tigra B 2004-2009
+Opel | Mokka | | Mokka A 2012-2019, Mokka B 2020-
+Opel | Frontera | | Frontera A 1991-1998, Frontera B 1998-2004
+Opel | Combo | | Combo C 2001-2011, Combo D 2011-2018, Combo E 2018-

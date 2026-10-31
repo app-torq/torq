@@ -29,6 +29,9 @@ type Config struct {
 	MaxUploadMB    int
 	LogLevel       string
 	LogFormat      string // "json" or "text"
+	// CatalogOnlineUpdates lets admins refresh the vehicle catalog from its
+	// upstream sources (Constitution VII); lookups always stay offline.
+	CatalogOnlineUpdates bool
 }
 
 // MaxUploadBytes returns the per-file upload limit in bytes.
@@ -99,6 +102,13 @@ func Load(getenv func(string) string) (Config, error) {
 		return Config{}, fmt.Errorf("TORQ_MAX_UPLOAD_MB must be a positive integer")
 	}
 	cfg.MaxUploadMB = mb
+
+	switch v := strings.ToLower(get("TORQ_CATALOG_ONLINE_UPDATES", "true")); v {
+	case "true", "false":
+		cfg.CatalogOnlineUpdates = v == "true"
+	default:
+		return Config{}, fmt.Errorf("TORQ_CATALOG_ONLINE_UPDATES must be true or false, got %q", v)
+	}
 
 	switch cfg.LogLevel {
 	case "debug", "info", "warn", "error":

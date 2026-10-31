@@ -25,5 +25,10 @@ test('V13: every bundled dataset is attributed on the About page, visible to mem
   }
   await expect(member.getByText(/Kraftfahrt-Bundesamt/).first()).toBeVisible()
   await expect(member.getByRole('link', { name: 'Datenlizenz Deutschland – Namensnennung – Version 2.0' })).toBeVisible()
+  // Only admins may start an online update.
+  await expect(member.getByText('Bundled with this version')).toBeVisible()
+  await expect(member.getByRole('button', { name: 'Update now' })).toHaveCount(0)
   await ctx.close()
+  await page.goto('/settings/about')
+  await expect(page.getByRole('button', { name: 'Update now' })).toBeEnabled()
 })

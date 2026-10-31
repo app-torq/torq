@@ -8,7 +8,7 @@ import { SessionContext, type Session } from '../app/session'
 export const testSession: Session = {
   user: {
     id: 1, username: 'marek', display_name: 'Marek', role: 'admin', locale: 'en', date_format: 'YYYY-MM-DD',
-    number_format: 'point', currency_code: 'EUR', currency_symbol: null, disabled: false,
+    number_format: 'point', currency_code: 'EUR', currency_symbol: null, power_unit: 'kw', disabled: false,
   },
   instance: { max_upload_mb: 25, version: 'test' },
 }

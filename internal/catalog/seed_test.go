@@ -35,11 +35,20 @@ func TestSeedImportsOnceAndReplacesOnChange(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !res.Imported || res.KBA != 4 || res.Vehicles != 7 {
+	if !res.Imported || res.KBA != 4 || res.Vehicles != 8 {
 		t.Fatalf("first import %+v", res)
 	}
-	if k, v := counts(t, d); k != 4 || v != 7 {
+	if k, v := counts(t, d); k != 4 || v != 8 {
 		t.Fatalf("rows %d %d", k, v)
+	}
+	// German names default to the English name when the seed omits them.
+	var modelDE, genDE, citroenDE string
+	if err := d.Reader.QueryRow("SELECT model_de, generation_de FROM catalog_vehicles WHERE generation = 'Coupe (1990–1993)'").Scan(&modelDE, &genDE); err != nil ||
+		modelDE != "C-Klasse" || genDE != "Coupé (1990–1993)" {
+		t.Fatalf("German names %q %q %v", modelDE, genDE, err)
+	}
+	if err := d.Reader.QueryRow("SELECT model_de FROM catalog_vehicles WHERE make = 'Citroën'").Scan(&citroenDE); err != nil || citroenDE != "C5" {
+		t.Fatalf("model_de fallback %q %v", citroenDE, err)
 	}
 	var makeKey string
 	if err := d.Reader.QueryRow("SELECT make_key FROM catalog_vehicles WHERE make = 'Citroën'").Scan(&makeKey); err != nil || makeKey != "citroen" {
@@ -50,7 +59,7 @@ func TestSeedImportsOnceAndReplacesOnChange(t *testing.T) {
 		t.Fatal(err)
 	}
 	if meta.ImportedAt != "2026-10-31T12:00:00Z" || len(meta.SeedSha256) != 64 || !strings.Contains(meta.HeaderJson, `"id":"fixture"`) ||
-		strings.Contains(meta.HeaderJson, `"kba":[`) {
+		strings.Contains(meta.HeaderJson, `"kba":[`) || meta.Source != catalog.SourceBundled || meta.BundledSha256 != meta.SeedSha256 {
 		t.Fatalf("meta %+v", meta)
 	}
 
@@ -98,6 +107,7 @@ func TestSeedRejectsBadSeedAndKeepsCatalog(t *testing.T) {
 		"missing make":  func(doc *catalog.SeedDoc) { doc.Vehicles[1].Make = "" },
 		"missing trade": func(doc *catalog.SeedDoc) { doc.KBA[1].TradeName = "" },
 		"symbol engine": func(doc *catalog.SeedDoc) { doc.Vehicles[1].Engine = "--" },
+		"unknown body":  func(doc *catalog.SeedDoc) { doc.Vehicles[0].Body = "Coupe" },
 	}
 	for name, mutate := range bad {
 		doc := catalogtest.Doc()
@@ -128,10 +138,57 @@ func TestSeedRejectsBadSeedAndKeepsCatalog(t *testing.T) {
 		}
 	}
 
-	if k, v := counts(t, d); k != 4 || v != 7 {
+	if k, v := counts(t, d); k != 4 || v != 8 {
 		t.Fatalf("previous catalog changed: %d %d", k, v)
 	}
 	if after, _ := store.New(d.Reader).GetCatalogMeta(ctx); after != before {
 		t.Fatalf("meta changed: %+v", after)
+	}
+}
+
+// An online update must survive restarts until a release bundles newer data.
+func TestSeedKeepsNewerOnlineCatalog(t *testing.T) {
+	ctx := context.Background()
+	d := testutil.NewDB(t)
+	catalogtest.Load(t, d)
+
+	online := catalogtest.Doc()
+	online.GeneratedAt = "2026-11-02T09:00:00Z"
+	online.Vehicles = online.Vehicles[:3]
+	online.Schema = catalog.SeedSchema
+	online.Counts = catalog.Counts{KBA: len(online.KBA), Vehicles: len(online.Vehicles)}
+	if _, err := catalog.Import(ctx, d, online, "online:abc", catalog.SourceOnline, t0.Add(48*time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+
+	// Restart with the same bundled seed: nothing happens.
+	if res, err := catalog.Seed(ctx, d, catalogtest.Seed(t), t0.Add(72*time.Hour)); err != nil || res.Imported {
+		t.Fatalf("restart %+v %v", res, err)
+	}
+	// Upgrade to a bundled seed generated before the online update: kept.
+	older := catalogtest.Doc()
+	older.Vehicles = older.Vehicles[:2]
+	olderSeed, err := catalog.EncodeSeed(older)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res, err := catalog.Seed(ctx, d, olderSeed, t0.Add(73*time.Hour)); err != nil || res.Imported {
+		t.Fatalf("older bundled seed replaced the online catalog %+v %v", res, err)
+	}
+	if _, v := counts(t, d); v != 3 {
+		t.Fatalf("online rows %d", v)
+	}
+	// Upgrade to a bundled seed generated after it: replaced.
+	newer := catalogtest.Doc()
+	newer.GeneratedAt = "2026-12-01T00:00:00Z"
+	newerSeed, err := catalog.EncodeSeed(newer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res, err := catalog.Seed(ctx, d, newerSeed, t0.Add(96*time.Hour)); err != nil || !res.Imported {
+		t.Fatalf("newer bundled seed %+v %v", res, err)
+	}
+	if m, _ := store.New(d.Reader).GetCatalogMeta(ctx); m.Source != catalog.SourceBundled {
+		t.Fatalf("source %q", m.Source)
 	}
 }

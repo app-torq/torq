@@ -79,44 +79,58 @@ func TestCascade(t *testing.T) {
 		t.Fatalf("all makes %v", m)
 	}
 
-	models, err := catalog.Models(ctx, q, "mercedes benz", "")
+	// Models come back in the requested language; queries and parents match
+	// both languages.
+	models, err := catalog.Models(ctx, q, "mercedes benz", "", "en")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(models) != 2 || models[0].Name != "C-Klasse" || models[0].YearFrom != 2000 || models[0].YearTo != 2007 ||
-		models[1].Name != "C-Klasse T-Modell" {
+	if len(models) != 1 || models[0].Name != "C-Class" || models[0].YearFrom != 1990 || models[0].YearTo != 2007 {
 		t.Fatalf("models %+v", models)
 	}
-	if m, _ := catalog.Models(ctx, q, "Mercedes-Benz", "t modell"); len(m) != 1 {
-		t.Fatalf("model query %+v", m)
+	if m, _ := catalog.Models(ctx, q, "Mercedes-Benz", "klasse", "de"); len(m) != 1 || m[0].Name != "C-Klasse" {
+		t.Fatalf("German model %+v", m)
+	}
+	if m, _ := catalog.Models(ctx, q, "Mercedes-Benz", "c klasse", "en"); len(m) != 1 || m[0].Name != "C-Class" {
+		t.Fatalf("German query, English names %+v", m)
 	}
 
-	gens, err := catalog.Generations(ctx, q, "Mercedes-Benz", "c-klasse", "")
+	// Facelifts with the same chassis code merge into one generation; the
+	// body is reported when all its rows agree.
+	gens, err := catalog.Generations(ctx, q, "Mercedes-Benz", "c-klasse", "", "en")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(gens) != 2 || gens[0].Name != "2004–2007" || gens[1].Name != "2000–2004" || gens[1].YearFrom != 2000 {
+	if len(gens) != 3 || gens[0].Name != "S203" || gens[0].Body != "estate" ||
+		gens[1].Name != "W203" || gens[1].YearFrom != 2000 || gens[1].YearTo != 2007 || gens[1].Body != "" ||
+		gens[2].Name != "Coupe (1990–1993)" {
 		t.Fatalf("generations (newest first) %+v", gens)
 	}
-	if g, _ := catalog.Generations(ctx, q, "Citroën", "C5", ""); len(g) != 1 || g[0].YearTo != 0 {
+	if g, _ := catalog.Generations(ctx, q, "Mercedes-Benz", "C-Class", "coupé", "de"); len(g) != 1 || g[0].Name != "Coupé (1990–1993)" {
+		t.Fatalf("German generation %+v", g)
+	}
+	if g, _ := catalog.Generations(ctx, q, "Citroën", "C5", "", "en"); len(g) != 1 || g[0].YearTo != 0 {
 		t.Fatalf("open-ended generation %+v", g)
 	}
 
-	engines, err := catalog.Engines(ctx, q, "Mercedes-Benz", "C-Klasse", "2000–2004", "")
+	engines, err := catalog.Engines(ctx, q, "Mercedes-Benz", "C-Klasse", "w203", "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(engines) != 2 || engines[0].Name != "220 CDI 5AT RWD" || engines[0].PowerKw.Int64 != 105 ||
+	if len(engines) != 3 || engines[0].Name != "220 CDI 5AT RWD" || engines[0].PowerKw.Int64 != 105 ||
 		engines[0].DisplacementCc.Int64 != 2148 || engines[0].FuelType.String != "diesel" {
 		t.Fatalf("engines %+v", engines)
+	}
+	if e, _ := catalog.Engines(ctx, q, "Mercedes-Benz", "C-Class", "Coupé (1990–1993)", ""); len(e) != 1 {
+		t.Fatalf("engines under a German generation name %+v", e)
 	}
 	if e, _ := catalog.Engines(ctx, q, "Tesla", "Model 3", "2017–2023", "awd"); len(e) != 1 || e[0].DisplacementCc.Valid {
 		t.Fatalf("electric engine %+v", e)
 	}
 
 	for name, rows := range map[string]int{
-		"models":      lenOf(catalog.Models(ctx, q, "Trabbi Custom", "")),
-		"generations": lenOf(catalog.Generations(ctx, q, "Mercedes-Benz", "Unknown", "")),
+		"models":      lenOf(catalog.Models(ctx, q, "Trabbi Custom", "", "en")),
+		"generations": lenOf(catalog.Generations(ctx, q, "Mercedes-Benz", "Unknown", "", "en")),
 		"engines":     lenOf(catalog.Engines(ctx, q, "Mercedes-Benz", "C-Klasse", "1950", "")),
 	} {
 		if rows != 0 {
@@ -238,7 +252,7 @@ func BenchmarkModels(b *testing.B) {
 	q := store.New(d.Reader)
 	ctx := context.Background()
 	for b.Loop() {
-		if _, err := catalog.Models(ctx, q, "Volkswagen", "go"); err != nil {
+		if _, err := catalog.Models(ctx, q, "Volkswagen", "go", "de"); err != nil {
 			b.Fatal(err)
 		}
 	}

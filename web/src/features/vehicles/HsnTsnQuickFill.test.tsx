@@ -56,7 +56,7 @@ describe('HsnTsnQuickFill', () => {
     expect(tsn).toHaveValue('472')
     await waitFor(() => { expect(onFill).toHaveBeenCalledTimes(1) })
     expect(onFill.mock.calls[0]?.[0]).toMatchObject({ make: 'Mercedes-Benz', model: 'C-Klasse' })
-    expect(get).toHaveBeenCalledWith('/catalog/kba', { hsn: '0710', tsn: '472' })
+    expect(get).toHaveBeenCalledWith('/catalog/kba', { hsn: '0710', tsn: '472', lang: 'en' })
   })
 
   it('rejects non-alphanumerics in TSN and splits pasted keys', async () => {

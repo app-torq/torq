@@ -5,11 +5,11 @@ Self-hosted maintenance logbook and DIY repair tracker for people who work on th
 - **Service Logbook**: routine interval maintenance (oil, fluids, filters, plugs, brakes, timing). One entry can cover several items, each with brand, spec, quantity, part numbers and cost. Logging a service resets the linked reminder automatically.
 - **Self-Repair Projects**: troubleshooting, repairs, overhauls and modifications. Each project has a workflow (`Planned → In Progress → Waiting on Parts → Completed`), symptoms with OBD2 fault codes, root cause, procedure notes, critical torque specs, special tools, a parts bill of materials with per-part status, and photos, manuals and invoices.
 - **Reminders**: by km, by time, or whichever comes first, with configurable "due soon" lead thresholds. Any odometer update re-evaluates them immediately.
-- **Offline vehicle catalog**: type the HSN/TSN from the German registration certificate (Fahrzeugschein fields 2.1/2.2) to fill make and model, or pick make → model → generation → engine from searchable lists that fill power (kW), displacement (cm³) and fuel type. Any field also accepts your own text. Lookups never leave your server and need no API keys.
+- **Offline vehicle catalog**: type the HSN/TSN from the German registration certificate (Fahrzeugschein fields 2.1/2.2) to fill make and model, or pick make → model → chassis code (W203, E46, Golf IV (1J), …) → engine from searchable lists that fill power (kW), displacement (cm³) and fuel type. Model names follow your language (C-Class / C-Klasse). Any field also accepts your own text. Lookups never leave your server and need no API keys; admins can refresh the catalog from its sources with one click.
 - **Quick-reference spec sheet** per vehicle: oil and fluid specs and capacities, lug torque, tire pressures, and custom entries with images.
 - **Webhook notifications** only (no email): Discord, ntfy, Gotify, Home Assistant and Generic JSON, with custom headers, a test button, a delivery log and retries.
 - **Reports**: spending split by routine service vs. repairs and by parts vs. fluids, cost per km, a combined timeline, and a printable history with JSON/CSV export (for archiving or selling a car).
-- English and German. Metric units only (km, L/mL, Nm, bar). One dark theme.
+- English and German. Metric units only (km, L/mL, Nm, bar); power shows kW or PS first, per user. One dark theme.
 
 Out of scope by design: fuel logs and consumption, insurance/registration/inspection tracking, imperial units, light themes, email.
 
@@ -42,6 +42,7 @@ All settings are optional environment variables.
 | `TORQ_TRUSTED_PROXIES` | *(empty)* | Comma-separated CIDRs whose `X-Forwarded-For` header is trusted (for login throttling behind a reverse proxy) |
 | `TORQ_MAX_UPLOAD_MB` | `25` | Per-file upload limit (JPEG, PNG, WebP, HEIC, PDF) |
 | `TORQ_LOG_LEVEL` / `TORQ_LOG_FORMAT` | `info` / `json` | Logging (`debug`/`info`/`warn`/`error`; `json`/`text`) |
+| `TORQ_CATALOG_ONLINE_UPDATES` | `true` | Lets admins refresh the vehicle catalog from KBA and GitHub (*About & data sources* → *Update now*). `false` keeps torq fully offline |
 | `TZ` | `UTC` | Time zone for reminder dates and digest schedules |
 
 ## Data and backups
@@ -78,7 +79,7 @@ Header values are write-only: the API never returns them. Failed deliveries are 
 
 ## Vehicle data & licenses
 
-The vehicle catalog ships inside torq and is imported into the local database on first start after an upgrade. Lookups run entirely offline. The bundled data comes from:
+The vehicle catalog ships inside torq and is imported into the local database on first start after an upgrade. Lookups run entirely offline. Admins can also refresh it under **Settings → About & data sources → Update now**: torq then downloads the current FZ 6 workbook from the KBA and the latest vehicle-makes-models data from GitHub, rebuilds the catalog and replaces it in one transaction. An online catalog is kept across restarts until a release bundles newer data; set `TORQ_CATALOG_ONLINE_UPDATES=false` to disable the button. The bundled data comes from:
 
 - **Kraftfahrt-Bundesamt (KBA), FZ 6** — "Bestand an Kraftfahrzeugen und Kraftfahrzeuganhängern nach Herstellern und Typen", stand 1 January 2024, [kba.de](https://www.kba.de/DE/Statistik/Fahrzeuge/Bestand/ListeHerstellerTypSchluesselnummern/typschluesselnummern_node.html).
   © Kraftfahrt-Bundesamt, Flensburg. Datenquelle: Kraftfahrt-Bundesamt, FZ 6, 2026-10-31; [Datenlizenz Deutschland – Namensnennung – Version 2.0](https://www.govdata.de/dl-de/by-2-0) (dl-de/by-2-0); Daten geändert (data modified by torq).
@@ -88,7 +89,7 @@ The combined catalog database (`internal/catalog/data/catalog_seed.json.gz`) is 
 
 The KBA's SV 4.2 directory (with kW, cm³ and fuel per HSN/TSN) is **not** bundled: the KBA publishes it as "all rights reserved". Because of this, an HSN/TSN lookup fills make and model; power, displacement and fuel come from the engine list or manual entry. The same attributions are shown in the app under **Settings → About & data sources**.
 
-Maintainers refresh the catalog with `make catalog` (see the Makefile and `specs/002-vehicle-catalog-lookup/quickstart.md`).
+Maintainers refresh the bundled catalog with `make catalog` (see the Makefile). Chassis codes come from the hand-maintained table `internal/catalog/catalogsync/chassis.txt`, because the sources only carry production years; corrections are welcome.
 
 ## Development
 

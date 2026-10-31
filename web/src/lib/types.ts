@@ -3,6 +3,7 @@
 export type Locale = 'en' | 'de'
 export type DateFormat = 'DD.MM.YYYY' | 'YYYY-MM-DD'
 export type NumberFormat = 'point' | 'comma'
+export type PowerUnit = 'kw' | 'ps'
 export type Role = 'admin' | 'member'
 
 export interface User {
@@ -15,6 +16,7 @@ export interface User {
   number_format: NumberFormat
   currency_code: string
   currency_symbol: string | null
+  power_unit: PowerUnit
   disabled: boolean
 }
 
@@ -80,8 +82,12 @@ export interface CatalogModel {
   year_to: number | null
 }
 
+export const CATALOG_BODIES = ['sedan', 'hatchback', 'estate', 'coupe', 'cabriolet', 'roadster', 'sportback'] as const
+export type CatalogBody = (typeof CATALOG_BODIES)[number]
+
 export interface CatalogGeneration extends CatalogModel {
-  body: string
+  /** Chassis code ("W203") or descriptor with years; body is set for chassis codes when all variants share it. */
+  body: CatalogBody | ''
 }
 
 export interface CatalogEngine {
@@ -108,10 +114,24 @@ export interface CatalogDataset {
   modified: boolean
 }
 
+export type CatalogUpdateState = 'idle' | 'running' | 'succeeded' | 'unchanged' | 'failed'
+
+export interface CatalogUpdate {
+  /** Online updates are allowed on this server (TORQ_CATALOG_ONLINE_UPDATES). */
+  enabled: boolean
+  state: CatalogUpdateState
+  started_at: string | null
+  finished_at: string | null
+  error: string | null
+}
+
 export interface CatalogMeta {
   imported_at: string | null
+  /** Bundled with this release, or fetched by an online update. */
+  source: 'bundled' | 'online'
   datasets: CatalogDataset[]
   counts: { kba: number; vehicles: number }
+  update: CatalogUpdate
 }
 
 export interface OdometerReading {

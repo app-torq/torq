@@ -40,32 +40,39 @@ type CatalogKba struct {
 	YearFrom       sql.NullInt64
 	Source         string
 	Match          string
+	ModelDe        string
 }
 
 type CatalogMetum struct {
-	ID         int64
-	SeedSha256 string
-	ImportedAt string
-	HeaderJson string
+	ID            int64
+	SeedSha256    string
+	ImportedAt    string
+	HeaderJson    string
+	Source        string
+	BundledSha256 string
 }
 
 type CatalogVehicle struct {
-	ID             int64
-	Make           string
-	MakeKey        string
-	Model          string
-	ModelKey       string
-	Generation     string
-	GenerationKey  string
-	YearFrom       sql.NullInt64
-	YearTo         sql.NullInt64
-	Body           string
-	Engine         string
-	EngineKey      string
-	EngineCode     string
-	DisplacementCc sql.NullInt64
-	PowerKw        sql.NullInt64
-	FuelType       sql.NullString
+	ID              int64
+	Make            string
+	MakeKey         string
+	Model           string
+	ModelKey        string
+	Generation      string
+	GenerationKey   string
+	YearFrom        sql.NullInt64
+	YearTo          sql.NullInt64
+	Body            string
+	Engine          string
+	EngineKey       string
+	EngineCode      string
+	DisplacementCc  sql.NullInt64
+	PowerKw         sql.NullInt64
+	FuelType        sql.NullString
+	ModelDe         string
+	ModelDeKey      string
+	GenerationDe    string
+	GenerationDeKey string
 }
 
 type InstanceSetting struct {
@@ -223,6 +230,7 @@ type User struct {
 	DisabledAt     sql.NullString
 	CreatedAt      string
 	UpdatedAt      string
+	PowerUnit      string
 }
 
 type UserIdentity struct {

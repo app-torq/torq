@@ -23,6 +23,7 @@ type Preferences struct {
 	NumberFormat   string
 	CurrencyCode   string
 	CurrencySymbol string // empty when not overridden
+	PowerUnit      string // "kw" or "ps"; display only, power is always stored in kW
 }
 
 // User is the authenticated, provider-agnostic user.
@@ -87,6 +88,7 @@ func FromStore(u store.User) User {
 			NumberFormat:   u.NumberFormat,
 			CurrencyCode:   u.CurrencyCode,
 			CurrencySymbol: u.CurrencySymbol.String,
+			PowerUnit:      u.PowerUnit,
 		},
 	}
 }

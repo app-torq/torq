@@ -13,6 +13,8 @@ import (
 	"github.com/marekbeckmann/torq/internal/attachments"
 	"github.com/marekbeckmann/torq/internal/auth"
 	"github.com/marekbeckmann/torq/internal/auth/local"
+	"github.com/marekbeckmann/torq/internal/catalog"
+	"github.com/marekbeckmann/torq/internal/catalog/catalogsync"
 	"github.com/marekbeckmann/torq/internal/clock"
 	"github.com/marekbeckmann/torq/internal/config"
 	"github.com/marekbeckmann/torq/internal/db"
@@ -58,6 +60,8 @@ type Server struct {
 	files      *attachments.Store
 	notify     *notify.Service
 	reports    *reports.Service
+	// catalogUpdate runs admin-triggered online catalog updates.
+	catalogUpdate *catalogUpdater
 	// patterns records every registered API route (used by the CSRF route-walk test).
 	patterns []string
 }
@@ -91,6 +95,10 @@ func NewServer(d Deps) *Server {
 		CollectFiles: s.files.KeysForRepair, RemoveFiles: s.files.RemoveFiles,
 	}
 	s.reports = &reports.Service{DB: d.DB, Vehicles: s.vehicles, ServiceLog: s.servicelog, Repairs: s.repairs}
+	fetcher := catalogsync.NewFetcher("torq/" + d.Version + " (+https://github.com/marekbeckmann/torq)")
+	s.catalogUpdate = &catalogUpdater{log: d.Log, now: d.Clock.Now, run: func(ctx context.Context) (catalog.Result, error) {
+		return fetcher.Update(ctx, d.DB, d.Clock.Now())
+	}}
 
 	s.mux.HandleFunc("GET /healthz", s.healthz)
 	s.mux.Handle("/api/v1/", s.wrap(public, func(http.ResponseWriter, *http.Request) error { return errNotFound }))

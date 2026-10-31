@@ -20,6 +20,12 @@
       "USD": "US dollar (USD)",
       "GBP": "Pound sterling (GBP)",
       "CHF": "Swiss franc (CHF)"
+    },
+    "powerUnit": "Power unit",
+    "powerUnitHint": "Power is stored in kW; this only changes which unit is shown first.",
+    "powerUnits": {
+      "kw": "kW (kilowatt)",
+      "ps": "PS (metric horsepower)"
     }
   },
   "users": {
@@ -71,10 +77,10 @@
   },
   "about": {
     "title": "About torq",
-    "intro": "Version and the open data bundled with this release.",
+    "intro": "Version and the open vehicle data torq uses.",
     "version": "Version",
     "datasets": "Vehicle data sources",
-    "offline": "The vehicle catalog (HSN/TSN quick-fill and make/model suggestions) runs entirely offline from data shipped with torq. No API keys, no external services.",
+    "offline": "Vehicle lookups (HSN/TSN quick-fill and make/model suggestions) always run offline against the catalog stored in torq. No API keys, no external services.",
     "publisher": "Publisher",
     "license": "License",
     "source": "Source",
@@ -84,6 +90,22 @@
     "modified": "torq modified this data (normalized names, merged sources). See NOTICE.md in the repository for details.",
     "counts": "{{kba}} HSN/TSN entries and {{vehicles}} make/model/engine entries.",
     "derived": "The combined catalog database is distributed under the Open Database License (ODbL) 1.0.",
-    "empty": "No vehicle catalog is loaded. Vehicles can still be entered manually."
+    "empty": "No vehicle catalog is loaded. Vehicles can still be entered manually.",
+    "catalogSource": "Catalog",
+    "sources": {
+      "bundled": "Bundled with this version",
+      "online": "Updated online"
+    },
+    "imported": "Imported",
+    "update": "Update now",
+    "updating": "Updating…",
+    "updateHint": "Downloads the current KBA FZ 6 list and the vehicle-makes-models data, rebuilds the catalog and replaces it in one step. This takes a few minutes; lookups keep working meanwhile.",
+    "updateDisabled": "Online updates are turned off on this server (TORQ_CATALOG_ONLINE_UPDATES=false).",
+    "updateStates": {
+      "running": "Update running since {{time}}.",
+      "succeeded": "Catalog updated {{time}}.",
+      "unchanged": "Sources unchanged since the last update ({{time}}).",
+      "failed": "Update failed {{time}}; the previous catalog is still in use."
+    }
   }
 }

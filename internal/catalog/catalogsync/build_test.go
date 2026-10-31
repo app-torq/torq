@@ -1,10 +1,8 @@
-package main
+package catalogsync
 
 import (
 	"archive/zip"
 	"bytes"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -77,7 +75,7 @@ var fz6Rows = [][]string{
 	{"9908", "VOLKSWAGEN-VW", "AAA", "PASSAT", "4"},
 }
 
-func writeXLSX(t *testing.T, path string, rows [][]string) {
+func xlsx(t *testing.T, rows [][]string) []byte {
 	t.Helper()
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
@@ -118,9 +116,7 @@ nummer</t></si><si><r><t>Hersteller</t></r><r><t>klartext</t></r></si></sst>`)
 	if err := zw.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(path, buf.Bytes(), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	return buf.Bytes()
 }
 
 func itoa(n int) string {
@@ -143,18 +139,12 @@ const sv42Fixture = `                 Verzeichnis der Hersteller und Typen (synt
   9909  ABD   TESLA (USA)             TESLA                MODEL Y                   01.01.2021  M1    AF    0099   220
 `
 
-func fixtures(t *testing.T) options {
+func fixtures(t *testing.T) Inputs {
 	t.Helper()
-	dir := t.TempDir()
-	o := options{
-		fz6: filepath.Join(dir, "fz6.xlsx"), gor3a: filepath.Join(dir, "all.json"), gor3aCommit: "0123abc",
-		retrieved: "2026-10-31", out: filepath.Join(dir, "seed.json.gz"),
+	return Inputs{
+		FZ6: xlsx(t, fz6Rows), FZ6Stand: "2024-01-01", Gor3a: strings.NewReader(gor3aFixture), Gor3aCommit: "0123abc",
+		Retrieved: "2026-10-31",
 	}
-	writeXLSX(t, o.fz6, fz6Rows)
-	if err := os.WriteFile(o.gor3a, []byte(gor3aFixture), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	return o
 }
 
 func kbaVariants(doc catalog.SeedDoc, hsn, tsn string) []catalog.KBARow {
@@ -168,25 +158,14 @@ func kbaVariants(doc catalog.SeedDoc, hsn, tsn string) []catalog.KBARow {
 }
 
 func TestBuildFromFZ6AndGor3a(t *testing.T) {
-	o := fixtures(t)
-	var stdout bytes.Buffer
-	if err := run(o, &stdout); err != nil {
-		t.Fatal(err)
-	}
-	seed, err := os.ReadFile(o.out)
+	doc, rep, err := Build(fixtures(t))
 	if err != nil {
-		t.Fatal(err)
-	}
-	doc, err := catalog.DecodeSeed(seed)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := doc.Validate(); err != nil {
 		t.Fatal(err)
 	}
 
-	// Taxonomy cleanup: make prefix, "and predecessors", generation labels,
-	// HP suffix, kW from the source kW figure, duplicate engines removed.
+	// Taxonomy cleanup: make prefix, "and predecessors", localized model,
+	// chassis codes, HP suffix, kW from the source kW figure, duplicate
+	// engines removed.
 	var mb []catalog.VehicleRow
 	for _, v := range doc.Vehicles {
 		if v.Make == "Mercedes-Benz" {
@@ -196,37 +175,41 @@ func TestBuildFromFZ6AndGor3a(t *testing.T) {
 	if len(mb) != 3 {
 		t.Fatalf("mercedes rows %+v", mb)
 	}
-	if mb[0].Model != "C-Klasse" || mb[0].Generation != "2000–2004" || mb[0].Engine != "220 CDI 5AT RWD" ||
-		*mb[0].PowerKW != 105 || *mb[0].DisplacementCC != 2148 || *mb[0].FuelType != "diesel" {
-		t.Errorf("mercedes row %+v", mb[0])
+	if mb[0].Model != "C-Class" || mb[0].ModelDE != "C-Klasse" || mb[0].Generation != "C205" || mb[0].Body != "coupe" ||
+		*mb[0].PowerKW != 170 || *mb[0].FuelType != "hybrid" {
+		t.Errorf("coupe row %+v", mb[0])
 	}
-	if mb[2].Generation != "Coupe (2016–2018)" || mb[2].Body != "Coupe" || *mb[2].PowerKW != 170 || *mb[2].FuelType != "hybrid" {
-		t.Errorf("coupe row %+v", mb[2])
+	if mb[1].Generation != "W203" || mb[1].GenerationDE != "" || mb[1].Body != "" || mb[1].Engine != "220 CDI 5AT RWD" ||
+		*mb[1].PowerKW != 105 || *mb[1].DisplacementCC != 2148 || *mb[1].FuelType != "diesel" {
+		t.Errorf("mercedes row %+v", mb[1])
 	}
 	for _, v := range doc.Vehicles {
-		if v.Engine == "e-Golf" && (v.DisplacementCC != nil || *v.PowerKW != 100 || v.Generation != "5 Doors (2024–)") {
+		if v.Engine == "e-Golf" && (v.DisplacementCC != nil || *v.PowerKW != 100 || v.Generation != "Golf VIII (CD)" || v.Body != "hatchback") {
 			t.Errorf("electric row %+v", v)
 		}
-		if v.Engine == "320d 6MT RWD" && *v.PowerKW != 110 { // 150 PS × 0.7355
-			t.Errorf("PS fallback %+v", v)
+		if v.Engine == "320d 6MT RWD" && (*v.PowerKW != 110 || v.Generation != "E46" || v.ModelDE != "3er") { // 150 PS × 0.7355
+			t.Errorf("BMW row %+v", v)
+		}
+		if v.Make == "Toyota" && (v.Generation != "2019–" || v.ModelDE != "") {
+			t.Errorf("uncovered make keeps the year label %+v", v)
 		}
 	}
 
 	// KBA: manufacturer normalization, variant split, model matching.
-	if got := kbaVariants(doc, "9901", "AAA"); len(got) != 2 || got[0].Make != "Mercedes-Benz" || got[0].Model != "C-Klasse" ||
-		got[0].TradeName != "C 220 CDI" || got[0].Match != "unique" || got[1].TradeName != "CLC 220 CDI" {
+	if got := kbaVariants(doc, "9901", "AAA"); len(got) != 2 || got[0].Make != "Mercedes-Benz" || got[0].Model != "C-Class" ||
+		got[0].ModelDE != "C-Klasse" || got[0].TradeName != "C 220 CDI" || got[0].Match != "unique" || got[1].TradeName != "CLC 220 CDI" {
 		t.Errorf("9901/AAA %+v", got)
 	}
 	if got := kbaVariants(doc, "9901", "AAB"); len(got) != 1 || got[0].TradeName != "C 220" {
 		t.Errorf("numeric segment not dropped: %+v", got)
 	}
-	if got := kbaVariants(doc, "9902", "ABC"); len(got) != 1 || got[0].Make != "Volkswagen" || got[0].Model != "Golf" {
+	if got := kbaVariants(doc, "9902", "ABC"); len(got) != 1 || got[0].Make != "Volkswagen" || got[0].Model != "Golf" || got[0].ModelDE != "" {
 		t.Errorf("lower-case TSN / VW %+v", got)
 	}
 	if got := kbaVariants(doc, "9902", "ABD"); len(got) != 1 || got[0].Model != "TRANSPORTER" || got[0].Match != "none" {
 		t.Errorf("unmatched model %+v", got)
 	}
-	if got := kbaVariants(doc, "9903", "AAA"); len(got) != 1 || got[0].Model != "3 Series" {
+	if got := kbaVariants(doc, "9903", "AAA"); len(got) != 1 || got[0].Model != "3 Series" || got[0].ModelDE != "3er" {
 		t.Errorf("BMW series rule %+v", got)
 	}
 	if got := kbaVariants(doc, "9903", "AAB"); len(got) != 1 || got[0].Make != "MINI" {
@@ -248,44 +231,48 @@ func TestBuildFromFZ6AndGor3a(t *testing.T) {
 		t.Error("trailer or UNBEKANNT row kept")
 	}
 
-	if len(doc.Datasets) != 2 || doc.Datasets[0].LicenseID != "dl-de/by-2-0" || doc.Datasets[1].Commit != "0123abc" ||
-		!strings.Contains(doc.Datasets[0].Attribution, "Kraftfahrt-Bundesamt") {
-		t.Errorf("datasets %+v", doc.Datasets)
+	if len(doc.Datasets) != 2 || doc.Datasets[0].LicenseID != "dl-de/by-2-0" || doc.Datasets[0].Stand != "2024-01-01" ||
+		doc.Datasets[1].Commit != "0123abc" || !strings.Contains(doc.Datasets[0].Attribution, "Kraftfahrt-Bundesamt") ||
+		doc.GeneratedAt != "2026-10-31T00:00:00Z" {
+		t.Errorf("datasets %+v", doc.Header)
 	}
-	rep := stdout.String()
-	if !strings.Contains(rep, "SCHMITZ CARGOBULL") || !strings.Contains(rep, "KBA model match:") {
-		t.Errorf("report:\n%s", rep)
+	var out bytes.Buffer
+	if err := rep.Print(&out, doc, 1); err != nil {
+		t.Fatal(err)
+	}
+	if r := out.String(); !strings.Contains(r, "SCHMITZ CARGOBULL") || !strings.Contains(r, "KBA model match:") ||
+		!strings.Contains(r, "Mercedes-Benz    2 of 2") {
+		t.Errorf("report:\n%s", r)
 	}
 
 	// Deterministic output: same inputs, same bytes.
-	first := seed
-	if err := run(o, &bytes.Buffer{}); err != nil {
+	first, err := catalog.EncodeSeed(doc)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if again, _ := os.ReadFile(o.out); !bytes.Equal(first, again) {
+	again, _, err := Build(fixtures(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second, _ := catalog.EncodeSeed(again); !bytes.Equal(first, second) {
 		t.Error("output is not deterministic")
 	}
 }
 
 func TestSV42RequiresConsentAndWins(t *testing.T) {
-	o := fixtures(t)
-	o.sv42 = filepath.Join(t.TempDir(), "sv42.txt")
-	if err := os.WriteFile(o.sv42, []byte(sv42Fixture), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := run(o, &bytes.Buffer{}); err == nil || !strings.Contains(err.Error(), "consent") {
+	in := fixtures(t)
+	in.SV42 = strings.NewReader(sv42Fixture)
+	if _, _, err := Build(in); err == nil || !strings.Contains(err.Error(), "consent") {
 		t.Fatalf("missing consent accepted: %v", err)
 	}
-	o.sv42Consent = "yes"
-	var stdout bytes.Buffer
-	if err := run(o, &stdout); err != nil {
-		t.Fatal(err)
-	}
-	seed, _ := os.ReadFile(o.out)
-	doc, err := catalog.DecodeSeed(seed)
+	in = fixtures(t)
+	in.SV42, in.SV42Consent = strings.NewReader(sv42Fixture), true
+	doc, rep, err := Build(in)
 	if err != nil {
 		t.Fatal(err)
 	}
+	var out bytes.Buffer
+	_ = rep.Print(&out, doc, 1)
 	got := kbaVariants(doc, "9908", "AAA")
 	if len(got) != 1 || got[0].Source != "sv42" || got[0].TradeName != "PASSAT VARIANT" || *got[0].PowerKW != 103 ||
 		*got[0].DisplacementCC != 1968 || *got[0].FuelType != "diesel" || got[0].BodyCode != "AC" || *got[0].YearFrom != 2011 {
@@ -294,8 +281,8 @@ func TestSV42RequiresConsentAndWins(t *testing.T) {
 	if tesla := kbaVariants(doc, "9909", "ABC"); len(tesla) != 1 || tesla[0].DisplacementCC != nil || *tesla[0].FuelType != "electric" {
 		t.Errorf("electric %+v", tesla)
 	}
-	if y := kbaVariants(doc, "9909", "ABD"); len(y) != 1 || *y[0].FuelType != "other" || !strings.Contains(stdout.String(), "SV42 0099") {
-		t.Errorf("unknown fuel code %+v\n%s", y, stdout.String())
+	if y := kbaVariants(doc, "9909", "ABD"); len(y) != 1 || *y[0].FuelType != "other" || !strings.Contains(out.String(), "SV42 0099") {
+		t.Errorf("unknown fuel code %+v\n%s", y, out.String())
 	}
 	if len(doc.Datasets) != 3 || doc.Datasets[2].ID != "kba-sv42" {
 		t.Errorf("datasets %+v", doc.Datasets)
@@ -319,8 +306,8 @@ func TestCleanEngine(t *testing.T) {
 	}
 }
 
-func TestRequiredFlags(t *testing.T) {
-	if err := run(options{}, &bytes.Buffer{}); err == nil {
-		t.Fatal("missing flags accepted")
+func TestBuildRequiresInputs(t *testing.T) {
+	if _, _, err := Build(Inputs{}); err == nil {
+		t.Fatal("missing inputs accepted")
 	}
 }

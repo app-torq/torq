@@ -1,9 +1,9 @@
-package main
+package catalogsync
 
 import (
 	"bufio"
 	"errors"
-	"os"
+	"io"
 	"regexp"
 	"strconv"
 	"strings"
@@ -26,12 +26,7 @@ var (
 // readSV42 parses `pdftotext -layout` output of the SV 4.2 PDF. Column
 // boundaries come from the repeated column-number line ("1 2 3 … 15") under
 // each page header, never from hard-coded offsets (research C7).
-func readSV42(path string, rep *report) ([]sv42Row, error) {
-	f, err := os.Open(path) //nolint:gosec // maintainer-supplied input file
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = f.Close() }()
+func readSV42(f io.Reader, rep *Report) ([]sv42Row, error) {
 	var starts []int
 	var rows []sv42Row
 	sc := bufio.NewScanner(f)

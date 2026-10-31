@@ -1,10 +1,10 @@
-package main
+package catalogsync
 
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"math"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -34,11 +34,15 @@ type g3Model struct {
 }
 
 type g3Engine struct {
-	Label          string            `json:"label"`
-	FuelType       *string           `json:"fuelType"`
-	DisplacementCc *float64          `json:"displacementCc"`
-	PowerHp        *float64          `json:"powerHp"`
-	Specs          map[string]string `json:"specs"`
+	Label          string   `json:"label"`
+	FuelType       *string  `json:"fuelType"`
+	DisplacementCc *float64 `json:"displacementCc"`
+	PowerHp        *float64 `json:"powerHp"`
+	// Specs holds only the field torq reads; the source's other specs are
+	// skipped while decoding so a full update stays small in memory.
+	Specs struct {
+		Power string `json:"ENGINE SPECS / Power"`
+	} `json:"specs"`
 }
 
 var (
@@ -60,31 +64,29 @@ var gor3aFuel = map[string]string{
 	"Ethanol": "other", "Hydrogen Fuel Cell": "other",
 }
 
-func readGor3a(path string, rep *report) ([]catalog.VehicleRow, error) {
-	b, err := os.ReadFile(path) //nolint:gosec // maintainer-supplied input file
-	if err != nil {
-		return nil, err
-	}
-	var groups []g3Group
-	if err := json.Unmarshal(b, &groups); err != nil {
-		return nil, fmt.Errorf("gor3a: %w", err)
+// readGor3a streams the source array one make group at a time, so the
+// download never has to be held in memory as a whole.
+func readGor3a(r io.Reader, rep *Report) ([]catalog.VehicleRow, error) {
+	dec := json.NewDecoder(r)
+	if tok, err := dec.Token(); err != nil || tok != json.Delim('[') {
+		return nil, fmt.Errorf("gor3a: expected a JSON array: %v", err)
 	}
 	seen := map[string]bool{}
 	var rows []catalog.VehicleRow
-	for _, g := range groups {
+	for dec.More() {
+		var g g3Group
+		if err := dec.Decode(&g); err != nil {
+			return nil, fmt.Errorf("gor3a: %w", err)
+		}
 		for _, mk := range g.Makes {
 			for _, mo := range mk.Models {
-				model := cleanModel(mk.Name, mo.Name)
 				for _, gen := range mo.Generations {
-					label := generationLabel(mk.Name, mo.Name, gen.Name, gen.YearStart, gen.YearEnd)
-					body := ""
-					if gen.BodyType != nil {
-						body = strings.TrimSpace(*gen.BodyType)
-					}
+					tax := classify(mk.Name, mo.Name, gen.Name, gen.YearStart, gen.YearEnd, rep)
 					for _, e := range gen.Engines {
 						row := catalog.VehicleRow{
-							Make: mk.Name, Model: model, Generation: label, YearFrom: gen.YearStart, YearTo: gen.YearEnd,
-							Body: body, Engine: cleanEngine(e.Label),
+							Make: mk.Name, Model: tax.model.en, ModelDE: deOnly(tax.model), Generation: tax.generation.en,
+							GenerationDE: deOnly(tax.generation), YearFrom: gen.YearStart, YearTo: gen.YearEnd,
+							Body: tax.body, Engine: cleanEngine(e.Label),
 							DisplacementCC: displacement(e), PowerKW: powerKW(e), FuelType: fuel(e, rep),
 						}
 						if row.FuelType != nil && *row.FuelType == "electric" {
@@ -105,6 +107,9 @@ func readGor3a(path string, rep *report) ([]catalog.VehicleRow, error) {
 				}
 			}
 		}
+	}
+	if _, err := dec.Token(); err != nil {
+		return nil, fmt.Errorf("gor3a: %w", err)
 	}
 	return rows, nil
 }
@@ -129,38 +134,6 @@ func cleanModel(make, model string) string {
 	return m
 }
 
-// generationLabel turns "MERCEDES BENZ C-Klasse Coupe (2016)" into
-// "Coupe (2016–2018)" and a bare "(2000)" into "2000–2004".
-func generationLabel(make, rawModel, name string, from, to *int64) string {
-	desc := strings.TrimSpace(name)
-	if len(desc) >= len(rawModel) && strings.EqualFold(desc[:len(rawModel)], rawModel) {
-		desc = desc[len(rawModel):]
-	} else {
-		desc = cleanModel(make, desc)
-		if c := cleanModel(make, rawModel); len(desc) >= len(c) && strings.EqualFold(desc[:len(c)], c) {
-			desc = desc[len(c):]
-		}
-	}
-	desc = strings.TrimSpace(yearSuffixRe.ReplaceAllString(desc, ""))
-	years := ""
-	switch {
-	case from != nil && to != nil && *to != *from:
-		years = fmt.Sprintf("%d–%d", *from, *to)
-	case from != nil && to != nil:
-		years = strconv.FormatInt(*from, 10)
-	case from != nil:
-		years = fmt.Sprintf("%d–", *from)
-	}
-	switch {
-	case desc == "":
-		return years
-	case years == "":
-		return desc
-	default:
-		return desc + " (" + years + ")"
-	}
-}
-
 func displacement(e g3Engine) *int64 {
 	if e.DisplacementCc == nil || *e.DisplacementCc < 1 || *e.DisplacementCc > 20000 {
 		return nil
@@ -173,7 +146,7 @@ func displacement(e g3Engine) *int64 {
 // horsepower (PS) value; only whole kW are kept (research C2, metric only).
 func powerKW(e g3Engine) *int64 {
 	var kw float64
-	if m := kwRe.FindStringSubmatch(e.Specs["ENGINE SPECS / Power"]); m != nil {
+	if m := kwRe.FindStringSubmatch(e.Specs.Power); m != nil {
 		kw, _ = strconv.ParseFloat(m[1], 64)
 	} else if e.PowerHp != nil {
 		kw = *e.PowerHp * 0.73549875
@@ -185,7 +158,7 @@ func powerKW(e g3Engine) *int64 {
 	return &v
 }
 
-func fuel(e g3Engine, rep *report) *string {
+func fuel(e g3Engine, rep *Report) *string {
 	if e.FuelType == nil {
 		return nil
 	}

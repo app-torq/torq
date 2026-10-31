@@ -27,6 +27,7 @@ func (s *Server) routes() {
 	s.route("GET /catalog/generations", member, s.getCatalogGenerations)
 	s.route("GET /catalog/engines", member, s.getCatalogEngines)
 	s.route("GET /catalog/meta", member, s.getCatalogMeta)
+	s.route("POST /catalog/update", admin, s.startCatalogUpdate)
 
 	// Vehicles & odometer
 	s.route("GET /vehicles", member, s.listVehicles)

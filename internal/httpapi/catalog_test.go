@@ -1,11 +1,15 @@
 package httpapi
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"reflect"
 	"sort"
+	"strings"
 	"testing"
 
+	"github.com/marekbeckmann/torq/internal/catalog"
 	"github.com/marekbeckmann/torq/internal/catalog/catalogtest"
 )
 
@@ -25,7 +29,7 @@ func TestCatalogKBAContract(t *testing.T) {
 	e, c := catalogEnv(t)
 
 	rec := c.do(http.MethodGet, "/catalog/kba?hsn=9002&tsn=1a2", nil)
-	if rec.Code != http.StatusOK || rec.Header().Get("Cache-Control") != "private, max-age=86400" {
+	if rec.Code != http.StatusOK || rec.Header().Get("Cache-Control") != "private, no-cache" {
 		t.Fatalf("status %d cache %q", rec.Code, rec.Header().Get("Cache-Control"))
 	}
 	var raw catalogList[map[string]any]
@@ -96,10 +100,20 @@ func TestCatalogCascadeContract(t *testing.T) {
 		t.Fatalf("all makes %+v", makes.Items)
 	}
 
+	// Names follow the lang parameter, else the caller's locale (en).
 	var models catalogList[catalogModelJSON]
 	c.call(http.MethodGet, "/catalog/models?make=mercedes%20benz", nil, http.StatusOK, &models)
-	if len(models.Items) != 2 || models.Items[0].Name != "C-Klasse" || *models.Items[0].YearFrom != 2000 {
+	if len(models.Items) != 1 || models.Items[0].Name != "C-Class" || *models.Items[0].YearFrom != 1990 {
 		t.Fatalf("models %+v", models.Items)
+	}
+	c.call(http.MethodGet, "/catalog/models?make=mercedes%20benz&lang=de", nil, http.StatusOK, &models)
+	if len(models.Items) != 1 || models.Items[0].Name != "C-Klasse" {
+		t.Fatalf("German models %+v", models.Items)
+	}
+	var kba catalogList[kbaVariantJSON]
+	c.call(http.MethodGet, "/catalog/kba?hsn=9001&tsn=AAA&lang=de", nil, http.StatusOK, &kba)
+	if len(kba.Items) != 1 || kba.Items[0].Model != "C-Klasse" {
+		t.Fatalf("German KBA model %+v", kba.Items)
 	}
 
 	var gens catalogList[catalogGenerationJSON]
@@ -107,10 +121,14 @@ func TestCatalogCascadeContract(t *testing.T) {
 	if len(gens.Items) != 1 || gens.Items[0].Name != "2008–2017" || gens.Items[0].YearTo != nil {
 		t.Fatalf("generations %+v", gens.Items)
 	}
+	c.call(http.MethodGet, "/catalog/generations?make=Mercedes-Benz&model=C-Klasse&lang=de", nil, http.StatusOK, &gens)
+	if len(gens.Items) != 3 || gens.Items[0].Name != "S203" || gens.Items[0].Body != "estate" || gens.Items[2].Name != "Coupé (1990–1993)" {
+		t.Fatalf("chassis generations %+v", gens.Items)
+	}
 
 	var engines catalogList[catalogEngineJSON]
-	c.call(http.MethodGet, "/catalog/engines?make=Mercedes-Benz&model=C-Klasse&generation=2004%E2%80%932007&q=220", nil, http.StatusOK, &engines)
-	if len(engines.Items) != 1 || *engines.Items[0].PowerKW != 110 || *engines.Items[0].FuelType != "diesel" {
+	c.call(http.MethodGet, "/catalog/engines?make=Mercedes-Benz&model=C-Class&generation=W203&q=6mt", nil, http.StatusOK, &engines)
+	if len(engines.Items) != 1 || *engines.Items[0].PowerKW != 105 || *engines.Items[0].FuelType != "diesel" {
 		t.Fatalf("engines %+v", engines.Items)
 	}
 
@@ -143,7 +161,7 @@ func TestCatalogMetaForMembers(t *testing.T) {
 
 	var meta catalogMetaJSON
 	adm.call(http.MethodGet, "/catalog/meta", nil, http.StatusOK, &meta)
-	if meta.ImportedAt != nil || meta.Datasets == nil || len(meta.Datasets) != 0 {
+	if meta.ImportedAt != nil || meta.Datasets == nil || len(meta.Datasets) != 0 || meta.Update.State != "idle" {
 		t.Fatalf("before import %+v", meta)
 	}
 
@@ -154,7 +172,75 @@ func TestCatalogMetaForMembers(t *testing.T) {
 	member := e.login("lena", testPassword)
 	member.call(http.MethodGet, "/catalog/meta", nil, http.StatusOK, &meta)
 	if meta.ImportedAt == nil || *meta.ImportedAt != "2026-10-31T12:00:00Z" || len(meta.Datasets) != 1 ||
-		meta.Datasets[0].ID != "fixture" || meta.Datasets[0].Attribution != "Test data" || meta.Counts.KBA != 4 || meta.Counts.Vehicles != 7 {
+		meta.Datasets[0].ID != "fixture" || meta.Datasets[0].Attribution != "Test data" || meta.Counts.KBA != 4 || meta.Counts.Vehicles != 8 ||
+		meta.Source != "bundled" {
 		t.Fatalf("meta %+v", meta)
+	}
+}
+
+func TestCatalogUpdate(t *testing.T) {
+	e := newEnv(t)
+	adm := e.admin()
+	release := make(chan struct{})
+	runs := 0
+	e.srv.catalogUpdate.run = func(ctx context.Context) (catalog.Result, error) {
+		runs++
+		<-release
+		if runs == 1 {
+			return catalog.Result{}, errors.New("catalog update: https://example.invalid: HTTP 503")
+		}
+		return catalog.Result{Imported: true}, nil
+	}
+	wait := func() {
+		t.Helper()
+		e.srv.catalogUpdate.mu.Lock()
+		done := e.srv.catalogUpdate.done
+		e.srv.catalogUpdate.mu.Unlock()
+		<-done
+	}
+
+	var started struct {
+		Update catalogUpdateJSON `json:"update"`
+	}
+	adm.call(http.MethodPost, "/catalog/update", nil, http.StatusAccepted, &started)
+	if started.Update.State != "running" || started.Update.StartedAt == nil {
+		t.Fatalf("started %+v", started.Update)
+	}
+	if code := adm.errorCode(http.MethodPost, "/catalog/update", nil, http.StatusConflict); code != "catalog.update_running" {
+		t.Fatalf("second start %q", code)
+	}
+	close(release)
+	wait()
+	var meta catalogMetaJSON
+	adm.call(http.MethodGet, "/catalog/meta", nil, http.StatusOK, &meta)
+	if meta.Update.State != "failed" || meta.Update.Error == nil || !strings.Contains(*meta.Update.Error, "HTTP 503") || !meta.Update.Enabled {
+		t.Fatalf("failed update %+v", meta.Update)
+	}
+	adm.call(http.MethodPost, "/catalog/update", nil, http.StatusAccepted, nil)
+	wait()
+	adm.call(http.MethodGet, "/catalog/meta", nil, http.StatusOK, &meta)
+	if meta.Update.State != "succeeded" || meta.Update.Error != nil || meta.Update.FinishedAt == nil {
+		t.Fatalf("succeeded update %+v", meta.Update)
+	}
+
+	// Members may read the state but not start an update.
+	adm.call(http.MethodPost, "/users", map[string]string{
+		"username": "lena", "display_name": "Lena", "password": testPassword, "role": "member",
+	}, http.StatusCreated, nil)
+	if code := e.login("lena", testPassword).errorCode(http.MethodPost, "/catalog/update", nil, http.StatusForbidden); code == "" {
+		t.Fatal("member started an update")
+	}
+
+	// Self-hosters can switch online updates off.
+	e.srv.Config.CatalogOnlineUpdates = false
+	if code := adm.errorCode(http.MethodPost, "/catalog/update", nil, http.StatusForbidden); code != "catalog.updates_disabled" {
+		t.Fatalf("disabled %q", code)
+	}
+	adm.call(http.MethodGet, "/catalog/meta", nil, http.StatusOK, &meta)
+	if meta.Update.Enabled {
+		t.Fatal("meta reports updates enabled")
+	}
+	if runs != 2 {
+		t.Fatalf("runs %d", runs)
 	}
 }

@@ -20,6 +20,7 @@ import (
 type env struct {
 	t     *testing.T
 	h     http.Handler
+	srv   *Server
 	db    *db.DB
 	clock *clock.Fixed
 	cfg   config.Config
@@ -43,7 +44,7 @@ func newEnvWithConfig(t *testing.T, cfg config.Config) *env {
 	t.Helper()
 	d := testutil.NewDB(t)
 	clk := testutil.FixedClock(t, "2026-10-30")
-	h := NewRouter(Deps{
+	srv := NewServer(Deps{
 		Config:  cfg,
 		DB:      d,
 		Clock:   clk,
@@ -51,7 +52,7 @@ func newEnvWithConfig(t *testing.T, cfg config.Config) *env {
 		Version: "test",
 		Dist:    fstest.MapFS{"index.html": {Data: []byte("<html>torq</html>")}, "assets/app.js": {Data: []byte("x")}},
 	})
-	return &env{t: t, h: h, db: d, clock: clk, cfg: cfg}
+	return &env{t: t, h: srv.Handler(), srv: srv, db: d, clock: clk, cfg: cfg}
 }
 
 func newTestRouter(t *testing.T) http.Handler { return newEnv(t).h }

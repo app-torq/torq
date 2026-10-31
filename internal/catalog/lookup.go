@@ -19,16 +19,26 @@ func Makes(ctx context.Context, q *store.Queries, query string) ([]string, error
 	return q.CatalogMakes(ctx, Key(query))
 }
 
-// Models suggests models of make. Parents are matched by Key, so a parent
-// typed with different case or spacing still finds its children; an unknown
-// parent yields no rows (FR-011).
-func Models(ctx context.Context, q *store.Queries, make, query string) ([]store.CatalogModelsRow, error) {
-	return q.CatalogModels(ctx, store.CatalogModelsParams{MakeKey: Key(make), Q: Key(query)})
+// Lang returns the catalog language for a UI locale: "de" or "en".
+func Lang(locale string) string {
+	if locale == "de" {
+		return "de"
+	}
+	return "en"
 }
 
-// Generations suggests generations of make + model.
-func Generations(ctx context.Context, q *store.Queries, make, model, query string) ([]store.CatalogGenerationsRow, error) {
-	return q.CatalogGenerations(ctx, store.CatalogGenerationsParams{MakeKey: Key(make), ModelKey: Key(model), Q: Key(query)})
+// Models suggests models of make, named in lang. Parents are matched by Key
+// in either language, so a parent typed with different case or spacing still
+// finds its children; an unknown parent yields no rows (FR-011).
+func Models(ctx context.Context, q *store.Queries, make, query, lang string) ([]store.CatalogModelsRow, error) {
+	return q.CatalogModels(ctx, store.CatalogModelsParams{MakeKey: Key(make), Q: Key(query), Lang: Lang(lang)})
+}
+
+// Generations suggests generations of make + model, named in lang.
+func Generations(ctx context.Context, q *store.Queries, make, model, query, lang string) ([]store.CatalogGenerationsRow, error) {
+	return q.CatalogGenerations(ctx, store.CatalogGenerationsParams{
+		MakeKey: Key(make), ModelKey: Key(model), Q: Key(query), Lang: Lang(lang),
+	})
 }
 
 // Engines suggests engines of make + model + generation.
@@ -42,6 +52,7 @@ func Engines(ctx context.Context, q *store.Queries, make, model, generation, que
 // import.
 type Meta struct {
 	ImportedAt string
+	Source     string
 	Header     Header
 }
 
@@ -62,5 +73,6 @@ func LoadMeta(ctx context.Context, q *store.Queries) (Meta, error) {
 		m.Header.Datasets = []Dataset{}
 	}
 	m.ImportedAt = row.ImportedAt
+	m.Source = row.Source
 	return m, nil
 }

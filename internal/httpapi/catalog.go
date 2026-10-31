@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"cmp"
 	"net/http"
 	"regexp"
 
@@ -10,9 +11,10 @@ import (
 )
 
 // Catalog endpoints (specs/002-vehicle-catalog-lookup/contracts/rest-api.md).
-// They read only the embedded catalog and never call external hosts. Query
-// failures are logged and answered with an empty list so the vehicle form
-// stays usable (FR-018).
+// Lookups read only the imported catalog and never call external hosts; only
+// the admin-triggered update (catalog_update.go) goes online. Query failures
+// are logged and answered with an empty list so the vehicle form stays usable
+// (FR-018).
 
 var (
 	catalogHSNRe = regexp.MustCompile(`^[0-9]{4}$`)
@@ -60,8 +62,10 @@ type catalogEngineJSON struct {
 
 type catalogMetaJSON struct {
 	ImportedAt *string           `json:"imported_at"`
+	Source     string            `json:"source"`
 	Datasets   []catalog.Dataset `json:"datasets"`
 	Counts     catalog.Counts    `json:"counts"`
+	Update     catalogUpdateJSON `json:"update"`
 }
 
 // yearPtr maps the 0 the aggregate queries use for "unknown" to null.
@@ -72,10 +76,11 @@ func yearPtr(y int64) *int64 {
 	return &y
 }
 
-// writeCatalog sends a catalog answer with the long private cache lifetime;
-// catalog data only changes when torq is upgraded.
+// writeCatalog sends a catalog answer. Browsers must revalidate because an
+// online update can change the catalog at any time; the SPA keeps answers in
+// memory for the session instead.
 func writeCatalog[T any](w http.ResponseWriter, items []T) {
-	w.Header().Set("Cache-Control", "private, max-age=86400")
+	w.Header().Set("Cache-Control", "private, no-cache")
 	writeJSON(w, http.StatusOK, map[string]any{"items": orEmpty(items)})
 }
 
@@ -104,6 +109,12 @@ func requireParams(r *http.Request, names ...string) error {
 
 func (s *Server) catalogQueries() *store.Queries { return store.New(s.DB.Reader) }
 
+// catalogLang is the language of catalog names: the lang parameter, or the
+// caller's locale.
+func catalogLang(r *http.Request) string {
+	return catalog.Lang(cmp.Or(r.URL.Query().Get("lang"), currentUser(r).Prefs.Locale))
+}
+
 func (s *Server) getCatalogKBA(w http.ResponseWriter, r *http.Request) error {
 	hsn, tsn := r.URL.Query().Get("hsn"), r.URL.Query().Get("tsn")
 	var v apperr.Validation
@@ -116,10 +127,15 @@ func (s *Server) getCatalogKBA(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return catalogFailed[kbaVariantJSON](s, w, r, err)
 	}
+	de := catalogLang(r) == "de"
 	items := make([]kbaVariantJSON, 0, len(rows))
 	for _, k := range rows {
+		model := k.Model
+		if de && k.ModelDe != "" {
+			model = k.ModelDe
+		}
 		items = append(items, kbaVariantJSON{
-			Make: k.Make, Model: k.Model, TradeName: k.TradeName, Generation: k.Generation, EngineCode: k.EngineCode,
+			Make: k.Make, Model: model, TradeName: k.TradeName, Generation: k.Generation, EngineCode: k.EngineCode,
 			DisplacementCC: intPtr(k.DisplacementCc), PowerKW: intPtr(k.PowerKw), FuelType: strPtr(k.FuelType),
 			BodyCode: k.BodyCode, YearFrom: intPtr(k.YearFrom), Match: k.Match,
 		})
@@ -146,7 +162,7 @@ func (s *Server) getCatalogModels(w http.ResponseWriter, r *http.Request) error 
 		return err
 	}
 	q := r.URL.Query()
-	rows, err := catalog.Models(r.Context(), s.catalogQueries(), q.Get("make"), q.Get("q"))
+	rows, err := catalog.Models(r.Context(), s.catalogQueries(), q.Get("make"), q.Get("q"), catalogLang(r))
 	if err != nil {
 		return catalogFailed[catalogModelJSON](s, w, r, err)
 	}
@@ -163,7 +179,7 @@ func (s *Server) getCatalogGenerations(w http.ResponseWriter, r *http.Request) e
 		return err
 	}
 	q := r.URL.Query()
-	rows, err := catalog.Generations(r.Context(), s.catalogQueries(), q.Get("make"), q.Get("model"), q.Get("q"))
+	rows, err := catalog.Generations(r.Context(), s.catalogQueries(), q.Get("make"), q.Get("model"), q.Get("q"), catalogLang(r))
 	if err != nil {
 		return catalogFailed[catalogGenerationJSON](s, w, r, err)
 	}
@@ -201,7 +217,10 @@ func (s *Server) getCatalogMeta(w http.ResponseWriter, r *http.Request) error {
 		s.Log.ErrorContext(r.Context(), "catalog meta failed", "err", err)
 		m = catalog.Meta{Header: catalog.Header{Datasets: []catalog.Dataset{}}}
 	}
-	out := catalogMetaJSON{Datasets: m.Header.Datasets, Counts: m.Header.Counts}
+	out := catalogMetaJSON{
+		Source: cmp.Or(m.Source, catalog.SourceBundled), Datasets: m.Header.Datasets, Counts: m.Header.Counts,
+		Update: s.catalogUpdate.status(s.Config.CatalogOnlineUpdates),
+	}
 	if m.ImportedAt != "" {
 		out.ImportedAt = &m.ImportedAt
 	}

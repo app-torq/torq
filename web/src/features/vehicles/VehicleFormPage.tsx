@@ -153,12 +153,20 @@ function VehicleForm({ vehicle }: { vehicle?: Vehicle }) {
   const engineLabel = (e: CatalogEngine) => {
     const details = [
       e.engine_code || null,
-      e.power_kw != null ? `${fmt.number(e.power_kw)} ${t('common:units.kw')}` : null,
+      e.power_kw != null ? fmt.powerShort(e.power_kw) : null,
       e.displacement_cc != null ? fmt.displacement(e.displacement_cc) : null,
     ].filter(Boolean)
     return details.length > 0 ? `${e.name} (${details.join(', ')})` : e.name
   }
-  const generationLabel = (g: CatalogGeneration) => (g.body ? `${g.name} · ${g.body}` : g.name)
+  // Chassis codes ("S203") get body and years; fallback names already carry the years.
+  const generationLabel = (g: CatalogGeneration) => {
+    const y = years(g.year_from, g.year_to)
+    const details = [g.body ? t(`catalogBody.${g.body}`) : '', y && !g.name.includes(y) ? y : ''].filter(Boolean)
+    return details.length > 0 ? `${g.name} (${details.join(', ')})` : g.name
+  }
+  // Power is entered in kW; with PS preferred, show the PS value as a hint.
+  const powerKw = parseNumber(values.power, user.number_format)
+  const powerHint = user.power_unit === 'ps' && powerKw != null && powerKw > 0 ? `≈ ${fmt.powerShort(powerKw)}` : undefined
   const modelLabel = (m: CatalogModel) => {
     const y = years(m.year_from, m.year_to)
     return y ? `${m.name} (${y})` : m.name
@@ -287,7 +295,7 @@ function VehicleForm({ vehicle }: { vehicle?: Vehicle }) {
             />
             <TextField label={t('fields.engineCode')} value={values.engine} onChange={set('engine')} error={fe.engine_code} hint={t('fields.engineCodeHint')} highlighted={hi('engine')} optional />
             <NumberField label={t('fields.displacement')} value={values.displacement} onChange={set('displacement')} error={fe.displacement_cc} unit={t('common:units.cc')} decimal={false} highlighted={hi('displacement')} optional />
-            <NumberField label={t('fields.power')} value={values.power} onChange={set('power')} error={fe.power_kw} unit={t('common:units.kw')} decimal={false} highlighted={hi('power')} optional />
+            <NumberField label={t('fields.power')} value={values.power} onChange={set('power')} error={fe.power_kw} unit={t('common:units.kw')} decimal={false} hint={powerHint} highlighted={hi('power')} optional />
             <SelectField
               label={t('fields.fuelType')}
               value={values.fuel}

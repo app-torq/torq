@@ -25,7 +25,7 @@ export const queryKeys = {
   costReport: (params: object) => ['reports', 'costs', params] as const,
   timeline: (vehicleId: number) => ['reports', 'timeline', vehicleId] as const,
   history: (vehicleId: number, params: object) => ['reports', 'history', vehicleId, params] as const,
-  catalogKba: (hsn: string, tsn: string) => ['catalog', 'kba', hsn, tsn] as const,
+  catalogKba: (hsn: string, tsn: string, lang: string) => ['catalog', 'kba', lang, hsn, tsn] as const,
   catalogList: (level: string, parents: readonly string[], q: string) => ['catalog', level, ...parents, q] as const,
   catalogMeta: ['catalog', 'meta'] as const,
   webhooks: ['webhooks'] as const,

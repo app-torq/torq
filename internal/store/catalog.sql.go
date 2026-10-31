@@ -14,8 +14,8 @@ const catalogEngines = `-- name: CatalogEngines :many
 SELECT CAST(MIN(engine) AS TEXT) AS name, CAST(MIN(engine_code) AS TEXT) AS engine_code,
        displacement_cc, power_kw, fuel_type
 FROM catalog_vehicles, (SELECT CAST(?1 AS TEXT) AS q) AS p
-WHERE make_key = ?2 AND model_key = ?3
-  AND generation_key = ?4
+WHERE make_key = ?2 AND (model_key = ?3 OR model_de_key = ?3)
+  AND (generation_key = ?4 OR generation_de_key = ?4)
   AND instr(engine_key, p.q) > 0
 GROUP BY engine_key, displacement_cc, power_kw, fuel_type
 ORDER BY substr(engine_key, 1, length(p.q)) <> p.q,
@@ -73,19 +73,22 @@ func (q *Queries) CatalogEngines(ctx context.Context, arg CatalogEnginesParams) 
 }
 
 const catalogGenerations = `-- name: CatalogGenerations :many
-SELECT CAST(MIN(generation) AS TEXT) AS name, CAST(COALESCE(MIN(year_from), 0) AS INTEGER) AS year_from, CAST(COALESCE(MAX(year_to), 0) AS INTEGER) AS year_to,
-       CAST(MIN(body) AS TEXT) AS body
-FROM catalog_vehicles, (SELECT CAST(?1 AS TEXT) AS q) AS p
-WHERE make_key = ?2 AND model_key = ?3
-  AND instr(generation_key, p.q) > 0
+SELECT CAST(MIN(CASE WHEN p.lang = 'de' THEN generation_de ELSE generation END) AS TEXT) AS name,
+       CAST(COALESCE(MIN(year_from), 0) AS INTEGER) AS year_from,
+       CAST(CASE WHEN SUM(year_to IS NULL) > 0 THEN 0 ELSE MAX(year_to) END AS INTEGER) AS year_to,
+       CAST(CASE WHEN COUNT(DISTINCT body) = 1 THEN MIN(body) ELSE '' END AS TEXT) AS body
+FROM catalog_vehicles, (SELECT CAST(?1 AS TEXT) AS q, CAST(?2 AS TEXT) AS lang) AS p
+WHERE make_key = ?3 AND (model_key = ?4 OR model_de_key = ?4)
+  AND (instr(generation_key, p.q) > 0 OR instr(generation_de_key, p.q) > 0)
 GROUP BY generation_key
-ORDER BY substr(generation_key, 1, length(p.q)) <> p.q,
+ORDER BY substr(generation_key, 1, length(p.q)) <> p.q AND substr(generation_de_key, 1, length(p.q)) <> p.q,
          year_from IS NULL, year_from DESC, name COLLATE NOCASE
 LIMIT 25
 `
 
 type CatalogGenerationsParams struct {
 	Q        string
+	Lang     string
 	MakeKey  string
 	ModelKey string
 }
@@ -97,8 +100,15 @@ type CatalogGenerationsRow struct {
 	Body     string
 }
 
+// body is a token from catalog.Bodies (or empty when the generation spans
+// several bodies); the frontend translates it.
 func (q *Queries) CatalogGenerations(ctx context.Context, arg CatalogGenerationsParams) ([]CatalogGenerationsRow, error) {
-	rows, err := q.db.QueryContext(ctx, catalogGenerations, arg.Q, arg.MakeKey, arg.ModelKey)
+	rows, err := q.db.QueryContext(ctx, catalogGenerations,
+		arg.Q,
+		arg.Lang,
+		arg.MakeKey,
+		arg.ModelKey,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -158,16 +168,20 @@ func (q *Queries) CatalogMakes(ctx context.Context, q_ string) ([]string, error)
 }
 
 const catalogModels = `-- name: CatalogModels :many
-SELECT CAST(MIN(model) AS TEXT) AS name, CAST(COALESCE(MIN(year_from), 0) AS INTEGER) AS year_from, CAST(COALESCE(MAX(year_to), 0) AS INTEGER) AS year_to
-FROM catalog_vehicles, (SELECT CAST(?1 AS TEXT) AS q) AS p
-WHERE make_key = ?2 AND instr(model_key, p.q) > 0
+SELECT CAST(MIN(CASE WHEN p.lang = 'de' THEN model_de ELSE model END) AS TEXT) AS name,
+       CAST(COALESCE(MIN(year_from), 0) AS INTEGER) AS year_from,
+       CAST(CASE WHEN SUM(year_to IS NULL) > 0 THEN 0 ELSE MAX(year_to) END AS INTEGER) AS year_to
+FROM catalog_vehicles, (SELECT CAST(?1 AS TEXT) AS q, CAST(?2 AS TEXT) AS lang) AS p
+WHERE make_key = ?3 AND (instr(model_key, p.q) > 0 OR instr(model_de_key, p.q) > 0)
 GROUP BY model_key
-ORDER BY substr(model_key, 1, length(p.q)) <> p.q, name COLLATE NOCASE
+ORDER BY substr(model_key, 1, length(p.q)) <> p.q AND substr(model_de_key, 1, length(p.q)) <> p.q,
+         name COLLATE NOCASE
 LIMIT 25
 `
 
 type CatalogModelsParams struct {
 	Q       string
+	Lang    string
 	MakeKey string
 }
 
@@ -177,8 +191,10 @@ type CatalogModelsRow struct {
 	YearTo   int64
 }
 
+// Names are returned in the requested language (lang 'de' or 'en'); queries
+// and parents match either language.
 func (q *Queries) CatalogModels(ctx context.Context, arg CatalogModelsParams) ([]CatalogModelsRow, error) {
-	rows, err := q.db.QueryContext(ctx, catalogModels, arg.Q, arg.MakeKey)
+	rows, err := q.db.QueryContext(ctx, catalogModels, arg.Q, arg.Lang, arg.MakeKey)
 	if err != nil {
 		return nil, err
 	}
@@ -219,7 +235,7 @@ func (q *Queries) DeleteCatalogVehicles(ctx context.Context) error {
 }
 
 const getCatalogMeta = `-- name: GetCatalogMeta :one
-SELECT id, seed_sha256, imported_at, header_json FROM catalog_meta WHERE id = 1
+SELECT id, seed_sha256, imported_at, header_json, source, bundled_sha256 FROM catalog_meta WHERE id = 1
 `
 
 func (q *Queries) GetCatalogMeta(ctx context.Context) (CatalogMetum, error) {
@@ -230,14 +246,16 @@ func (q *Queries) GetCatalogMeta(ctx context.Context) (CatalogMetum, error) {
 		&i.SeedSha256,
 		&i.ImportedAt,
 		&i.HeaderJson,
+		&i.Source,
+		&i.BundledSha256,
 	)
 	return i, err
 }
 
 const insertCatalogKBA = `-- name: InsertCatalogKBA :exec
-INSERT INTO catalog_kba (hsn, tsn, make, model, trade_name, generation, engine_code, displacement_cc,
+INSERT INTO catalog_kba (hsn, tsn, make, model, model_de, trade_name, generation, engine_code, displacement_cc,
                          power_kw, fuel_type, body_code, year_from, source, match)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertCatalogKBAParams struct {
@@ -245,6 +263,7 @@ type InsertCatalogKBAParams struct {
 	Tsn            string
 	Make           string
 	Model          string
+	ModelDe        string
 	TradeName      string
 	Generation     string
 	EngineCode     string
@@ -263,6 +282,7 @@ func (q *Queries) InsertCatalogKBA(ctx context.Context, arg InsertCatalogKBAPara
 		arg.Tsn,
 		arg.Make,
 		arg.Model,
+		arg.ModelDe,
 		arg.TradeName,
 		arg.Generation,
 		arg.EngineCode,
@@ -278,27 +298,32 @@ func (q *Queries) InsertCatalogKBA(ctx context.Context, arg InsertCatalogKBAPara
 }
 
 const insertCatalogVehicle = `-- name: InsertCatalogVehicle :exec
-INSERT INTO catalog_vehicles (make, make_key, model, model_key, generation, generation_key, year_from, year_to,
-                              body, engine, engine_key, engine_code, displacement_cc, power_kw, fuel_type)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO catalog_vehicles (make, make_key, model, model_key, model_de, model_de_key, generation, generation_key,
+                              generation_de, generation_de_key, year_from, year_to, body, engine, engine_key,
+                              engine_code, displacement_cc, power_kw, fuel_type)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertCatalogVehicleParams struct {
-	Make           string
-	MakeKey        string
-	Model          string
-	ModelKey       string
-	Generation     string
-	GenerationKey  string
-	YearFrom       sql.NullInt64
-	YearTo         sql.NullInt64
-	Body           string
-	Engine         string
-	EngineKey      string
-	EngineCode     string
-	DisplacementCc sql.NullInt64
-	PowerKw        sql.NullInt64
-	FuelType       sql.NullString
+	Make            string
+	MakeKey         string
+	Model           string
+	ModelKey        string
+	ModelDe         string
+	ModelDeKey      string
+	Generation      string
+	GenerationKey   string
+	GenerationDe    string
+	GenerationDeKey string
+	YearFrom        sql.NullInt64
+	YearTo          sql.NullInt64
+	Body            string
+	Engine          string
+	EngineKey       string
+	EngineCode      string
+	DisplacementCc  sql.NullInt64
+	PowerKw         sql.NullInt64
+	FuelType        sql.NullString
 }
 
 func (q *Queries) InsertCatalogVehicle(ctx context.Context, arg InsertCatalogVehicleParams) error {
@@ -307,8 +332,12 @@ func (q *Queries) InsertCatalogVehicle(ctx context.Context, arg InsertCatalogVeh
 		arg.MakeKey,
 		arg.Model,
 		arg.ModelKey,
+		arg.ModelDe,
+		arg.ModelDeKey,
 		arg.Generation,
 		arg.GenerationKey,
+		arg.GenerationDe,
+		arg.GenerationDeKey,
 		arg.YearFrom,
 		arg.YearTo,
 		arg.Body,
@@ -324,7 +353,7 @@ func (q *Queries) InsertCatalogVehicle(ctx context.Context, arg InsertCatalogVeh
 
 const lookupKBA = `-- name: LookupKBA :many
 
-SELECT id, hsn, tsn, make, model, trade_name, generation, engine_code, displacement_cc, power_kw, fuel_type, body_code, year_from, source, "match" FROM catalog_kba
+SELECT id, hsn, tsn, make, model, trade_name, generation, engine_code, displacement_cc, power_kw, fuel_type, body_code, year_from, source, "match", model_de FROM catalog_kba
 WHERE hsn = ? AND tsn = ?
 ORDER BY trade_name, year_from, power_kw, id
 `
@@ -361,6 +390,7 @@ func (q *Queries) LookupKBA(ctx context.Context, arg LookupKBAParams) ([]Catalog
 			&i.YearFrom,
 			&i.Source,
 			&i.Match,
+			&i.ModelDe,
 		); err != nil {
 			return nil, err
 		}
@@ -375,17 +405,32 @@ func (q *Queries) LookupKBA(ctx context.Context, arg LookupKBAParams) ([]Catalog
 	return items, nil
 }
 
+const setCatalogBundledSha = `-- name: SetCatalogBundledSha :exec
+UPDATE catalog_meta SET bundled_sha256 = ? WHERE id = 1
+`
+
+func (q *Queries) SetCatalogBundledSha(ctx context.Context, bundledSha256 string) error {
+	_, err := q.db.ExecContext(ctx, setCatalogBundledSha, bundledSha256)
+	return err
+}
+
 const updateCatalogMeta = `-- name: UpdateCatalogMeta :exec
-UPDATE catalog_meta SET seed_sha256 = ?, imported_at = ?, header_json = ? WHERE id = 1
+UPDATE catalog_meta SET seed_sha256 = ?, imported_at = ?, header_json = ?, source = ? WHERE id = 1
 `
 
 type UpdateCatalogMetaParams struct {
 	SeedSha256 string
 	ImportedAt string
 	HeaderJson string
+	Source     string
 }
 
 func (q *Queries) UpdateCatalogMeta(ctx context.Context, arg UpdateCatalogMetaParams) error {
-	_, err := q.db.ExecContext(ctx, updateCatalogMeta, arg.SeedSha256, arg.ImportedAt, arg.HeaderJson)
+	_, err := q.db.ExecContext(ctx, updateCatalogMeta,
+		arg.SeedSha256,
+		arg.ImportedAt,
+		arg.HeaderJson,
+		arg.Source,
+	)
 	return err
 }

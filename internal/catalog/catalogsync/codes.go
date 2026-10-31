@@ -1,4 +1,4 @@
-package main
+package catalogsync
 
 // sv42Fuel maps KBA fuel/energy-source codes (SV 4.2 column 9) to torq's fuel
 // types. Only codes with a certain meaning are listed; any other code becomes

@@ -185,7 +185,7 @@ func (u *Users) Update(ctx context.Context, id int64, p UserPatch) (User, error)
 			updated, err = q.UpdateUserPreferences(ctx, store.UpdateUserPreferencesParams{
 				DisplayName: strings.TrimSpace(*p.DisplayName), Locale: cur.Locale, DateFormat: cur.DateFormat,
 				NumberFormat: cur.NumberFormat, CurrencyCode: cur.CurrencyCode, CurrencySymbol: cur.CurrencySymbol,
-				UpdatedAt: now, ID: id,
+				PowerUnit: cur.PowerUnit, UpdatedAt: now, ID: id,
 			})
 			if err != nil {
 				return err
@@ -313,6 +313,7 @@ type PreferencesPatch struct {
 	NumberFormat   *string
 	CurrencyCode   *string
 	CurrencySymbol *string // "" clears the override
+	PowerUnit      *string
 }
 
 // UpdatePreferences validates and stores the caller's preferences.
@@ -323,7 +324,8 @@ func (u *Users) UpdatePreferences(ctx context.Context, userID int64, p Preferenc
 	}
 	next := store.UpdateUserPreferencesParams{
 		DisplayName: cur.DisplayName, Locale: cur.Locale, DateFormat: cur.DateFormat, NumberFormat: cur.NumberFormat,
-		CurrencyCode: cur.CurrencyCode, CurrencySymbol: cur.CurrencySymbol, UpdatedAt: clock.Timestamp(u.Clock.Now()), ID: userID,
+		CurrencyCode: cur.CurrencyCode, CurrencySymbol: cur.CurrencySymbol, PowerUnit: cur.PowerUnit,
+		UpdatedAt: clock.Timestamp(u.Clock.Now()), ID: userID,
 	}
 	var v apperr.Validation
 	if p.DisplayName != nil {
@@ -351,6 +353,10 @@ func (u *Users) UpdatePreferences(ctx context.Context, userID int64, p Preferenc
 		sym := strings.TrimSpace(*p.CurrencySymbol)
 		v.Check(utf8.RuneCountInString(sym) > 5, "currency_symbol", "validation.length")
 		next.CurrencySymbol = sql.NullString{String: sym, Valid: sym != ""}
+	}
+	if p.PowerUnit != nil {
+		v.Check(*p.PowerUnit != "kw" && *p.PowerUnit != "ps", "power_unit", "validation.invalid_choice")
+		next.PowerUnit = *p.PowerUnit
 	}
 	if err := v.Err(); err != nil {
 		return User{}, err

@@ -14,7 +14,7 @@
     "make": "Make",
     "model": "Model",
     "chassisCode": "Generation / chassis code",
-    "chassisCodeHint": "e.g. S203, E46",
+    "chassisCodeHint": "e.g. W203, E46, Golf IV (1J)",
     "modelYear": "Model year",
     "engineCode": "Engine code",
     "engineCodeHint": "e.g. OM646",
@@ -115,6 +115,15 @@
     "AE": "Convertible",
     "AF": "Multi-purpose vehicle",
     "AG": "Truck station wagon"
+  },
+  "catalogBody": {
+    "sedan": "Sedan",
+    "hatchback": "Hatchback",
+    "estate": "Estate",
+    "coupe": "Coupe",
+    "cabriolet": "Convertible",
+    "roadster": "Roadster",
+    "sportback": "Sportback"
   },
   "combobox": {
     "useCustom": "Use custom: '{{value}}'",

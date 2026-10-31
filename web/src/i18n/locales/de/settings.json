@@ -20,6 +20,12 @@
       "USD": "US-Dollar (USD)",
       "GBP": "Britisches Pfund (GBP)",
       "CHF": "Schweizer Franken (CHF)"
+    },
+    "powerUnit": "Leistungseinheit",
+    "powerUnitHint": "Die Leistung wird in kW gespeichert; hier wählst du nur, welche Einheit zuerst angezeigt wird.",
+    "powerUnits": {
+      "kw": "kW (Kilowatt)",
+      "ps": "PS (Pferdestärke)"
     }
   },
   "users": {
@@ -71,10 +77,10 @@
   },
   "about": {
     "title": "Über torq",
-    "intro": "Version und die mit dieser Version ausgelieferten offenen Daten.",
+    "intro": "Version und die offenen Fahrzeugdaten, die torq verwendet.",
     "version": "Version",
     "datasets": "Datenquellen für Fahrzeugdaten",
-    "offline": "Der Fahrzeugkatalog (HSN/TSN-Schnellerfassung und Vorschläge für Marke/Modell) arbeitet vollständig offline mit Daten, die torq mitliefert. Keine API-Schlüssel, keine externen Dienste.",
+    "offline": "Fahrzeugsuchen (HSN/TSN-Schnellerfassung und Vorschläge für Marke/Modell) laufen immer offline gegen den in torq gespeicherten Katalog. Keine API-Schlüssel, keine externen Dienste.",
     "publisher": "Herausgeber",
     "license": "Lizenz",
     "source": "Quelle",
@@ -84,6 +90,22 @@
     "modified": "torq hat diese Daten verändert (Namen vereinheitlicht, Quellen zusammengeführt). Details in NOTICE.md im Repository.",
     "counts": "{{kba}} HSN/TSN-Einträge und {{vehicles}} Einträge zu Marke/Modell/Motor.",
     "derived": "Die zusammengeführte Katalogdatenbank wird unter der Open Database License (ODbL) 1.0 verbreitet.",
-    "empty": "Es ist kein Fahrzeugkatalog geladen. Fahrzeuge können weiterhin manuell erfasst werden."
+    "empty": "Es ist kein Fahrzeugkatalog geladen. Fahrzeuge können weiterhin manuell erfasst werden.",
+    "catalogSource": "Katalog",
+    "sources": {
+      "bundled": "Mit dieser Version ausgeliefert",
+      "online": "Online aktualisiert"
+    },
+    "imported": "Importiert",
+    "update": "Jetzt aktualisieren",
+    "updating": "Wird aktualisiert…",
+    "updateHint": "Lädt die aktuelle KBA-FZ-6-Liste und die vehicle-makes-models-Daten, baut den Katalog neu auf und ersetzt ihn in einem Schritt. Das dauert einige Minuten; die Suche funktioniert währenddessen weiter.",
+    "updateDisabled": "Online-Aktualisierungen sind auf diesem Server abgeschaltet (TORQ_CATALOG_ONLINE_UPDATES=false).",
+    "updateStates": {
+      "running": "Aktualisierung läuft seit {{time}}.",
+      "succeeded": "Katalog aktualisiert am {{time}}.",
+      "unchanged": "Quellen seit der letzten Aktualisierung unverändert ({{time}}).",
+      "failed": "Aktualisierung am {{time}} fehlgeschlagen; der bisherige Katalog wird weiter verwendet."
+    }
   }
 }

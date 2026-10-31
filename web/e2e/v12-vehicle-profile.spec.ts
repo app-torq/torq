@@ -24,7 +24,13 @@ test('V12: technical profile shows kW (PS), cm³ and fuel; invalid values are re
   await page.goto(`/vehicles/${String(id)}/specs`)
   await expect(page.getByText('2.148 cm³')).toBeVisible()
   await expect(page.getByText('110 kW (150 PS)')).toBeVisible()
-  const back = await page.request.patch('/api/v1/me/preferences', { data: { locale: 'en', number_format: 'point' }, headers })
+
+  // PS preferred: shown first, still stored as kW.
+  const ps = await page.request.patch('/api/v1/me/preferences', { data: { power_unit: 'ps' }, headers })
+  expect(ps.ok(), await ps.text()).toBeTruthy()
+  await page.goto(`/vehicles/${String(id)}/specs`)
+  await expect(page.getByText('150 PS (110 kW)')).toBeVisible()
+  const back = await page.request.patch('/api/v1/me/preferences', { data: { locale: 'en', number_format: 'point', power_unit: 'kw' }, headers })
   expect(back.ok()).toBeTruthy()
 
   // A vehicle without the new fields shows them as not set.

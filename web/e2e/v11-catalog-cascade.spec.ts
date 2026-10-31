@@ -15,6 +15,15 @@ async function get<T>(request: APIRequestContext, path: string, query: Record<st
 test('V11: keyboard-only cascade fills engine data; custom values save as typed', async ({ page }) => {
   await login(page)
 
+  // Model names follow the language; generations are chassis codes.
+  const en = await get<{ name: string }>(page.request, '/catalog/models', { make: 'Mercedes-Benz', q: 'c klasse', lang: 'en' })
+  const de = await get<{ name: string }>(page.request, '/catalog/models', { make: 'Mercedes-Benz', q: 'c class', lang: 'de' })
+  expect(en.map((m) => m.name)).toContain('C-Class')
+  expect(de.map((m) => m.name)).toContain('C-Klasse')
+  expect(de.map((m) => m.name)).not.toContain('C-Class')
+  const codes = await get<{ name: string; body: string }>(page.request, '/catalog/generations', { make: 'Mercedes-Benz', model: 'C-Klasse' })
+  expect(codes).toEqual(expect.arrayContaining([{ name: 'W203', body: '', year_from: 2000, year_to: 2007 }, expect.objectContaining({ name: 'S203', body: 'estate' })]))
+
   // Discover a make → model → generation → engine path with kW data.
   const make = 'Volkswagen'
   const models = await get<{ name: string }>(page.request, '/catalog/models', { make, q: 'golf' })
