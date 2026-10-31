@@ -1,0 +1,73 @@
+{
+  "title": "Reminders",
+  "subtitle": "What is due next",
+  "add": "Add reminder",
+  "edit": "Edit reminder",
+  "empty": "No reminders yet.",
+  "states": {
+    "upcoming": "Upcoming",
+    "due_soon": "Due soon",
+    "overdue": "Overdue"
+  },
+  "paused": "Paused",
+  "kind": {
+    "linked": "Service category",
+    "standalone": "Standalone check"
+  },
+  "fields": {
+    "vehicle": "Vehicle",
+    "category": "Service category",
+    "title": "Title",
+    "titleHint": "e.g. Inspect CV boots",
+    "intervalKm": "Every",
+    "intervalTime": "Every",
+    "timeUnit": "Time unit",
+    "months": "months",
+    "days": "days",
+    "leadKm": "Due soon from",
+    "leadDays": "Due soon from",
+    "leadHint": "Warn this much before the due point.",
+    "startDate": "Last done (date)",
+    "startOdometer": "Last done (odometer)",
+    "startHint": "Used until a matching service entry exists.",
+    "kind": "Type"
+  },
+  "due": {
+    "km": "at {{km}}",
+    "date": "on {{date}}",
+    "remainingKm": "{{value}} left",
+    "overKm": "{{value}} over",
+    "remainingDays_one": "{{count}} day left",
+    "remainingDays_other": "{{count}} days left",
+    "overDays_one": "{{count}} day over",
+    "overDays_other": "{{count}} days over",
+    "dueToday": "due today",
+    "trigger": {
+      "km": "by distance",
+      "time": "by time"
+    },
+    "interval": "Every {{value}}",
+    "intervalMonths_one": "{{count}} month",
+    "intervalMonths_other": "{{count}} months",
+    "intervalDays_one": "{{count}} day",
+    "intervalDays_other": "{{count}} days",
+    "or": "or",
+    "whicheverFirst": "whichever comes first",
+    "baseline": "Last done {{date}} at {{km}}",
+    "baselineStart": "Counting from {{date}} at {{km}}"
+  },
+  "actions": {
+    "markDone": "Mark done",
+    "pause": "Pause",
+    "resume": "Resume",
+    "logService": "Log service"
+  },
+  "markDone": {
+    "title": "Mark check as done",
+    "date": "Done on",
+    "odometer": "Odometer"
+  },
+  "deleteTitle": "Delete reminder",
+  "deleteBody": "Delete this reminder?",
+  "showPaused": "Show paused"
+}

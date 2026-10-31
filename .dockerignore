@@ -1,0 +1,16 @@
+.git/
+.github/
+.claude/
+.specify/
+specs/
+.data/
+bin/
+coverage/
+web/node_modules/
+web/dist/
+web/playwright-report/
+web/test-results/
+*.log*
+.env*
+Dockerfile*
+.dockerignore

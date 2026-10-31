@@ -1,0 +1,26 @@
+Content-Type: application/json
+
+{
+  "embeds": [
+    {
+      "color": 15680580,
+      "description": "-350 km",
+      "fields": [
+        {
+          "inline": true,
+          "name": "Fahrzeug",
+          "value": "Mercedes-Benz C 220 CDI"
+        },
+        {
+          "inline": true,
+          "name": "Kilometerstand",
+          "value": "225350 km"
+        }
+      ],
+      "timestamp": "2026-10-30T08:00:00Z",
+      "title": "Überfällig: Motoröl \u0026 Filter — Mercedes-Benz C 220 CDI",
+      "url": "https://torq.example/vehicles/1/reminders"
+    }
+  ],
+  "username": "torq"
+}

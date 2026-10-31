@@ -1,0 +1,75 @@
+{
+  "title": "Fahrzeuge",
+  "subtitle": "Deine Garage",
+  "add": "Fahrzeug hinzufügen",
+  "edit": "Fahrzeug bearbeiten",
+  "empty": "Noch keine Fahrzeuge. Lege dein erstes Auto an.",
+  "filter": { "active": "Aktiv", "archived": "Archiviert", "all": "Alle" },
+  "archivedBadge": "Archiviert",
+  "fields": {
+    "make": "Marke",
+    "model": "Modell",
+    "chassisCode": "Baureihe / Fahrgestellcode",
+    "chassisCodeHint": "z. B. S203, E46",
+    "modelYear": "Modelljahr",
+    "engineCode": "Motorkennung",
+    "engineCodeHint": "z. B. OM646",
+    "vin": "FIN",
+    "licensePlate": "Kennzeichen",
+    "odometer": "Aktueller Kilometerstand"
+  },
+  "tabs": {
+    "overview": "Übersicht",
+    "specs": "Datenblatt",
+    "service": "Wartung",
+    "reminders": "Erinnerungen",
+    "repairs": "Reparaturen",
+    "history": "Historie"
+  },
+  "actions": {
+    "archive": "Archivieren",
+    "unarchive": "Wiederherstellen",
+    "delete": "Fahrzeug löschen"
+  },
+  "archiveHint": "Archivierte Fahrzeuge (z. B. verkauft) werden in der Übersicht ausgeblendet, ihre Erinnerungen pausieren. Historie und Exporte bleiben verfügbar.",
+  "deleteTitle": "Fahrzeug löschen",
+  "deleteBody": "Damit wird {{name}} mit allen Wartungseinträgen, Reparaturprojekten, Erinnerungen, Kilometerständen und Anhängen endgültig gelöscht. Archivieren ist meist die bessere Wahl.",
+  "odometer": {
+    "title": "Kilometerstand",
+    "update": "Kilometerstand aktualisieren",
+    "newValue": "Neuer Kilometerstand",
+    "date": "Datum der Ablesung",
+    "current": "Aktuell: {{value}}",
+    "updated": "Kilometerstand aktualisiert.",
+    "decreaseTitle": "Kilometerstand verringern?",
+    "decreaseBody": "Der aktuelle Stand ist {{current}}. Auf {{next}} setzen? Nur zum Korrigieren von Tippfehlern verwenden.",
+    "jumpTitle": "Großer Sprung",
+    "jumpBody": "{{next}} ist ein großer Sprung gegenüber {{current}}. Stimmt das?",
+    "history": "Ablesungen",
+    "sources": {
+      "initial": "Anfangswert",
+      "quick_update": "Manuell",
+      "service_log": "Wartungseintrag",
+      "repair_completion": "Reparatur abgeschlossen",
+      "reminder_done": "Prüfung erledigt"
+    }
+  },
+  "switcher": {
+    "label": "Fahrzeug",
+    "all": "Alle Fahrzeuge"
+  },
+  "details": "Details",
+  "dashboard": {
+    "title": "Übersicht",
+    "garage": "Garage",
+    "noVehicles": "Lege ein Fahrzeug an, um es hier zu sehen.",
+    "attention": "Handlungsbedarf",
+    "allGood": "Nichts fällig. Alle Erinnerungen liegen in der Zukunft.",
+    "openRepairs": "Offene Reparaturprojekte",
+    "noOpenRepairs": "Keine offenen Projekte."
+  },
+  "quick": {
+    "logOdometer": "Kilometerstand erfassen",
+    "addVehicle": "Fahrzeug hinzufügen"
+  }
+}

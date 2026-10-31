@@ -1,0 +1,89 @@
+{
+  "nav": {
+    "dashboard": "Übersicht",
+    "vehicles": "Fahrzeuge",
+    "serviceLog": "Wartungsheft",
+    "repairs": "Reparaturprojekte",
+    "reminders": "Erinnerungen",
+    "reports": "Auswertungen",
+    "settings": "Einstellungen",
+    "preferences": "Präferenzen",
+    "users": "Benutzer",
+    "categories": "Wartungskategorien",
+    "webhooks": "Webhooks",
+    "instance": "Instanz",
+    "openMenu": "Menü öffnen",
+    "closeMenu": "Menü schließen",
+    "main": "Hauptnavigation"
+  },
+  "actions": {
+    "save": "Speichern",
+    "saving": "Speichert…",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "add": "Hinzufügen",
+    "create": "Anlegen",
+    "close": "Schließen",
+    "confirm": "Bestätigen",
+    "back": "Zurück",
+    "retry": "Erneut versuchen",
+    "search": "Suchen",
+    "clear": "Zurücksetzen",
+    "moveUp": "Nach oben",
+    "moveDown": "Nach unten",
+    "remove": "Entfernen",
+    "loadMore": "Mehr laden",
+    "logout": "Abmelden",
+    "changePassword": "Passwort ändern",
+    "quickActions": "Schnellaktionen"
+  },
+  "units": {
+    "km": "km",
+    "l": "L",
+    "ml": "mL",
+    "nm": "Nm",
+    "bar": "bar"
+  },
+  "state": {
+    "loading": "Lädt…",
+    "empty": "Noch nichts vorhanden.",
+    "error": "Etwas ist schiefgelaufen.",
+    "saved": "Gespeichert",
+    "optional": "optional",
+    "none": "—",
+    "yes": "Ja",
+    "no": "Nein",
+    "all": "Alle"
+  },
+  "confirm": {
+    "typeToConfirm": "Zur Bestätigung <strong>{{value}}</strong> eingeben."
+  },
+  "quick": {
+    "placeholder": "Aktion eingeben…",
+    "noResults": "Keine passenden Aktionen",
+    "hint": "Enter zum Ausführen, Esc zum Schließen",
+    "pickVehicle": "Fahrzeug wählen"
+  },
+  "dates": {
+    "today": "Heute"
+  },
+  "pagination": {
+    "showing": "{{count}} von {{total}}"
+  },
+  "attachments": {
+    "drop": "Dateien hier ablegen oder klicken",
+    "types": "JPEG, PNG, WebP, HEIC oder PDF, bis {{mb}} MB",
+    "uploading": "Lädt hoch… {{percent}} %",
+    "caption": "Beschriftung",
+    "download": "Herunterladen",
+    "deleteTitle": "Anhang löschen",
+    "deleteBody": "„{{name}}“ löschen?",
+    "empty": "Noch keine Anhänge.",
+    "tooLarge": "{{name}} ist größer als {{mb}} MB.",
+    "photo": "Foto",
+    "changePhoto": "Foto ändern",
+    "removePhoto": "Foto entfernen",
+    "preview": "Vorschau"
+  }
+}

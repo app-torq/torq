@@ -1,0 +1,35 @@
+{
+  "title": "Datenblatt",
+  "intro": "Die wichtigsten Werte für die Werkbank, ohne in Handbüchern zu suchen.",
+  "edit": "Daten bearbeiten",
+  "empty": "Noch keine Daten erfasst.",
+  "groups": {
+    "engineOil": "Motoröl",
+    "transmission": "Getriebeöl",
+    "differential": "Differenzialöl",
+    "brake": "Bremsflüssigkeit",
+    "coolant": "Kühlmittel",
+    "wheels": "Räder & Reifen",
+    "custom": "Eigene Einträge"
+  },
+  "fields": {
+    "viscosity": "Viskosität",
+    "spec": "Spezifikation / Freigabe",
+    "capacity": "Füllmenge",
+    "lugTorque": "Anzugsmoment Radschrauben",
+    "pressureFront": "Reifendruck vorne",
+    "pressureRear": "Reifendruck hinten",
+    "label": "Bezeichnung",
+    "value": "Wert"
+  },
+  "entries": {
+    "add": "Eintrag hinzufügen",
+    "addTitle": "Neuer Eintrag",
+    "editTitle": "Eintrag bearbeiten",
+    "deleteTitle": "Eintrag löschen",
+    "deleteBody": "„{{label}}“ löschen?",
+    "image": "Bild",
+    "valueOrImage": "Gib einen Wert ein oder hänge nach dem Speichern ein Bild an."
+  },
+  "hint": "Vorgabe: {{value}}"
+}

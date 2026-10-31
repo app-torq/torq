@@ -1,0 +1,72 @@
+{
+  "preferences": {
+    "title": "Preferences",
+    "intro": "Language and formats apply to you only. Units are always metric.",
+    "language": "Language",
+    "dateFormat": "Date format",
+    "numberFormat": "Number format",
+    "numberPoint": "1,234.5 (decimal point)",
+    "numberComma": "1.234,5 (decimal comma)",
+    "currency": "Currency",
+    "currencySymbol": "Custom currency symbol",
+    "currencySymbolHint": "Optional, up to 5 characters. Overrides the symbol shown for the currency.",
+    "preview": "Preview",
+    "languages": {
+      "en": "English",
+      "de": "Deutsch"
+    },
+    "currencies": {
+      "EUR": "Euro (EUR)",
+      "USD": "US dollar (USD)",
+      "GBP": "Pound sterling (GBP)",
+      "CHF": "Swiss franc (CHF)"
+    }
+  },
+  "users": {
+    "title": "Users",
+    "intro": "Everyone in the household shares one garage. Administrators also manage users, webhooks and instance settings.",
+    "add": "Add user",
+    "role": "Role",
+    "roles": {
+      "admin": "Administrator",
+      "member": "Member"
+    },
+    "status": "Status",
+    "active": "Active",
+    "disabled": "Disabled",
+    "disable": "Disable",
+    "enable": "Enable",
+    "resetPassword": "Reset password",
+    "resetPasswordIntro": "Set a new password for {{name}}. All of their sessions will be signed out.",
+    "passwordReset": "Password reset.",
+    "deleteTitle": "Delete user",
+    "deleteBody": "Delete {{name}}? Records they created stay in the garage.",
+    "you": "you"
+  },
+  "instance": {
+    "title": "Instance",
+    "intro": "Settings that apply to the whole torq instance.",
+    "digests": "Digest schedule",
+    "weeklyDay": "Weekly digest day",
+    "weeklyHour": "Weekly digest hour",
+    "monthlyDay": "Monthly digest day",
+    "monthlyHour": "Monthly digest hour",
+    "monthlyDayHint": "1–28, so every month has the day.",
+    "about": "About",
+    "version": "Version",
+    "timeZone": "Time zone",
+    "baseUrl": "Base URL (TORQ_BASE_URL)",
+    "baseUrlSet": "Configured — notifications link back to torq",
+    "baseUrlUnset": "Not set — notifications contain no links",
+    "maxUpload": "Upload limit",
+    "weekdays": {
+      "1": "Monday",
+      "2": "Tuesday",
+      "3": "Wednesday",
+      "4": "Thursday",
+      "5": "Friday",
+      "6": "Saturday",
+      "7": "Sunday"
+    }
+  }
+}

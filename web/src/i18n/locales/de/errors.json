@@ -1,0 +1,97 @@
+{
+  "generic": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
+  "internal": "Auf dem Server ist ein Fehler aufgetreten. Bitte versuche es erneut.",
+  "not_found": "Dieser Eintrag existiert nicht mehr.",
+  "network": {
+    "unreachable": "torq ist nicht erreichbar. Prüfe deine Verbindung."
+  },
+  "request": {
+    "malformed": "Die Anfrage konnte nicht verarbeitet werden.",
+    "too_large": "Die Anfrage ist zu groß.",
+    "failed": "Die Anfrage ist fehlgeschlagen."
+  },
+  "csrf": {
+    "missing_header": "Die Anfrage wurde aus Sicherheitsgründen blockiert. Lade die Seite neu.",
+    "origin_mismatch": "Die Anfrage wurde aus Sicherheitsgründen blockiert. Lade die Seite neu."
+  },
+  "auth": {
+    "unauthenticated": "Bitte melde dich erneut an.",
+    "forbidden": "Nur Administratoren dürfen das.",
+    "invalid_credentials": "Benutzername oder Passwort falsch.",
+    "throttled": "Zu viele Versuche. Versuche es in {{retry_after_s}} s erneut."
+  },
+  "setup": {
+    "already_completed": "Diese Instanz ist bereits eingerichtet."
+  },
+  "user": {
+    "last_admin": "Mindestens ein aktiver Administrator ist erforderlich.",
+    "cannot_delete_self": "Du kannst dein eigenes Konto nicht löschen.",
+    "cannot_disable_self": "Du kannst dein eigenes Konto nicht deaktivieren.",
+    "username_taken": "Dieser Benutzername ist bereits vergeben."
+  },
+  "validation": {
+    "failed": "Bitte prüfe die markierten Felder.",
+    "required": "Pflichtfeld.",
+    "username_format": "3–32 Zeichen: Buchstaben, Ziffern, Punkt, Bindestrich, Unterstrich.",
+    "password_too_short": "Mindestens 10 Zeichen.",
+    "length": "Zu kurz oder zu lang.",
+    "invalid_choice": "Wähle eine der Optionen.",
+    "currency_code": "Dreistelliger Code wie EUR.",
+    "number": "Gib eine gültige Zahl ein.",
+    "positive": "Muss größer als null sein.",
+    "non_negative": "Darf nicht negativ sein.",
+    "range": "Außerhalb des erlaubten Bereichs.",
+    "date": "Gib ein gültiges Datum ein.",
+    "future_date": "Darf nicht in der Zukunft liegen.",
+    "url": "Gib eine vollständige http(s)-Adresse ein.",
+    "vin": "17 Zeichen, Buchstaben und Ziffern (ohne I, O, Q).",
+    "header_name": "Kein erlaubter Header-Name.",
+    "duplicate": "Doppelter Eintrag.",
+    "header_value": "Header-Werte dürfen keine Zeilenumbrüche enthalten."
+  },
+  "vehicle": {
+    "confirm_name_mismatch": "Der Name stimmt nicht überein.",
+    "odometer_use_quick_update": "Ändere den Kilometerstand über die Aktualisierung."
+  },
+  "odometer": {
+    "decrease_requires_confirmation": "Das Verringern des Kilometerstands muss bestätigt werden.",
+    "large_jump_requires_confirmation": "Dieser große Sprung muss bestätigt werden."
+  },
+  "spec_entries": {
+    "order_mismatch": "Die Liste hat sich inzwischen geändert. Neu laden und erneut versuchen."
+  },
+  "service_log": {
+    "items_required": "Füge mindestens eine Position hinzu.",
+    "duplicate_category": "Jede Kategorie darf pro Eintrag nur einmal vorkommen.",
+    "category_archived": "Diese Kategorie ist archiviert."
+  },
+  "category": {
+    "in_use": "Diese Kategorie wird von Wartungseinträgen oder Erinnerungen verwendet. Archiviere sie stattdessen.",
+    "builtin_readonly": "Integrierte Kategorien können so nicht geändert werden."
+  },
+  "reminder": {
+    "interval_required": "Lege ein Kilometer- oder Zeitintervall fest.",
+    "months_and_days_exclusive": "Monate oder Tage, nicht beides.",
+    "title_required": "Eine eigenständige Prüfung braucht einen Titel.",
+    "lead_exceeds_interval": "Muss kleiner als das Intervall sein.",
+    "linked_use_service_log": "Trage eine Wartung ein, um diese Erinnerung zurückzusetzen."
+  },
+  "attachment": {
+    "too_large": "Die Datei ist größer als {{max_mb}} MB.",
+    "type_not_allowed": "Erlaubt sind nur JPEG-, PNG-, WebP-, HEIC-Bilder und PDF-Dateien.",
+    "empty": "Die Datei ist leer.",
+    "missing_file": "Es wurde keine Datei gesendet."
+  },
+  "repair": {
+    "completed_before_started": "Der Abschluss darf nicht vor dem Beginn liegen.",
+    "torque_spec_invalid": "Jedes Anzugsmoment braucht eine Bezeichnung und einen Wert über 0 Nm.",
+    "status_use_status_endpoint": "Ändere den Status über das Statusmenü.",
+    "vehicle_immutable": "Ein Projekt kann nicht zu einem anderen Fahrzeug wechseln."
+  },
+  "parts": {
+    "order_mismatch": "Die Teileliste hat sich inzwischen geändert. Neu laden und erneut versuchen."
+  },
+  "report": {
+    "invalid_range": "Das Startdatum muss vor dem Enddatum liegen."
+  }
+}

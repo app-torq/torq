@@ -1,0 +1,87 @@
+{
+  "title": "Self-Repair Projects",
+  "subtitle": "Troubleshooting, repairs, overhauls and modifications",
+  "add": "New project",
+  "addTitle": "New repair project",
+  "empty": "No projects here.",
+  "statuses": {
+    "planned": "Planned",
+    "in_progress": "In progress",
+    "waiting_on_parts": "Waiting on parts",
+    "completed": "Completed"
+  },
+  "view": {
+    "board": "Board",
+    "list": "List"
+  },
+  "moveTo": "Move to",
+  "openProject": "Open project",
+  "fields": {
+    "title": "Title",
+    "vehicle": "Vehicle",
+    "status": "Status",
+    "startedOn": "Started",
+    "completedOn": "Completed",
+    "completionOdometer": "Odometer at completion",
+    "symptom": "Symptom / fault description",
+    "faultCodes": "OBD2 fault codes",
+    "faultCodesHint": "Press Enter or comma to add a code, e.g. P0201.",
+    "rootCause": "Root cause",
+    "procedure": "Repair procedure notes",
+    "specialTools": "Special tools",
+    "specialToolsHint": "One tool per line, e.g. E12 Torx",
+    "torqueSpecs": "Critical torque specs",
+    "torqueLabel": "Fastener",
+    "torqueValue": "Torque",
+    "torqueNote": "Note",
+    "addTorque": "Add torque spec"
+  },
+  "sections": {
+    "diagnostics": "Diagnostics",
+    "procedure": "Procedure",
+    "reference": "Reference: torque & tools",
+    "parts": "Parts (bill of materials)",
+    "attachments": "Photos, manuals & invoices"
+  },
+  "parts": {
+    "add": "Add part",
+    "name": "Part",
+    "oem": "OEM number",
+    "aftermarketBrand": "Aftermarket brand",
+    "aftermarketNumber": "Aftermarket number",
+    "supplier": "Supplier / shop URL",
+    "quantity": "Qty",
+    "unitCost": "Unit cost",
+    "lineTotal": "Total",
+    "status": "Status",
+    "costType": "Cost type",
+    "total": "Parts total",
+    "statuses": {
+      "needed": "Needed",
+      "ordered": "Ordered",
+      "in_stock": "In stock",
+      "installed": "Installed"
+    },
+    "countSummary": "{{needed}} needed · {{ordered}} ordered",
+    "openShop": "Open supplier page",
+    "editTitle": "Edit part",
+    "deleteTitle": "Delete part",
+    "deleteBody": "Delete \"{{name}}\" from the BOM?"
+  },
+  "complete": {
+    "title": "Complete project",
+    "intro": "The completion date and odometer go into the vehicle's history and update its odometer.",
+    "submit": "Mark completed"
+  },
+  "reopenHint": "Reopening removes the project from the timeline and cost reports until it is completed again.",
+  "deleteTitle": "Delete project",
+  "deleteBody": "Delete \"{{title}}\" with its parts list and attachments?",
+  "filters": {
+    "allStatuses": "All statuses",
+    "search": "Search titles, fault codes, part numbers"
+  },
+  "quick": {
+    "newRepair": "New repair project"
+  },
+  "partsCount": "{{count}} parts"
+}

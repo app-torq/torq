@@ -1,0 +1,83 @@
+{
+  "title": "Webhooks",
+  "intro": "torq sends notifications only through webhooks. Each endpoint uses its owner's language and formats.",
+  "add": "Add endpoint",
+  "edit": "Edit endpoint",
+  "empty": "No endpoints yet.",
+  "presets": {
+    "discord": "Discord",
+    "ntfy": "ntfy",
+    "gotify": "Gotify",
+    "home_assistant": "Home Assistant",
+    "generic_json": "Generic JSON"
+  },
+  "presetHelp": {
+    "discord": "Paste the channel webhook URL from Discord (Server settings → Integrations → Webhooks).",
+    "ntfy": "Use the full topic URL, e.g. https://ntfy.example/torq. Add an Authorization header for protected topics.",
+    "gotify": "Use https://gotify.example/message and add the app token as header X-Gotify-Key.",
+    "home_assistant": "Use the webhook trigger URL, e.g. http://homeassistant.local:8123/api/webhook/<id>.",
+    "generic_json": "Any endpoint that accepts a POST with the torq.notification/v1 JSON body."
+  },
+  "fields": {
+    "name": "Name",
+    "url": "URL",
+    "preset": "Format",
+    "enabled": "Enabled",
+    "events": "Send on",
+    "headers": "Custom headers",
+    "headerName": "Header",
+    "headerValue": "Value"
+  },
+  "events": {
+    "due_soon": "Reminder becomes due soon",
+    "overdue": "Reminder becomes overdue",
+    "weekly_digest": "Weekly digest",
+    "monthly_digest": "Monthly digest"
+  },
+  "eventNames": {
+    "reminder_due_soon": "Due soon",
+    "reminder_overdue": "Overdue",
+    "digest_weekly": "Weekly digest",
+    "digest_monthly": "Monthly digest",
+    "test": "Test"
+  },
+  "headerSet": "••••• (set)",
+  "replace": "Replace",
+  "addHeader": "Add header",
+  "noEvents": "No events selected. This endpoint only receives test notifications.",
+  "enabled": "Enabled",
+  "disabled": "Disabled",
+  "test": {
+    "send": "Send test notification",
+    "sending": "Sending…",
+    "status": "Status",
+    "duration": "{{ms}} ms",
+    "response": "Response",
+    "error": "Error",
+    "noResponse": "(empty response)"
+  },
+  "errors": {
+    "timeout": "Timed out",
+    "connection_refused": "Connection refused",
+    "dns": "Host not found",
+    "tls": "TLS / certificate error",
+    "other": "Request failed"
+  },
+  "log": {
+    "title": "Delivery log",
+    "empty": "No deliveries yet.",
+    "time": "Time",
+    "event": "Event",
+    "status": "Status",
+    "attempts": "Attempts",
+    "code": "Code",
+    "nextAttempt": "Retry {{time}}"
+  },
+  "deliveryStatus": {
+    "pending": "Retrying",
+    "succeeded": "Delivered",
+    "failed": "Failed"
+  },
+  "deleteTitle": "Delete endpoint",
+  "deleteBody": "Delete \"{{name}}\" and its delivery log?"
+}

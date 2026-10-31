@@ -1,0 +1,79 @@
+{
+  "title": "Service Logbook",
+  "subtitle": "Routine interval maintenance",
+  "add": "Log service",
+  "edit": "Edit service entry",
+  "detail": "Service entry",
+  "empty": "No service entries yet.",
+  "categories": {
+    "engine_oil": "Engine Oil & Filter",
+    "transmission_fluid": "Transmission Fluid",
+    "brake_fluid": "Brake Fluid",
+    "coolant": "Coolant",
+    "differential_fluid": "Differential Fluid",
+    "air_filter": "Air Filter",
+    "cabin_filter": "Cabin Filter",
+    "fuel_filter": "Fuel Filter",
+    "spark_glow_plugs": "Spark/Glow Plugs",
+    "brake_pads_rotors": "Brake Pads/Rotors",
+    "timing_belt_chain": "Timing Belt/Chain"
+  },
+  "fields": {
+    "vehicle": "Vehicle",
+    "date": "Date",
+    "odometer": "Odometer",
+    "notes": "Notes",
+    "extraCost": "Other costs",
+    "extraCostLabel": "Description",
+    "extraCostHint": "e.g. shop supplies, disposal fee",
+    "category": "Category",
+    "brand": "Brand",
+    "specification": "Specification used",
+    "quantity": "Quantity",
+    "unit": "Unit",
+    "oemPart": "OEM part number",
+    "aftermarketPart": "Aftermarket part number",
+    "cost": "Cost",
+    "costType": "Cost type",
+    "total": "Total"
+  },
+  "costTypes": { "parts": "Parts", "fluids": "Fluids & consumables" },
+  "items": {
+    "title": "Work done",
+    "add": "Add item",
+    "remove": "Remove item"
+  },
+  "filters": {
+    "allVehicles": "All vehicles",
+    "allCategories": "All categories",
+    "from": "From",
+    "to": "To",
+    "search": "Search notes, brands, part numbers"
+  },
+  "deleteTitle": "Delete service entry",
+  "deleteBody": "Delete this service entry? Linked reminders will be recalculated.",
+  "warnings": {
+    "odometer": {
+      "inconsistent_with_history": "The odometer reading does not fit the order of other service entries. Saved anyway; double-check the date and km."
+    }
+  },
+  "categoryAdmin": {
+    "title": "Service categories",
+    "intro": "Built-in categories are translated automatically. Add custom ones for anything else you service routinely.",
+    "builtin": "Built-in",
+    "custom": "Custom",
+    "add": "Add category",
+    "name": "Name",
+    "isFluid": "Fluid / consumable (default cost type)",
+    "defaultIntervalKm": "Default interval",
+    "defaultIntervalMonths": "Default interval (months)",
+    "archive": "Archive",
+    "unarchive": "Restore",
+    "archived": "Archived",
+    "deleteTitle": "Delete category",
+    "deleteBody": "Delete the category \"{{name}}\"?",
+    "editTitle": "Edit category"
+  },
+  "quick": { "newService": "New service entry" },
+  "count": "{{count}} entries"
+}

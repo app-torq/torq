@@ -1,0 +1,160 @@
+// Package httpapi is the only package that knows about HTTP. Handlers decode
+// requests, call domain packages, and render JSON per contracts/rest-api.md.
+package httpapi
+
+import (
+	"context"
+	"io/fs"
+	"log/slog"
+	"net/http"
+	"path/filepath"
+	"strings"
+
+	"github.com/marekbeckmann/torq/internal/attachments"
+	"github.com/marekbeckmann/torq/internal/auth"
+	"github.com/marekbeckmann/torq/internal/auth/local"
+	"github.com/marekbeckmann/torq/internal/clock"
+	"github.com/marekbeckmann/torq/internal/config"
+	"github.com/marekbeckmann/torq/internal/db"
+	"github.com/marekbeckmann/torq/internal/notify"
+	"github.com/marekbeckmann/torq/internal/reminders"
+	"github.com/marekbeckmann/torq/internal/repairs"
+	"github.com/marekbeckmann/torq/internal/reports"
+	"github.com/marekbeckmann/torq/internal/servicelog"
+	"github.com/marekbeckmann/torq/internal/vehicles"
+)
+
+// Deps are the dependencies shared by all handlers.
+type Deps struct {
+	Config  config.Config
+	DB      *db.DB
+	Clock   clock.Clock
+	Log     *slog.Logger
+	Version string
+	Dist    fs.FS
+}
+
+// access is the authorization level a route requires.
+type access int
+
+const (
+	public access = iota
+	member
+	admin
+)
+
+// Server holds the handler dependencies, domain services and the route table.
+type Server struct {
+	Deps
+	mux        *http.ServeMux
+	sessions   *auth.Sessions
+	users      *auth.Users
+	password   auth.PasswordAuthenticator
+	throttle   *auth.Throttle
+	vehicles   *vehicles.Service
+	servicelog *servicelog.Service
+	reminders  *reminders.Service
+	repairs    *repairs.Service
+	files      *attachments.Store
+	notify     *notify.Service
+	reports    *reports.Service
+	// patterns records every registered API route (used by the CSRF route-walk test).
+	patterns []string
+}
+
+// NewRouter builds the full HTTP handler including middleware.
+func NewRouter(d Deps) http.Handler { return NewServer(d).Handler() }
+
+// NewServer wires the domain services and routes.
+func NewServer(d Deps) *Server {
+	s := &Server{Deps: d, mux: http.NewServeMux()}
+	s.sessions = &auth.Sessions{DB: d.DB, Clock: d.Clock}
+	s.users = &auth.Users{DB: d.DB, Clock: d.Clock, Sessions: s.sessions}
+	s.password = &local.Provider{DB: d.DB, Clock: d.Clock}
+	s.throttle = auth.NewThrottle(d.Clock.Now)
+	s.vehicles = &vehicles.Service{DB: d.DB, Clock: d.Clock}
+	s.notify = notify.New(d.DB, d.Clock, d.Config.BaseURL, d.Version, d.Log)
+	s.reminders = &reminders.Service{DB: d.DB, Clock: d.Clock, Vehicles: s.vehicles, OnTransitions: s.notify.EnqueueTransitions}
+	s.vehicles.AfterOdometerChange = s.reminders.EvaluateVehicle
+	s.files = &attachments.Store{
+		DB: d.DB, Clock: d.Clock, Dir: filepath.Join(d.Config.DataDir, "attachments"),
+		MaxBytes: d.Config.MaxUploadBytes(), MaxMB: d.Config.MaxUploadMB, Log: d.Log,
+	}
+	s.vehicles.BeforeDelete = s.files.KeysForVehicle
+	s.vehicles.AfterCommitDelete = s.files.RemoveFiles
+	s.servicelog = &servicelog.Service{
+		DB: d.DB, Clock: d.Clock, Vehicles: s.vehicles,
+		CollectFiles: s.files.KeysForServiceLog, RemoveFiles: s.files.RemoveFiles,
+	}
+	s.repairs = &repairs.Service{
+		DB: d.DB, Clock: d.Clock, Vehicles: s.vehicles,
+		CollectFiles: s.files.KeysForRepair, RemoveFiles: s.files.RemoveFiles,
+	}
+	s.reports = &reports.Service{DB: d.DB, Vehicles: s.vehicles, ServiceLog: s.servicelog, Repairs: s.repairs}
+
+	s.mux.HandleFunc("GET /healthz", s.healthz)
+	s.mux.Handle("/api/v1/", s.wrap(public, func(http.ResponseWriter, *http.Request) error { return errNotFound }))
+	s.routes()
+	s.mux.Handle("/", spaHandler(d.Dist))
+	return s
+}
+
+// Handler returns the HTTP handler with middleware applied.
+func (s *Server) Handler() http.Handler {
+	d := s.Deps
+	var h http.Handler = s.mux
+	h = CSRF(d.Config.BaseURL, h)
+	h = SecurityHeaders(h)
+	h = RequestLog(d.Log, h)
+	h = Recover(d.Log, h)
+	return h
+}
+
+// Sessions exposes session maintenance for the scheduler.
+func (s *Server) Sessions() *auth.Sessions { return s.sessions }
+
+// Notify exposes the webhook worker and digests for main and the scheduler.
+func (s *Server) Notify() *notify.Service { return s.notify }
+
+// Files exposes the attachment store for the orphan sweep.
+func (s *Server) Files() *attachments.Store { return s.files }
+
+// Reminders exposes reminder evaluation for the scheduler.
+func (s *Server) Reminders() *reminders.Service { return s.reminders }
+
+// route registers an API handler under /api/v1 with the given access level.
+// pattern is "METHOD /path".
+func (s *Server) route(pattern string, level access, fn handlerFunc) {
+	method, p, ok := strings.Cut(pattern, " ")
+	if !ok {
+		panic("route pattern must be \"METHOD /path\": " + pattern)
+	}
+	s.patterns = append(s.patterns, method+" /api/v1"+p)
+	s.mux.Handle(method+" /api/v1"+p, s.wrap(level, fn))
+}
+
+func (s *Server) wrap(level access, fn handlerFunc) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if level != public {
+			var err error
+			if r, err = s.authorize(r, level); err != nil {
+				writeError(w, r, s.Log, err)
+				return
+			}
+		}
+		if err := fn(w, r); err != nil {
+			writeError(w, r, s.Log, err)
+		}
+	})
+}
+
+func (s *Server) healthz(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 2e9)
+	defer cancel()
+	var one int
+	if err := s.DB.Reader.QueryRowContext(ctx, "SELECT 1").Scan(&one); err != nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "unavailable", "version": s.Version})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "version": s.Version})
+}

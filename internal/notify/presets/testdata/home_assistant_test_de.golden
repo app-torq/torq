@@ -1,0 +1,16 @@
+Content-Type: application/json
+
+{
+  "event": "test",
+  "message": "Dies ist ein Test von torq.",
+  "schema": "torq.notification/v1",
+  "sent_at": "2026-10-30T08:00:00Z",
+  "severity": "info",
+  "title": "torq-Testbenachrichtigung",
+  "vehicle": {
+    "current_odometer_km": 225350,
+    "id": 1,
+    "license_plate": "B-TQ 646",
+    "name": "Mercedes-Benz C 220 CDI"
+  }
+}

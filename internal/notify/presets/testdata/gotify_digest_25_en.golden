@@ -1,0 +1,17 @@
+Content-Type: application/json
+
+{
+  "extras": {
+    "client::display": {
+      "contentType": "text/markdown"
+    },
+    "client::notification": {
+      "click": {
+        "url": "https://torq.example/reminders"
+      }
+    }
+  },
+  "message": "25\n- **Mercedes-Benz C 220 CDI · Engine Oil \u0026 Filter**: -350 km\n- **Mercedes-Benz C 220 CDI · Engine Oil \u0026 Filter**: -350 km\n- **Mercedes-Benz C 220 CDI · Engine Oil \u0026 Filter**: -350 km\n- **Mercedes-Benz C 220 CDI · Engine Oil \u0026 Filter**: -350 km\n- **Mercedes-Benz C 220 CDI · Engine Oil \u0026 Filter**: -350 km\n- **Mercedes-Benz C 220 CDI · Engine Oil \u0026 Filter**: -350 km\n- **Mercedes-Benz C 220 CDI · Engine Oil \u0026 Filter**: -350 km\n- **Mercedes-Benz C 220 CDI · Engine Oil \u0026 Filter**: -350 km\n- **Mercedes-Benz C 220 CDI · Engine Oil \u0026 Filter**: -350 km\n- **Mercedes-Benz C 220 CDI · Engine Oil \u0026 Filter**: -350 km\n- **Mercedes-Benz C 220 CDI · Engine Oil \u0026 Filter**: -350 km\n- **Mercedes-Benz C 220 CDI · Engine Oil \u0026 Filter**: -350 km\n- **Mercedes-Benz C 220 CDI · Engine Oil \u0026 Filter**: -350 km\n- **Mercedes-Benz C 220 CDI · Engine Oil \u0026 Filter**: -350 km\n- **Mercedes-Benz C 220 CDI · Engine Oil \u0026 Filter**: -350 km\n- **Mercedes-Benz C 220 CDI · Engine Oil \u0026 Filter**: -350 km\n- **Mercedes-Benz C 220 CDI · Engine Oil \u0026 Filter**: -350 km\n- **Mercedes-Benz C 220 CDI · Engine Oil \u0026 Filter**: -350 km\n- **Mercedes-Benz C 220 CDI · Engine Oil \u0026 Filter**: -350 km\n- **Mercedes-Benz C 220 CDI · Engine Oil \u0026 Filter**: -350 km\n- **Mercedes-Benz C 220 CDI · Engine Oil \u0026 Filter**: -350 km\n- **Mercedes-Benz C 220 CDI · Engine Oil \u0026 Filter**: -350 km\n- **Mercedes-Benz C 220 CDI · Engine Oil \u0026 Filter**: -350 km\n- **Mercedes-Benz C 220 CDI · Engine Oil \u0026 Filter**: -350 km\n- **Mercedes-Benz C 220 CDI · Engine Oil \u0026 Filter**: -350 km",
+  "priority": 2,
+  "title": "Weekly maintenance digest"
+}

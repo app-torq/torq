@@ -1,0 +1,83 @@
+{
+  "title": "Webhooks",
+  "intro": "torq verschickt Benachrichtigungen ausschließlich über Webhooks. Jeder Endpunkt nutzt Sprache und Formate seines Besitzers.",
+  "add": "Endpunkt hinzufügen",
+  "edit": "Endpunkt bearbeiten",
+  "empty": "Noch keine Endpunkte.",
+  "presets": {
+    "discord": "Discord",
+    "ntfy": "ntfy",
+    "gotify": "Gotify",
+    "home_assistant": "Home Assistant",
+    "generic_json": "Generisches JSON"
+  },
+  "presetHelp": {
+    "discord": "Füge die Kanal-Webhook-URL aus Discord ein (Servereinstellungen → Integrationen → Webhooks).",
+    "ntfy": "Vollständige Topic-URL verwenden, z. B. https://ntfy.example/torq. Für geschützte Topics einen Authorization-Header hinzufügen.",
+    "gotify": "https://gotify.example/message verwenden und das App-Token als Header X-Gotify-Key hinzufügen.",
+    "home_assistant": "Webhook-Trigger-URL verwenden, z. B. http://homeassistant.local:8123/api/webhook/<id>.",
+    "generic_json": "Jeder Endpunkt, der einen POST mit dem JSON-Body torq.notification/v1 annimmt."
+  },
+  "fields": {
+    "name": "Name",
+    "url": "URL",
+    "preset": "Format",
+    "enabled": "Aktiv",
+    "events": "Senden bei",
+    "headers": "Eigene Header",
+    "headerName": "Header",
+    "headerValue": "Wert"
+  },
+  "events": {
+    "due_soon": "Erinnerung wird bald fällig",
+    "overdue": "Erinnerung wird überfällig",
+    "weekly_digest": "Wöchentliche Übersicht",
+    "monthly_digest": "Monatliche Übersicht"
+  },
+  "eventNames": {
+    "reminder_due_soon": "Bald fällig",
+    "reminder_overdue": "Überfällig",
+    "digest_weekly": "Wochenübersicht",
+    "digest_monthly": "Monatsübersicht",
+    "test": "Test"
+  },
+  "headerSet": "••••• (gesetzt)",
+  "replace": "Ersetzen",
+  "addHeader": "Header hinzufügen",
+  "noEvents": "Keine Ereignisse gewählt. Dieser Endpunkt erhält nur Testbenachrichtigungen.",
+  "enabled": "Aktiv",
+  "disabled": "Deaktiviert",
+  "test": {
+    "send": "Testbenachrichtigung senden",
+    "sending": "Sendet…",
+    "status": "Status",
+    "duration": "{{ms}} ms",
+    "response": "Antwort",
+    "error": "Fehler",
+    "noResponse": "(leere Antwort)"
+  },
+  "errors": {
+    "timeout": "Zeitüberschreitung",
+    "connection_refused": "Verbindung abgelehnt",
+    "dns": "Host nicht gefunden",
+    "tls": "TLS-/Zertifikatsfehler",
+    "other": "Anfrage fehlgeschlagen"
+  },
+  "log": {
+    "title": "Zustellprotokoll",
+    "empty": "Noch keine Zustellungen.",
+    "time": "Zeit",
+    "event": "Ereignis",
+    "status": "Status",
+    "attempts": "Versuche",
+    "code": "Code",
+    "nextAttempt": "Neuer Versuch {{time}}"
+  },
+  "deliveryStatus": {
+    "pending": "Wird wiederholt",
+    "succeeded": "Zugestellt",
+    "failed": "Fehlgeschlagen"
+  },
+  "deleteTitle": "Endpunkt löschen",
+  "deleteBody": "„{{name}}“ samt Zustellprotokoll löschen?"
+}

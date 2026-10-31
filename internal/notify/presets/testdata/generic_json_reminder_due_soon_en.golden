@@ -1,0 +1,27 @@
+Content-Type: application/json
+
+{
+  "event": "reminder_due_soon",
+  "message": "650 km",
+  "reminder": {
+    "id": 7,
+    "name": "Engine Oil \u0026 Filter",
+    "next_due_date": "2027-10-15",
+    "next_due_km": 225000,
+    "remaining_days": 350,
+    "remaining_km": 650,
+    "state": "due_soon",
+    "trigger": "km"
+  },
+  "schema": "torq.notification/v1",
+  "sent_at": "2026-10-30T08:00:00Z",
+  "severity": "warning",
+  "title": "Due soon: Engine Oil \u0026 Filter — Mercedes-Benz C 220 CDI",
+  "url": "https://torq.example/vehicles/1/reminders",
+  "vehicle": {
+    "current_odometer_km": 225350,
+    "id": 1,
+    "license_plate": "B-TQ 646",
+    "name": "Mercedes-Benz C 220 CDI"
+  }
+}

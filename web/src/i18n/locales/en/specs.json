@@ -1,0 +1,35 @@
+{
+  "title": "Spec sheet",
+  "intro": "The specs you need at the workbench, without digging through manuals.",
+  "edit": "Edit specs",
+  "empty": "No specs recorded yet.",
+  "groups": {
+    "engineOil": "Engine oil",
+    "transmission": "Transmission fluid",
+    "differential": "Differential fluid",
+    "brake": "Brake fluid",
+    "coolant": "Coolant",
+    "wheels": "Wheels & tires",
+    "custom": "Custom entries"
+  },
+  "fields": {
+    "viscosity": "Viscosity",
+    "spec": "Specification / approval",
+    "capacity": "Capacity",
+    "lugTorque": "Wheel lug torque",
+    "pressureFront": "Tire pressure front",
+    "pressureRear": "Tire pressure rear",
+    "label": "Label",
+    "value": "Value"
+  },
+  "entries": {
+    "add": "Add entry",
+    "addTitle": "New spec entry",
+    "editTitle": "Edit spec entry",
+    "deleteTitle": "Delete entry",
+    "deleteBody": "Delete \"{{label}}\"?",
+    "image": "Image",
+    "valueOrImage": "Enter a value or attach an image after saving."
+  },
+  "hint": "Spec: {{value}}"
+}

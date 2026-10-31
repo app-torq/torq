@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+/* torq is dark-only (constitution: single dark theme). No light palette exists. */
+html {
+  color-scheme: dark;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+@utility focus-ring {
+  outline: none;
+  &:focus-visible {
+    box-shadow: 0 0 0 2px var(--color-zinc-950), 0 0 0 4px var(--color-sky-400);
+  }
+}
+
+/* Paper only: the printable history report prints black on white. The screen stays dark. */
+@media print {
+  html,
+  body {
+    background: #fff;
+    color: #000;
+  }
+}

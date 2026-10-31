@@ -1,0 +1,13 @@
+Content-Type: application/json
+
+{
+  "embeds": [
+    {
+      "color": 7434609,
+      "description": "—",
+      "timestamp": "2026-10-30T08:00:00Z",
+      "title": "Weekly maintenance digest"
+    }
+  ],
+  "username": "torq"
+}

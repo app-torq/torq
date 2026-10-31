@@ -1,0 +1,75 @@
+{
+  "title": "Vehicles",
+  "subtitle": "Your garage",
+  "add": "Add vehicle",
+  "edit": "Edit vehicle",
+  "empty": "No vehicles yet. Add your first car to get started.",
+  "filter": { "active": "Active", "archived": "Archived", "all": "All" },
+  "archivedBadge": "Archived",
+  "fields": {
+    "make": "Make",
+    "model": "Model",
+    "chassisCode": "Generation / chassis code",
+    "chassisCodeHint": "e.g. S203, E46",
+    "modelYear": "Model year",
+    "engineCode": "Engine code",
+    "engineCodeHint": "e.g. OM646",
+    "vin": "VIN",
+    "licensePlate": "License plate",
+    "odometer": "Current odometer"
+  },
+  "tabs": {
+    "overview": "Overview",
+    "specs": "Spec sheet",
+    "service": "Service",
+    "reminders": "Reminders",
+    "repairs": "Repairs",
+    "history": "History"
+  },
+  "actions": {
+    "archive": "Archive",
+    "unarchive": "Restore",
+    "delete": "Delete vehicle"
+  },
+  "archiveHint": "Archived vehicles (e.g. sold) are hidden from the dashboard and their reminders pause. History and exports stay available.",
+  "deleteTitle": "Delete vehicle",
+  "deleteBody": "This permanently deletes {{name}} with all service entries, repair projects, reminders, readings and attachments. Consider archiving instead.",
+  "odometer": {
+    "title": "Odometer",
+    "update": "Update odometer",
+    "newValue": "New odometer reading",
+    "date": "Reading date",
+    "current": "Current: {{value}}",
+    "updated": "Odometer updated.",
+    "decreaseTitle": "Lower the odometer?",
+    "decreaseBody": "The current reading is {{current}}. Set it to {{next}}? Use this only to fix a typo.",
+    "jumpTitle": "Large jump",
+    "jumpBody": "{{next}} is a big jump from {{current}}. Is that correct?",
+    "history": "Reading history",
+    "sources": {
+      "initial": "Initial",
+      "quick_update": "Manual update",
+      "service_log": "Service entry",
+      "repair_completion": "Repair completed",
+      "reminder_done": "Check done"
+    }
+  },
+  "switcher": {
+    "label": "Vehicle",
+    "all": "All vehicles"
+  },
+  "details": "Details",
+  "dashboard": {
+    "title": "Dashboard",
+    "garage": "Garage",
+    "noVehicles": "Add a vehicle to see it here.",
+    "attention": "Needs attention",
+    "allGood": "Nothing due. All reminders are upcoming.",
+    "openRepairs": "Open repair projects",
+    "noOpenRepairs": "No open projects."
+  },
+  "quick": {
+    "logOdometer": "Log odometer reading",
+    "addVehicle": "Add vehicle"
+  }
+}
