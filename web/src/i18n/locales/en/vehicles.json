@@ -4,7 +4,11 @@
   "add": "Add vehicle",
   "edit": "Edit vehicle",
   "empty": "No vehicles yet. Add your first car to get started.",
-  "filter": { "active": "Active", "archived": "Archived", "all": "All" },
+  "filter": {
+    "active": "Active",
+    "archived": "Archived",
+    "all": "All"
+  },
   "archivedBadge": "Archived",
   "fields": {
     "make": "Make",
@@ -16,7 +20,16 @@
     "engineCodeHint": "e.g. OM646",
     "vin": "VIN",
     "licensePlate": "License plate",
-    "odometer": "Current odometer"
+    "odometer": "Current odometer",
+    "hsn": "HSN (2.1)",
+    "tsn": "TSN (2.2)",
+    "displacement": "Displacement",
+    "power": "Power",
+    "fuelType": "Fuel type",
+    "notSet": "Not set",
+    "engineTrim": "Engine / trim",
+    "engineTrimHint": "Pick an engine to fill engine code, power, displacement and fuel.",
+    "hsnTsn": "HSN / TSN"
   },
   "tabs": {
     "overview": "Overview",
@@ -71,5 +84,40 @@
   "quick": {
     "logOdometer": "Log odometer reading",
     "addVehicle": "Add vehicle"
+  },
+  "fuel": {
+    "diesel": "Diesel",
+    "petrol": "Petrol",
+    "hybrid": "Hybrid",
+    "electric": "Electric",
+    "lpg": "LPG",
+    "cng": "CNG",
+    "other": "Other"
+  },
+  "quickFill": {
+    "title": "Quick-Fill via HSN/TSN (Fahrzeugschein)",
+    "intro": "Enter field 2.1 and the first three characters of field 2.2 from the registration certificate.",
+    "hsn": "HSN (2.1)",
+    "tsn": "TSN (2.2)",
+    "searching": "Looking up…",
+    "notFound": "HSN/TSN not found in local catalog — please select or enter manually below.",
+    "filled": "Filled from the local catalog. Check the highlighted fields.",
+    "chooseVariant_one": "Choose the variant:",
+    "chooseVariant_other": "{{count}} variants share this key. Choose yours:",
+    "undo": "Undo fill",
+    "dismiss": "None of these"
+  },
+  "body": {
+    "AA": "Saloon",
+    "AB": "Hatchback",
+    "AC": "Estate",
+    "AD": "Coupé",
+    "AE": "Convertible",
+    "AF": "Multi-purpose vehicle",
+    "AG": "Truck station wagon"
+  },
+  "combobox": {
+    "useCustom": "Use custom: '{{value}}'",
+    "loading": "Loading suggestions…"
   }
 }

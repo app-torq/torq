@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"errors"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -17,7 +18,14 @@ import (
 	"github.com/marekbeckmann/torq/internal/store"
 )
 
-var vinRe = regexp.MustCompile(`^[A-HJ-NPR-Z0-9]{17}$`)
+var (
+	vinRe = regexp.MustCompile(`^[A-HJ-NPR-Z0-9]{17}$`)
+	hsnRe = regexp.MustCompile(`^[0-9]{4}$`)
+	tsnRe = regexp.MustCompile(`^[0-9A-Z]{3}$`)
+)
+
+// FuelTypes are the stored fuel_type values; the UI translates them.
+var FuelTypes = []string{"diesel", "petrol", "hybrid", "electric", "lpg", "cng", "other"}
 
 // Service manages vehicles.
 type Service struct {
@@ -42,6 +50,13 @@ type Profile struct {
 	EngineCode   string
 	VIN          string
 	LicensePlate string
+	// HSN/TSN are the German type-approval keys (Zulassungsbescheinigung
+	// Teil I fields 2.1 and 2.2, first three characters of 2.2).
+	HSN            *string
+	TSN            *string
+	DisplacementCC *int64
+	PowerKW        *int64
+	FuelType       *string
 }
 
 func (p *Profile) normalize() {
@@ -51,6 +66,24 @@ func (p *Profile) normalize() {
 	p.EngineCode = strings.TrimSpace(p.EngineCode)
 	p.VIN = strings.ToUpper(strings.TrimSpace(p.VIN))
 	p.LicensePlate = strings.TrimSpace(p.LicensePlate)
+	p.HSN = trimOrNil(p.HSN, false)
+	p.TSN = trimOrNil(p.TSN, true)
+	p.FuelType = trimOrNil(p.FuelType, false)
+}
+
+// trimOrNil trims s (optionally upper-casing it) and turns "" into nil.
+func trimOrNil(s *string, upper bool) *string {
+	if s == nil {
+		return nil
+	}
+	t := strings.TrimSpace(*s)
+	if upper {
+		t = strings.ToUpper(t)
+	}
+	if t == "" {
+		return nil
+	}
+	return &t
 }
 
 func (s *Service) validate(p Profile, v *apperr.Validation) {
@@ -66,6 +99,18 @@ func (s *Service) validate(p Profile, v *apperr.Validation) {
 	}
 	v.Check(p.VIN != "" && !vinRe.MatchString(p.VIN), "vin", "validation.vin")
 	v.Check(utf8.RuneCountInString(p.LicensePlate) > 16, "license_plate", "validation.length")
+	v.Check(p.HSN != nil && !hsnRe.MatchString(*p.HSN), "hsn", "vehicle.hsn_invalid")
+	v.Check(p.TSN != nil && !tsnRe.MatchString(*p.TSN), "tsn", "vehicle.tsn_invalid")
+	v.Check(p.DisplacementCC != nil && (*p.DisplacementCC < 1 || *p.DisplacementCC > 20000), "displacement_cc", "vehicle.displacement_out_of_range")
+	v.Check(p.PowerKW != nil && (*p.PowerKW < 1 || *p.PowerKW > 2000), "power_kw", "vehicle.power_out_of_range")
+	v.Check(p.FuelType != nil && !slices.Contains(FuelTypes, *p.FuelType), "fuel_type", "vehicle.fuel_type_invalid")
+}
+
+func nullStringPtr(s *string) sql.NullString {
+	if s == nil {
+		return sql.NullString{}
+	}
+	return sql.NullString{String: *s, Valid: true}
 }
 
 func nullString(s string) sql.NullString { return sql.NullString{String: s, Valid: s != ""} }
@@ -94,6 +139,8 @@ func (s *Service) Create(ctx context.Context, p Profile, odometerKm int64, creat
 		out, err = q.CreateVehicle(ctx, store.CreateVehicleParams{
 			Make: p.Make, Model: p.Model, ChassisCode: p.ChassisCode, ModelYear: nullInt(p.ModelYear),
 			EngineCode: p.EngineCode, Vin: nullString(p.VIN), LicensePlate: nullString(p.LicensePlate),
+			Hsn: nullStringPtr(p.HSN), Tsn: nullStringPtr(p.TSN), DisplacementCc: nullInt(p.DisplacementCC),
+			PowerKw: nullInt(p.PowerKW), FuelType: nullStringPtr(p.FuelType),
 			CurrentOdometerKm: odometerKm, CreatedBy: sql.NullInt64{Int64: createdBy, Valid: createdBy > 0},
 			CreatedAt: now, UpdatedAt: now,
 		})
@@ -150,6 +197,8 @@ func (s *Service) Update(ctx context.Context, id int64, p Profile) (store.Vehicl
 	out, err := store.New(s.DB.Writer).UpdateVehicleProfile(ctx, store.UpdateVehicleProfileParams{
 		Make: p.Make, Model: p.Model, ChassisCode: p.ChassisCode, ModelYear: nullInt(p.ModelYear),
 		EngineCode: p.EngineCode, Vin: nullString(p.VIN), LicensePlate: nullString(p.LicensePlate),
+		Hsn: nullStringPtr(p.HSN), Tsn: nullStringPtr(p.TSN), DisplacementCc: nullInt(p.DisplacementCC),
+		PowerKw: nullInt(p.PowerKW), FuelType: nullStringPtr(p.FuelType),
 		UpdatedAt: clock.Timestamp(s.Clock.Now()), ID: id,
 	})
 	if errors.Is(err, sql.ErrNoRows) {

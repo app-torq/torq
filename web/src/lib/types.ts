@@ -33,6 +33,9 @@ export interface ReminderCounts {
   overdue: number
 }
 
+export const FUEL_TYPES = ['diesel', 'petrol', 'hybrid', 'electric', 'lpg', 'cng', 'other'] as const
+export type FuelType = (typeof FUEL_TYPES)[number]
+
 export interface Vehicle {
   id: number
   make: string
@@ -42,12 +45,73 @@ export interface Vehicle {
   engine_code: string
   vin: string | null
   license_plate: string | null
+  hsn: string | null
+  tsn: string | null
+  displacement_cc: number | null
+  power_kw: number | null
+  fuel_type: FuelType | null
   current_odometer_km: number
   avatar_url: string | null
   archived: boolean
   reminder_counts: ReminderCounts
   created_at: string
   updated_at: string
+}
+
+export interface KbaVariant {
+  make: string
+  /** Empty when the KBA entry names only the brand. */
+  model: string
+  trade_name: string
+  generation: string
+  engine_code: string
+  displacement_cc: number | null
+  power_kw: number | null
+  fuel_type: FuelType | null
+  /** EU body code such as "AA" or "AC"; empty when unknown. */
+  body_code: string
+  year_from: number | null
+  match: 'unique' | 'none'
+}
+
+export interface CatalogModel {
+  name: string
+  year_from: number | null
+  year_to: number | null
+}
+
+export interface CatalogGeneration extends CatalogModel {
+  body: string
+}
+
+export interface CatalogEngine {
+  name: string
+  engine_code: string
+  displacement_cc: number | null
+  power_kw: number | null
+  fuel_type: FuelType | null
+}
+
+export interface CatalogDataset {
+  id: string
+  name: string
+  publisher: string
+  uri: string
+  stand?: string
+  retrieved: string
+  commit?: string
+  license: string
+  license_id: string
+  license_url: string
+  /** Verbatim attribution text required by the license; never translated. */
+  attribution: string
+  modified: boolean
+}
+
+export interface CatalogMeta {
+  imported_at: string | null
+  datasets: CatalogDataset[]
+  counts: { kba: number; vehicles: number }
 }
 
 export interface OdometerReading {
@@ -296,7 +360,11 @@ export interface TimelineItem {
 
 export interface VehicleHistory {
   schema: string
-  vehicle: { id: number; make: string; model: string; chassis_code: string; model_year: number | null; engine_code: string; vin: string | null; license_plate: string | null; current_odometer_km: number }
+  vehicle: {
+    id: number; make: string; model: string; chassis_code: string; model_year: number | null; engine_code: string; vin: string | null
+    license_plate: string | null; current_odometer_km: number; hsn: string | null; tsn: string | null
+    displacement_cc: number | null; power_kw: number | null; fuel_type: FuelType | null
+  }
   specs: Record<string, string | number | null>
   spec_entries: { label: string; value: string }[]
   service_logs: {

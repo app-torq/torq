@@ -4,7 +4,11 @@
   "add": "Fahrzeug hinzufügen",
   "edit": "Fahrzeug bearbeiten",
   "empty": "Noch keine Fahrzeuge. Lege dein erstes Auto an.",
-  "filter": { "active": "Aktiv", "archived": "Archiviert", "all": "Alle" },
+  "filter": {
+    "active": "Aktiv",
+    "archived": "Archiviert",
+    "all": "Alle"
+  },
   "archivedBadge": "Archiviert",
   "fields": {
     "make": "Marke",
@@ -16,7 +20,16 @@
     "engineCodeHint": "z. B. OM646",
     "vin": "FIN",
     "licensePlate": "Kennzeichen",
-    "odometer": "Aktueller Kilometerstand"
+    "odometer": "Aktueller Kilometerstand",
+    "hsn": "HSN (2.1)",
+    "tsn": "TSN (2.2)",
+    "displacement": "Hubraum",
+    "power": "Leistung",
+    "fuelType": "Kraftstoff",
+    "notSet": "Nicht angegeben",
+    "engineTrim": "Motor / Ausstattung",
+    "engineTrimHint": "Motor wählen, um Motorcode, Leistung, Hubraum und Kraftstoff zu übernehmen.",
+    "hsnTsn": "HSN / TSN"
   },
   "tabs": {
     "overview": "Übersicht",
@@ -71,5 +84,40 @@
   "quick": {
     "logOdometer": "Kilometerstand erfassen",
     "addVehicle": "Fahrzeug hinzufügen"
+  },
+  "fuel": {
+    "diesel": "Diesel",
+    "petrol": "Benzin",
+    "hybrid": "Hybrid",
+    "electric": "Elektro",
+    "lpg": "Autogas (LPG)",
+    "cng": "Erdgas (CNG)",
+    "other": "Sonstiges"
+  },
+  "quickFill": {
+    "title": "Schnellerfassung per HSN/TSN (Fahrzeugschein)",
+    "intro": "Feld 2.1 und die ersten drei Zeichen von Feld 2.2 aus der Zulassungsbescheinigung eingeben.",
+    "hsn": "HSN (2.1)",
+    "tsn": "TSN (2.2)",
+    "searching": "Suche läuft…",
+    "notFound": "HSN/TSN nicht im lokalen Katalog gefunden – bitte unten auswählen oder manuell eingeben.",
+    "filled": "Aus dem lokalen Katalog übernommen. Bitte die markierten Felder prüfen.",
+    "chooseVariant_one": "Variante wählen:",
+    "chooseVariant_other": "{{count}} Varianten teilen sich diesen Schlüssel. Bitte auswählen:",
+    "undo": "Übernahme rückgängig",
+    "dismiss": "Keine davon"
+  },
+  "body": {
+    "AA": "Limousine",
+    "AB": "Schräghecklimousine",
+    "AC": "Kombi",
+    "AD": "Coupé",
+    "AE": "Cabriolet",
+    "AF": "Mehrzweckfahrzeug",
+    "AG": "Pkw-Pick-up"
+  },
+  "combobox": {
+    "useCustom": "Eigenen Wert verwenden: '{{value}}'",
+    "loading": "Vorschläge werden geladen…"
   }
 }

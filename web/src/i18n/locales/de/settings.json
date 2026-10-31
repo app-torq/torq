@@ -68,5 +68,22 @@
       "6": "Samstag",
       "7": "Sonntag"
     }
+  },
+  "about": {
+    "title": "Über torq",
+    "intro": "Version und die mit dieser Version ausgelieferten offenen Daten.",
+    "version": "Version",
+    "datasets": "Datenquellen für Fahrzeugdaten",
+    "offline": "Der Fahrzeugkatalog (HSN/TSN-Schnellerfassung und Vorschläge für Marke/Modell) arbeitet vollständig offline mit Daten, die torq mitliefert. Keine API-Schlüssel, keine externen Dienste.",
+    "publisher": "Herausgeber",
+    "license": "Lizenz",
+    "source": "Quelle",
+    "stand": "Datenstand",
+    "retrieved": "Abgerufen",
+    "commit": "Quell-Commit",
+    "modified": "torq hat diese Daten verändert (Namen vereinheitlicht, Quellen zusammengeführt). Details in NOTICE.md im Repository.",
+    "counts": "{{kba}} HSN/TSN-Einträge und {{vehicles}} Einträge zu Marke/Modell/Motor.",
+    "derived": "Die zusammengeführte Katalogdatenbank wird unter der Open Database License (ODbL) 1.0 verbreitet.",
+    "empty": "Es ist kein Fahrzeugkatalog geladen. Fahrzeuge können weiterhin manuell erfasst werden."
   }
 }

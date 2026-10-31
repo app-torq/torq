@@ -65,6 +65,7 @@ func run() error {
 	if err := db.Migrate(ctx, database, cfg.DataDir); err != nil {
 		return err
 	}
+	importCatalog(ctx, log, database)
 
 	server := httpapi.NewServer(httpapi.Deps{
 		Config:  cfg,

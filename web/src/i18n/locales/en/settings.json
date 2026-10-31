@@ -68,5 +68,22 @@
       "6": "Saturday",
       "7": "Sunday"
     }
+  },
+  "about": {
+    "title": "About torq",
+    "intro": "Version and the open data bundled with this release.",
+    "version": "Version",
+    "datasets": "Vehicle data sources",
+    "offline": "The vehicle catalog (HSN/TSN quick-fill and make/model suggestions) runs entirely offline from data shipped with torq. No API keys, no external services.",
+    "publisher": "Publisher",
+    "license": "License",
+    "source": "Source",
+    "stand": "Data as of",
+    "retrieved": "Retrieved",
+    "commit": "Source commit",
+    "modified": "torq modified this data (normalized names, merged sources). See NOTICE.md in the repository for details.",
+    "counts": "{{kba}} HSN/TSN entries and {{vehicles}} make/model/engine entries.",
+    "derived": "The combined catalog database is distributed under the Open Database License (ODbL) 1.0.",
+    "empty": "No vehicle catalog is loaded. Vehicles can still be entered manually."
   }
 }

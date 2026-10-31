@@ -51,7 +51,12 @@
   },
   "vehicle": {
     "confirm_name_mismatch": "Der Name stimmt nicht überein.",
-    "odometer_use_quick_update": "Ändere den Kilometerstand über die Aktualisierung."
+    "odometer_use_quick_update": "Ändere den Kilometerstand über die Aktualisierung.",
+    "hsn_invalid": "Die HSN muss genau 4 Ziffern haben.",
+    "tsn_invalid": "Die TSN muss genau 3 Buchstaben oder Ziffern haben.",
+    "displacement_out_of_range": "Der Hubraum muss eine ganze Zahl zwischen 1 und 20.000 cm³ sein.",
+    "power_out_of_range": "Die Leistung muss eine ganze Zahl zwischen 1 und 2.000 kW sein.",
+    "fuel_type_invalid": "Bitte einen Kraftstoff aus der Liste wählen."
   },
   "odometer": {
     "decrease_requires_confirmation": "Das Verringern des Kilometerstands muss bestätigt werden.",
@@ -93,5 +98,9 @@
   },
   "report": {
     "invalid_range": "Das Startdatum muss vor dem Enddatum liegen."
+  },
+  "catalog": {
+    "hsn_invalid": "Die HSN muss genau 4 Ziffern haben.",
+    "tsn_invalid": "Die TSN muss genau 3 Buchstaben oder Ziffern haben."
   }
 }

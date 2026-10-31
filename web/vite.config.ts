@@ -5,9 +5,11 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
+    // changeOrigin must stay false: the API's CSRF guard compares the Origin
+    // header with Host, and the string shorthand would rewrite Host to :8080.
     proxy: {
-      '/api': 'http://localhost:8080',
-      '/healthz': 'http://localhost:8080',
+      '/api': { target: 'http://localhost:8080', changeOrigin: false },
+      '/healthz': { target: 'http://localhost:8080', changeOrigin: false },
     },
   },
   build: {

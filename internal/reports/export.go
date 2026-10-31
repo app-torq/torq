@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"strings"
 
 	"github.com/marekbeckmann/torq/internal/i18n"
 	"github.com/marekbeckmann/torq/internal/repairs"
@@ -43,6 +44,11 @@ type HistoryVehicle struct {
 	VIN               *string `json:"vin"`
 	LicensePlate      *string `json:"license_plate"`
 	CurrentOdometerKm int64   `json:"current_odometer_km"`
+	HSN               *string `json:"hsn"`
+	TSN               *string `json:"tsn"`
+	DisplacementCC    *int64  `json:"displacement_cc"`
+	PowerKW           *int64  `json:"power_kw"`
+	FuelType          *string `json:"fuel_type"`
 }
 
 type HistoryEntry struct {
@@ -160,7 +166,8 @@ func (s *Service) History(ctx context.Context, vehicleID int64, opt ExportOption
 	h := History{
 		Schema: "torq.vehicle-history/v1",
 		Vehicle: HistoryVehicle{ID: v.ID, Make: v.Make, Model: v.Model, ChassisCode: v.ChassisCode, ModelYear: ptrI(v.ModelYear),
-			EngineCode: v.EngineCode, VIN: ptrS(v.Vin), LicensePlate: ptrS(v.LicensePlate), CurrentOdometerKm: v.CurrentOdometerKm},
+			EngineCode: v.EngineCode, VIN: ptrS(v.Vin), LicensePlate: ptrS(v.LicensePlate), CurrentOdometerKm: v.CurrentOdometerKm,
+			HSN: ptrS(v.Hsn), TSN: ptrS(v.Tsn), DisplacementCC: ptrI(v.DisplacementCc), PowerKW: ptrI(v.PowerKw), FuelType: ptrS(v.FuelType)},
 		Specs: map[string]any{
 			"engine_oil_viscosity": spec.EngineOilViscosity, "engine_oil_spec": spec.EngineOilSpec, "engine_oil_capacity_ml": ptrI(spec.EngineOilCapacityMl),
 			"transmission_fluid_spec": spec.TransmissionFluidSpec, "transmission_fluid_capacity_ml": ptrI(spec.TransmissionFluidCapacityMl),
@@ -267,9 +274,29 @@ func (s *Service) categoryNames(ctx context.Context, q *store.Queries, loc i18n.
 	return out, nil
 }
 
-// CSVHeader is the fixed column order of the CSV export.
+// CSVHeader is the fixed column order of the CSV export. The vehicle columns
+// were appended later (specs/002, FR-027) and are filled only on the leading
+// "vehicle" record, so existing columns keep their positions.
 var CSVHeader = []string{"record_type", "date", "odometer_km", "record_title", "category_or_part", "brand", "specification",
-	"quantity", "unit", "oem_part_number", "aftermarket_part_number", "cost", "cost_type", "status", "notes"}
+	"quantity", "unit", "oem_part_number", "aftermarket_part_number", "cost", "cost_type", "status", "notes",
+	"hsn", "tsn", "displacement_cc", "power_kw", "fuel_type"}
+
+// vehicleCols is the number of trailing vehicle columns in CSVHeader.
+const vehicleCols = 5
+
+func strOr(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
+}
+
+func intOr(p *int64) string {
+	if p == nil {
+		return ""
+	}
+	return strconv.FormatInt(*p, 10)
+}
 
 // money renders cents as a plain decimal with a dot (machine-readable).
 func money(cents *int64) string {
@@ -304,16 +331,26 @@ func WriteCSV(w io.Writer, h History) error {
 	if err := cw.Write(CSVHeader); err != nil {
 		return err
 	}
+	v := h.Vehicle
+	vehicleRow := make([]string, len(CSVHeader))
+	vehicleRow[0], vehicleRow[2], vehicleRow[3], vehicleRow[4], vehicleRow[6] =
+		"vehicle", strconv.FormatInt(v.CurrentOdometerKm, 10), strings.TrimSpace(v.Make+" "+v.Model), v.ChassisCode, v.EngineCode
+	copy(vehicleRow[len(CSVHeader)-vehicleCols:], []string{strOr(v.HSN), strOr(v.TSN), intOr(v.DisplacementCC), intOr(v.PowerKW), strOr(v.FuelType)})
+	if err := cw.Write(vehicleRow); err != nil {
+		return err
+	}
+	// Line-item rows leave the trailing vehicle columns empty.
+	write := func(rec []string) error { return cw.Write(append(rec, make([]string, vehicleCols)...)) }
 	for _, s := range h.Services {
 		for _, it := range s.Items {
 			q, unit := qty(it.QuantityMl, it.QuantityUnit)
-			if err := cw.Write([]string{"service", s.Date, strconv.FormatInt(s.OdometerKm, 10), "", it.Category, it.Brand, it.Specification,
+			if err := write([]string{"service", s.Date, strconv.FormatInt(s.OdometerKm, 10), "", it.Category, it.Brand, it.Specification,
 				q, unit, it.OEMPartNumber, it.AftermarketPartNumber, money(it.CostCents), it.CostType, "", s.Notes}); err != nil {
 				return err
 			}
 		}
 		if s.ExtraCostCents != nil && *s.ExtraCostCents > 0 {
-			if err := cw.Write([]string{"service_extra", s.Date, strconv.FormatInt(s.OdometerKm, 10), s.ExtraCostLabel, "", "", "",
+			if err := write([]string{"service_extra", s.Date, strconv.FormatInt(s.OdometerKm, 10), s.ExtraCostLabel, "", "", "",
 				"", "", "", "", money(s.ExtraCostCents), "other", "", ""}); err != nil {
 				return err
 			}
@@ -322,7 +359,7 @@ func WriteCSV(w io.Writer, h History) error {
 	for _, r := range h.Repairs {
 		km := strconv.FormatInt(r.OdometerKm, 10)
 		if len(r.Parts) == 0 {
-			if err := cw.Write([]string{"repair", r.CompletedOn, km, r.Title, "", "", "", "", "", "", "", "", "", "completed", r.Procedure}); err != nil {
+			if err := write([]string{"repair", r.CompletedOn, km, r.Title, "", "", "", "", "", "", "", "", "", "completed", r.Procedure}); err != nil {
 				return err
 			}
 			continue
@@ -333,7 +370,7 @@ func WriteCSV(w io.Writer, h History) error {
 				v := *p.UnitCostCents * p.Quantity
 				cost = &v
 			}
-			if err := cw.Write([]string{"repair_part", r.CompletedOn, km, r.Title, p.Name, p.AftermarketBrand, "",
+			if err := write([]string{"repair_part", r.CompletedOn, km, r.Title, p.Name, p.AftermarketBrand, "",
 				strconv.FormatInt(p.Quantity, 10), "pcs", p.OEMPartNumber, p.AftermarketPartNumber, money(cost), p.CostType, p.Status, r.Procedure}); err != nil {
 				return err
 			}

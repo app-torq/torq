@@ -14,7 +14,8 @@
     "instance": "Instance",
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
-    "main": "Main navigation"
+    "main": "Main navigation",
+    "about": "About & data sources"
   },
   "actions": {
     "save": "Save",
@@ -43,7 +44,10 @@
     "l": "L",
     "ml": "mL",
     "nm": "Nm",
-    "bar": "bar"
+    "bar": "bar",
+    "cc": "cm³",
+    "kw": "kW",
+    "ps": "PS"
   },
   "state": {
     "loading": "Loading…",

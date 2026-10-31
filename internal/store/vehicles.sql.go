@@ -49,9 +49,10 @@ func (q *Queries) CreateSpecEntry(ctx context.Context, arg CreateSpecEntryParams
 
 const createVehicle = `-- name: CreateVehicle :one
 INSERT INTO vehicles (make, model, chassis_code, model_year, engine_code, vin, license_plate,
+                      hsn, tsn, displacement_cc, power_kw, fuel_type,
                       current_odometer_km, created_by, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-RETURNING id, make, model, chassis_code, model_year, engine_code, vin, license_plate, current_odometer_km, archived_at, created_by, created_at, updated_at
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+RETURNING id, make, model, chassis_code, model_year, engine_code, vin, license_plate, current_odometer_km, archived_at, created_by, created_at, updated_at, hsn, tsn, displacement_cc, power_kw, fuel_type
 `
 
 type CreateVehicleParams struct {
@@ -62,6 +63,11 @@ type CreateVehicleParams struct {
 	EngineCode        string
 	Vin               sql.NullString
 	LicensePlate      sql.NullString
+	Hsn               sql.NullString
+	Tsn               sql.NullString
+	DisplacementCc    sql.NullInt64
+	PowerKw           sql.NullInt64
+	FuelType          sql.NullString
 	CurrentOdometerKm int64
 	CreatedBy         sql.NullInt64
 	CreatedAt         string
@@ -77,6 +83,11 @@ func (q *Queries) CreateVehicle(ctx context.Context, arg CreateVehicleParams) (V
 		arg.EngineCode,
 		arg.Vin,
 		arg.LicensePlate,
+		arg.Hsn,
+		arg.Tsn,
+		arg.DisplacementCc,
+		arg.PowerKw,
+		arg.FuelType,
 		arg.CurrentOdometerKm,
 		arg.CreatedBy,
 		arg.CreatedAt,
@@ -97,6 +108,11 @@ func (q *Queries) CreateVehicle(ctx context.Context, arg CreateVehicleParams) (V
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Hsn,
+		&i.Tsn,
+		&i.DisplacementCc,
+		&i.PowerKw,
+		&i.FuelType,
 	)
 	return i, err
 }
@@ -153,7 +169,7 @@ func (q *Queries) GetSpecEntry(ctx context.Context, id int64) (VehicleSpecEntry,
 }
 
 const getVehicle = `-- name: GetVehicle :one
-SELECT id, make, model, chassis_code, model_year, engine_code, vin, license_plate, current_odometer_km, archived_at, created_by, created_at, updated_at FROM vehicles WHERE id = ?
+SELECT id, make, model, chassis_code, model_year, engine_code, vin, license_plate, current_odometer_km, archived_at, created_by, created_at, updated_at, hsn, tsn, displacement_cc, power_kw, fuel_type FROM vehicles WHERE id = ?
 `
 
 func (q *Queries) GetVehicle(ctx context.Context, id int64) (Vehicle, error) {
@@ -173,6 +189,11 @@ func (q *Queries) GetVehicle(ctx context.Context, id int64) (Vehicle, error) {
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Hsn,
+		&i.Tsn,
+		&i.DisplacementCc,
+		&i.PowerKw,
+		&i.FuelType,
 	)
 	return i, err
 }
@@ -322,7 +343,7 @@ func (q *Queries) ListSpecEntries(ctx context.Context, vehicleID int64) ([]Vehic
 }
 
 const listVehicles = `-- name: ListVehicles :many
-SELECT id, make, model, chassis_code, model_year, engine_code, vin, license_plate, current_odometer_km, archived_at, created_by, created_at, updated_at FROM vehicles
+SELECT id, make, model, chassis_code, model_year, engine_code, vin, license_plate, current_odometer_km, archived_at, created_by, created_at, updated_at, hsn, tsn, displacement_cc, power_kw, fuel_type FROM vehicles
 WHERE CASE CAST(?1 AS INTEGER)
           WHEN 0 THEN archived_at IS NULL
           WHEN 1 THEN archived_at IS NOT NULL
@@ -354,6 +375,11 @@ func (q *Queries) ListVehicles(ctx context.Context, mode int64) ([]Vehicle, erro
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Hsn,
+			&i.Tsn,
+			&i.DisplacementCc,
+			&i.PowerKw,
+			&i.FuelType,
 		); err != nil {
 			return nil, err
 		}
@@ -410,7 +436,7 @@ func (q *Queries) SetSpecEntryOrder(ctx context.Context, arg SetSpecEntryOrderPa
 }
 
 const setVehicleArchived = `-- name: SetVehicleArchived :one
-UPDATE vehicles SET archived_at = ?, updated_at = ? WHERE id = ? RETURNING id, make, model, chassis_code, model_year, engine_code, vin, license_plate, current_odometer_km, archived_at, created_by, created_at, updated_at
+UPDATE vehicles SET archived_at = ?, updated_at = ? WHERE id = ? RETURNING id, make, model, chassis_code, model_year, engine_code, vin, license_plate, current_odometer_km, archived_at, created_by, created_at, updated_at, hsn, tsn, displacement_cc, power_kw, fuel_type
 `
 
 type SetVehicleArchivedParams struct {
@@ -436,6 +462,11 @@ func (q *Queries) SetVehicleArchived(ctx context.Context, arg SetVehicleArchived
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Hsn,
+		&i.Tsn,
+		&i.DisplacementCc,
+		&i.PowerKw,
+		&i.FuelType,
 	)
 	return i, err
 }
@@ -473,21 +504,27 @@ func (q *Queries) UpdateSpecEntry(ctx context.Context, arg UpdateSpecEntryParams
 
 const updateVehicleProfile = `-- name: UpdateVehicleProfile :one
 UPDATE vehicles
-SET make = ?, model = ?, chassis_code = ?, model_year = ?, engine_code = ?, vin = ?, license_plate = ?, updated_at = ?
+SET make = ?, model = ?, chassis_code = ?, model_year = ?, engine_code = ?, vin = ?, license_plate = ?,
+    hsn = ?, tsn = ?, displacement_cc = ?, power_kw = ?, fuel_type = ?, updated_at = ?
 WHERE id = ?
-RETURNING id, make, model, chassis_code, model_year, engine_code, vin, license_plate, current_odometer_km, archived_at, created_by, created_at, updated_at
+RETURNING id, make, model, chassis_code, model_year, engine_code, vin, license_plate, current_odometer_km, archived_at, created_by, created_at, updated_at, hsn, tsn, displacement_cc, power_kw, fuel_type
 `
 
 type UpdateVehicleProfileParams struct {
-	Make         string
-	Model        string
-	ChassisCode  string
-	ModelYear    sql.NullInt64
-	EngineCode   string
-	Vin          sql.NullString
-	LicensePlate sql.NullString
-	UpdatedAt    string
-	ID           int64
+	Make           string
+	Model          string
+	ChassisCode    string
+	ModelYear      sql.NullInt64
+	EngineCode     string
+	Vin            sql.NullString
+	LicensePlate   sql.NullString
+	Hsn            sql.NullString
+	Tsn            sql.NullString
+	DisplacementCc sql.NullInt64
+	PowerKw        sql.NullInt64
+	FuelType       sql.NullString
+	UpdatedAt      string
+	ID             int64
 }
 
 func (q *Queries) UpdateVehicleProfile(ctx context.Context, arg UpdateVehicleProfileParams) (Vehicle, error) {
@@ -499,6 +536,11 @@ func (q *Queries) UpdateVehicleProfile(ctx context.Context, arg UpdateVehiclePro
 		arg.EngineCode,
 		arg.Vin,
 		arg.LicensePlate,
+		arg.Hsn,
+		arg.Tsn,
+		arg.DisplacementCc,
+		arg.PowerKw,
+		arg.FuelType,
 		arg.UpdatedAt,
 		arg.ID,
 	)
@@ -517,6 +559,11 @@ func (q *Queries) UpdateVehicleProfile(ctx context.Context, arg UpdateVehiclePro
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Hsn,
+		&i.Tsn,
+		&i.DisplacementCc,
+		&i.PowerKw,
+		&i.FuelType,
 	)
 	return i, err
 }

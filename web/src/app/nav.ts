@@ -31,4 +31,5 @@ export const settingsNav: SettingsNavItem[] = [
   { to: '/settings/users', labelKey: 'nav.users', adminOnly: true },
   { to: '/settings/webhooks', labelKey: 'nav.webhooks', adminOnly: true },
   { to: '/settings/instance', labelKey: 'nav.instance', adminOnly: true },
+  { to: '/settings/about', labelKey: 'nav.about' },
 ]

@@ -20,6 +20,14 @@ func (s *Server) routes() {
 	s.route("POST /users/{id}/password", admin, s.resetUserPassword)
 	s.route("DELETE /users/{id}", admin, s.deleteUser)
 
+	// Offline vehicle catalog (specs/002-vehicle-catalog-lookup)
+	s.route("GET /catalog/kba", member, s.getCatalogKBA)
+	s.route("GET /catalog/makes", member, s.getCatalogMakes)
+	s.route("GET /catalog/models", member, s.getCatalogModels)
+	s.route("GET /catalog/generations", member, s.getCatalogGenerations)
+	s.route("GET /catalog/engines", member, s.getCatalogEngines)
+	s.route("GET /catalog/meta", member, s.getCatalogMeta)
+
 	// Vehicles & odometer
 	s.route("GET /vehicles", member, s.listVehicles)
 	s.route("POST /vehicles", member, s.createVehicle)

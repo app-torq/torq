@@ -10,7 +10,8 @@
     "brake": "Brake fluid",
     "coolant": "Coolant",
     "wheels": "Wheels & tires",
-    "custom": "Custom entries"
+    "custom": "Custom entries",
+    "powertrain": "Engine & type"
   },
   "fields": {
     "viscosity": "Viscosity",

@@ -1,5 +1,5 @@
 import type { InputHTMLAttributes, ReactNode } from 'react'
-import { Field, inputClass } from './Field'
+import { Field, fieldInputClass } from './Field'
 
 type NumberFieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value' | 'type'> & {
   label: ReactNode
@@ -11,10 +11,11 @@ type NumberFieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'onChange' |
   hint?: ReactNode
   optional?: boolean
   decimal?: boolean
+  highlighted?: boolean
 }
 
 /** Text input for locale-formatted numbers (accepts "6,5" or "6.5") with a metric unit suffix. */
-export function NumberField({ label, value, onChange, unit, error, hint, optional, decimal = true, className, ...rest }: NumberFieldProps) {
+export function NumberField({ label, value, onChange, unit, error, hint, optional, decimal = true, highlighted, className, ...rest }: NumberFieldProps) {
   return (
     <Field label={label} error={error} hint={hint} optional={optional ?? false} className={className ?? ''}>
       {(a) => (
@@ -27,7 +28,7 @@ export function NumberField({ label, value, onChange, unit, error, hint, optiona
             autoComplete="off"
             value={value}
             onChange={(e) => { onChange(e.target.value) }}
-            className={`${inputClass} tabular-nums ${unit ? 'pr-12' : ''}`}
+            className={`${fieldInputClass(highlighted)} tabular-nums ${unit ? 'pr-12' : ''}`}
           />
           {unit && (
             <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-zinc-400">{unit}</span>

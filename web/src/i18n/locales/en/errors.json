@@ -51,7 +51,12 @@
   },
   "vehicle": {
     "confirm_name_mismatch": "The name does not match.",
-    "odometer_use_quick_update": "Use the odometer update to change the reading."
+    "odometer_use_quick_update": "Use the odometer update to change the reading.",
+    "hsn_invalid": "HSN must be exactly 4 digits.",
+    "tsn_invalid": "TSN must be exactly 3 letters or digits.",
+    "displacement_out_of_range": "Displacement must be a whole number between 1 and 20,000 cm³.",
+    "power_out_of_range": "Power must be a whole number between 1 and 2,000 kW.",
+    "fuel_type_invalid": "Choose a fuel type from the list."
   },
   "odometer": {
     "decrease_requires_confirmation": "Lowering the odometer needs confirmation.",
@@ -93,5 +98,9 @@
   },
   "report": {
     "invalid_range": "The start date must be before the end date."
+  },
+  "catalog": {
+    "hsn_invalid": "HSN must be exactly 4 digits.",
+    "tsn_invalid": "TSN must be exactly 3 letters or digits."
   }
 }

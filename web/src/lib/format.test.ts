@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { createFormatter, parseMoneyToCents, parseNumber, toInputValue, type FormatPrefs } from './format'
+import { createFormatter, kwToPs, parseMoneyToCents, parseNumber, toInputValue, type FormatPrefs } from './format'
 
-const units = (u: string) => ({ km: 'km', l: 'L', ml: 'mL', nm: 'Nm', bar: 'bar' })[u] ?? u
+const units = (u: string) => ({ km: 'km', l: 'L', ml: 'mL', nm: 'Nm', bar: 'bar', cc: 'cm³', kw: 'kW', ps: 'PS' })[u] ?? u
 const nbsp = (s: string) => s.replace(/[\u00a0\u202f]/g, ' ')
 
 const comma: FormatPrefs = { dateFormat: 'DD.MM.YYYY', numberFormat: 'comma', currencyCode: 'EUR', currencySymbol: null }
@@ -29,6 +29,17 @@ describe('createFormatter', () => {
   it('replaces the currency part with a custom symbol', () => {
     const f = createFormatter({ ...comma, currencyCode: 'CHF', currencySymbol: 'CHF' }, units)
     expect(nbsp(f.money(12345))).toBe('123,45 CHF')
+  })
+
+  it('formats power with derived PS and displacement in cm³', () => {
+    const en = createFormatter(point, units)
+    const de = createFormatter(comma, units)
+    expect(nbsp(en.power(110))).toBe('110 kW (150 PS)')
+    expect(nbsp(en.power(1))).toBe('1 kW (1 PS)')
+    expect(nbsp(de.power(1500))).toBe('1.500 kW (2.039 PS)')
+    expect(nbsp(de.displacement(2148))).toBe('2.148 cm³')
+    expect(nbsp(en.displacement(2148))).toBe('2,148 cm³')
+    expect(kwToPs(105)).toBe(143)
   })
 
   it('keeps the entered quantity unit', () => {

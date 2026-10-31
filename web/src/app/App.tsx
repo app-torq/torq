@@ -10,6 +10,7 @@ import { PreferencesPage } from '../features/settings/PreferencesPage'
 import { UsersPage } from '../features/settings/UsersPage'
 import { WebhooksPage } from '../features/settings/WebhooksPage'
 import { InstanceSettingsPage } from '../features/settings/InstanceSettingsPage'
+import { AboutPage } from '../features/settings/AboutPage'
 import { ChangePasswordPage } from '../features/auth/ChangePasswordPage'
 import { DashboardPage } from '../features/dashboard/DashboardPage'
 import { VehicleListPage } from '../features/vehicles/VehicleListPage'
@@ -65,6 +66,7 @@ const router = createBrowserRouter([
           { path: 'users', element: <RequireAdmin><UsersPage /></RequireAdmin> },
           { path: 'webhooks', element: <RequireAdmin><WebhooksPage /></RequireAdmin> },
           { path: 'instance', element: <RequireAdmin><InstanceSettingsPage /></RequireAdmin> },
+          { path: 'about', element: <AboutPage /> },
         ],
       },
       { path: '*', element: <NotFoundPage /> },

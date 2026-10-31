@@ -35,7 +35,8 @@ func setup(t testing.TB) *fx {
 	f.svc = &servicelog.Service{DB: d, Clock: clk, Vehicles: f.veh}
 	f.rep = &repairs.Service{DB: d, Clock: clk, Vehicles: f.veh}
 	f.r = &Service{DB: d, Vehicles: f.veh, ServiceLog: f.svc, Repairs: f.rep}
-	v, err := f.veh.Create(f.ctx, vehicles.Profile{Make: "Mercedes-Benz", Model: "C 220 CDI", ChassisCode: "S203"}, 204000, 0)
+	v, err := f.veh.Create(f.ctx, vehicles.Profile{Make: "Mercedes-Benz", Model: "C 220 CDI", ChassisCode: "S203",
+		HSN: ptr("0710"), TSN: ptr("abc"), DisplacementCC: i64(2148), PowerKW: i64(110), FuelType: ptr("diesel")}, 204000, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,6 +144,8 @@ func TestTimeline(t *testing.T) {
 	}
 }
 
+func ptr[T any](v T) *T { return &v }
+
 func TestHistoryExport(t *testing.T) {
 	f := setup(t)
 	f.seed2026(t)
@@ -168,8 +171,20 @@ func TestHistoryExport(t *testing.T) {
 	if err != nil {
 		t.Fatalf("not RFC 4180: %v", err)
 	}
-	if strings.Join(rows[0], ",") != "record_type,date,odometer_km,record_title,category_or_part,brand,specification,quantity,unit,oem_part_number,aftermarket_part_number,cost,cost_type,status,notes" {
+	if strings.Join(rows[0], ",") != "record_type,date,odometer_km,record_title,category_or_part,brand,specification,quantity,unit,oem_part_number,aftermarket_part_number,cost,cost_type,status,notes,hsn,tsn,displacement_cc,power_kw,fuel_type" {
 		t.Fatalf("header %v", rows[0])
+	}
+	// FR-027: the leading vehicle record carries the extended profile; JSON has the fields too.
+	if v := rows[1]; v[0] != "vehicle" || v[3] != "Mercedes-Benz C 220 CDI" || v[15] != "0710" || v[16] != "ABC" || v[17] != "2148" || v[18] != "110" || v[19] != "diesel" {
+		t.Fatalf("vehicle row %v", v)
+	}
+	if hv := h.Vehicle; hv.HSN == nil || *hv.HSN != "0710" || hv.PowerKW == nil || *hv.PowerKW != 110 || hv.FuelType == nil || *hv.FuelType != "diesel" {
+		t.Fatalf("json vehicle %+v", hv)
+	}
+	for _, r := range rows[2:] {
+		if len(r) != 20 || r[15] != "" || r[19] != "" {
+			t.Fatalf("line item carries vehicle columns: %v", r)
+		}
 	}
 	var found bool
 	for _, r := range rows[1:] {
@@ -189,7 +204,7 @@ func TestHistoryExport(t *testing.T) {
 	buf.Reset()
 	_ = WriteCSV(&buf, h)
 	rows, _ = csv.NewReader(bytes.NewReader(buf.Bytes()[3:])).ReadAll()
-	for _, r := range rows[1:] {
+	for _, r := range rows[2:] {
 		if r[11] != "" || r[14] != "" {
 			t.Fatalf("costs/notes leaked: %v", r)
 		}

@@ -143,3 +143,62 @@ func TestSpecSheet(t *testing.T) {
 		t.Fatalf("entries %+v", specs.Entries)
 	}
 }
+
+// TestVehicleProfileExtension covers the HSN/TSN and technical fields from
+// specs/002-vehicle-catalog-lookup (FR-020, FR-021).
+func TestVehicleProfileExtension(t *testing.T) {
+	e := newEnv(t)
+	c := e.admin()
+	var created vehicleResp
+	c.call(http.MethodPost, "/vehicles", map[string]any{
+		"make": "Mercedes-Benz", "model": "C 220 CDI", "current_odometer_km": 1000,
+		"hsn": "0710", "tsn": "abc", "displacement_cc": 2148, "power_kw": 110, "fuel_type": "diesel",
+	}, http.StatusCreated, &created)
+	v := created.Vehicle
+	if v.HSN == nil || *v.HSN != "0710" || v.TSN == nil || *v.TSN != "ABC" || v.DisplacementCC == nil || *v.DisplacementCC != 2148 ||
+		v.PowerKW == nil || *v.PowerKW != 110 || v.FuelType == nil || *v.FuelType != "diesel" {
+		t.Fatalf("created %+v", v)
+	}
+
+	// PATCH keeps untouched fields; "" and null clear a field.
+	var got vehicleResp
+	c.call(http.MethodPatch, "/vehicles/"+itoa(v.ID), map[string]any{"tsn": "", "power_kw": nil}, http.StatusOK, &got)
+	if got.Vehicle.TSN != nil || got.Vehicle.PowerKW != nil || got.Vehicle.HSN == nil || *got.Vehicle.HSN != "0710" ||
+		got.Vehicle.DisplacementCC == nil {
+		t.Fatalf("patched %+v", got.Vehicle)
+	}
+
+	// HSN and TSN are independent.
+	c.call(http.MethodPatch, "/vehicles/"+itoa(v.ID), map[string]any{"hsn": nil, "tsn": " 1a2 "}, http.StatusOK, &got)
+	if got.Vehicle.HSN != nil || got.Vehicle.TSN == nil || *got.Vehicle.TSN != "1A2" {
+		t.Fatalf("independent %+v", got.Vehicle)
+	}
+
+	cases := []struct {
+		field string
+		value any
+		code  string
+	}{
+		{"hsn", "071", "vehicle.hsn_invalid"},
+		{"hsn", "07A0", "vehicle.hsn_invalid"},
+		{"tsn", "AB", "vehicle.tsn_invalid"},
+		{"tsn", "A-B", "vehicle.tsn_invalid"},
+		{"displacement_cc", 0, "vehicle.displacement_out_of_range"},
+		{"displacement_cc", 20001, "vehicle.displacement_out_of_range"},
+		{"power_kw", 0, "vehicle.power_out_of_range"},
+		{"power_kw", 2001, "vehicle.power_out_of_range"},
+		{"fuel_type", "kerosene", "vehicle.fuel_type_invalid"},
+	}
+	for _, tc := range cases {
+		var fields struct {
+			Error struct {
+				Code   string            `json:"code"`
+				Fields map[string]string `json:"fields"`
+			} `json:"error"`
+		}
+		c.call(http.MethodPatch, "/vehicles/"+itoa(v.ID), map[string]any{tc.field: tc.value}, http.StatusUnprocessableEntity, &fields)
+		if fields.Error.Code != "validation.failed" || fields.Error.Fields[tc.field] != tc.code {
+			t.Errorf("%s=%v: %+v", tc.field, tc.value, fields.Error)
+		}
+	}
+}

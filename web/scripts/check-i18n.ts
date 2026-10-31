@@ -49,7 +49,7 @@ function goFiles(dir: string): string[] {
 // One pattern per call shape; the captured group is always the code.
 const codePatterns = [
   /apperr\.\w+\("([^"]+)"/g, // apperr.Conflict("code", ...)
-  /Code:\s*"([^"]+)"/g, // &apperr.Error{Code: "code"} / errorPayload{Code: "code"}
+  /\bCode:\s*"([^"]+)"/g, // &apperr.Error{Code: "code"} / errorPayload{Code: "code"} (not BodyCode:)
   /\.Add\("[^"]*",\s*"([^"]+)"\)/g, // v.Add("field", "code")
   /\.Check\([^\n]*?,\s*"[^"]*",\s*"([^"]+)"\)/g, // v.Check(cond, "field", "code")
 ]

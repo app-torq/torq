@@ -5,6 +5,7 @@ Self-hosted maintenance logbook and DIY repair tracker for people who work on th
 - **Service Logbook**: routine interval maintenance (oil, fluids, filters, plugs, brakes, timing). One entry can cover several items, each with brand, spec, quantity, part numbers and cost. Logging a service resets the linked reminder automatically.
 - **Self-Repair Projects**: troubleshooting, repairs, overhauls and modifications. Each project has a workflow (`Planned → In Progress → Waiting on Parts → Completed`), symptoms with OBD2 fault codes, root cause, procedure notes, critical torque specs, special tools, a parts bill of materials with per-part status, and photos, manuals and invoices.
 - **Reminders**: by km, by time, or whichever comes first, with configurable "due soon" lead thresholds. Any odometer update re-evaluates them immediately.
+- **Offline vehicle catalog**: type the HSN/TSN from the German registration certificate (Fahrzeugschein fields 2.1/2.2) to fill make and model, or pick make → model → generation → engine from searchable lists that fill power (kW), displacement (cm³) and fuel type. Any field also accepts your own text. Lookups never leave your server and need no API keys.
 - **Quick-reference spec sheet** per vehicle: oil and fluid specs and capacities, lug torque, tire pressures, and custom entries with images.
 - **Webhook notifications** only (no email): Discord, ntfy, Gotify, Home Assistant and Generic JSON, with custom headers, a test button, a delivery log and retries.
 - **Reports**: spending split by routine service vs. repairs and by parts vs. fluids, cost per km, a combined timeline, and a printable history with JSON/CSV export (for archiving or selling a car).
@@ -75,6 +76,20 @@ Add endpoints under **Settings → Webhooks** (administrators only). Each endpoi
 
 Header values are write-only: the API never returns them. Failed deliveries are retried after 30 s, 2 min and 10 min. Weekly and monthly digests are scheduled under **Settings → Instance**.
 
+## Vehicle data & licenses
+
+The vehicle catalog ships inside torq and is imported into the local database on first start after an upgrade. Lookups run entirely offline. The bundled data comes from:
+
+- **Kraftfahrt-Bundesamt (KBA), FZ 6** — "Bestand an Kraftfahrzeugen und Kraftfahrzeuganhängern nach Herstellern und Typen", stand 1 January 2024, [kba.de](https://www.kba.de/DE/Statistik/Fahrzeuge/Bestand/ListeHerstellerTypSchluesselnummern/typschluesselnummern_node.html).
+  © Kraftfahrt-Bundesamt, Flensburg. Datenquelle: Kraftfahrt-Bundesamt, FZ 6, 2026-10-31; [Datenlizenz Deutschland – Namensnennung – Version 2.0](https://www.govdata.de/dl-de/by-2-0) (dl-de/by-2-0); Daten geändert (data modified by torq).
+- **vehicle-makes-models** — [github.com/gor3a/vehicle-makes-models](https://github.com/gor3a/vehicle-makes-models), `data/json/all.json` at commit `ee99776470a45214bf524cdfe22e5dbf4bd67f93`, compiled from publicly available information on [autoevolution.com](https://www.autoevolution.com). Licensed under the [Open Database License (ODbL) 1.0](https://opendatacommons.org/licenses/odbl/1-0/); changes were made.
+
+The combined catalog database (`internal/catalog/data/catalog_seed.json.gz`) is a derived database and is distributed under the ODbL 1.0 ([full text](internal/catalog/data/LICENSE-ODbL.txt)). Sources, retrieval dates and every transformation are documented in [`internal/catalog/data/NOTICE.md`](internal/catalog/data/NOTICE.md). The torq program code is licensed separately.
+
+The KBA's SV 4.2 directory (with kW, cm³ and fuel per HSN/TSN) is **not** bundled: the KBA publishes it as "all rights reserved". Because of this, an HSN/TSN lookup fills make and model; power, displacement and fuel come from the engine list or manual entry. The same attributions are shown in the app under **Settings → About & data sources**.
+
+Maintainers refresh the catalog with `make catalog` (see the Makefile and `specs/002-vehicle-catalog-lookup/quickstart.md`).
+
 ## Development
 
 ```bash
@@ -91,4 +106,4 @@ Requirements: Go 1.26+, Node.js 22, sqlc 1.27+ (only after editing `internal/sto
 
 Sample data for local testing: `TORQ_ENABLE_SEED=true TORQ_DATA_DIR=./.data ./bin/torq seed-demo` creates the user `demo` / `torq-demo-password` and one vehicle with a year of history. Add `--vehicles 10 --years 5` for bulk data.
 
-Design documents (spec, plan, data model, API contract) live in `specs/001-torq-core-platform/`. Project rules are in `.specify/memory/constitution.md`.
+Design documents (spec, plan, data model, API contract) live in `specs/001-torq-core-platform/` and `specs/002-vehicle-catalog-lookup/`. Project rules are in `.specify/memory/constitution.md`.

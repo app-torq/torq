@@ -24,6 +24,50 @@ type Attachment struct {
 	CreatedAt    string
 }
 
+type CatalogKba struct {
+	ID             int64
+	Hsn            string
+	Tsn            string
+	Make           string
+	Model          string
+	TradeName      string
+	Generation     string
+	EngineCode     string
+	DisplacementCc sql.NullInt64
+	PowerKw        sql.NullInt64
+	FuelType       sql.NullString
+	BodyCode       string
+	YearFrom       sql.NullInt64
+	Source         string
+	Match          string
+}
+
+type CatalogMetum struct {
+	ID         int64
+	SeedSha256 string
+	ImportedAt string
+	HeaderJson string
+}
+
+type CatalogVehicle struct {
+	ID             int64
+	Make           string
+	MakeKey        string
+	Model          string
+	ModelKey       string
+	Generation     string
+	GenerationKey  string
+	YearFrom       sql.NullInt64
+	YearTo         sql.NullInt64
+	Body           string
+	Engine         string
+	EngineKey      string
+	EngineCode     string
+	DisplacementCc sql.NullInt64
+	PowerKw        sql.NullInt64
+	FuelType       sql.NullString
+}
+
 type InstanceSetting struct {
 	ID                  int64
 	WeeklyDigestWeekday int64
@@ -206,6 +250,11 @@ type Vehicle struct {
 	CreatedBy         sql.NullInt64
 	CreatedAt         string
 	UpdatedAt         string
+	Hsn               sql.NullString
+	Tsn               sql.NullString
+	DisplacementCc    sql.NullInt64
+	PowerKw           sql.NullInt64
+	FuelType          sql.NullString
 }
 
 type VehicleSpec struct {

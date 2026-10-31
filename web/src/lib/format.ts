@@ -10,7 +10,7 @@ export interface FormatPrefs {
   currencySymbol: string | null
 }
 
-export type UnitKey = 'km' | 'l' | 'ml' | 'nm' | 'bar'
+export type UnitKey = 'km' | 'l' | 'ml' | 'nm' | 'bar' | 'cc' | 'kw' | 'ps'
 export type UnitLabel = (unit: UnitKey) => string
 
 export const defaultPrefs: FormatPrefs = {
@@ -37,6 +37,15 @@ export interface Formatter {
   bar: (n: number) => string
   /** Formats a fluid quantity the way the user entered it. */
   quantity: (ml: number, unit: 'L' | 'mL') => string
+  /** Engine displacement, e.g. "2.148 cm³". */
+  displacement: (cc: number) => string
+  /** Power in kW with metric horsepower as secondary info, e.g. "110 kW (150 PS)". */
+  power: (kw: number) => string
+}
+
+/** Metric horsepower (PS) for display only; PS is never stored or entered (FR-024). */
+export function kwToPs(kw: number): number {
+  return Math.round(kw * 1.35962)
 }
 
 export function createFormatter(prefs: FormatPrefs, unit: UnitLabel): Formatter {
@@ -108,6 +117,8 @@ export function createFormatter(prefs: FormatPrefs, unit: UnitLabel): Formatter 
     nm: (n) => `${number(n, { maxDecimals: 1 })} ${unit('nm')}`,
     bar: (n) => `${number(n, { maxDecimals: 2 })} ${unit('bar')}`,
     quantity: (ml, u) => (u === 'L' ? `${number(ml / 1000, { maxDecimals: 3 })} ${unit('l')}` : `${number(ml)} ${unit('ml')}`),
+    displacement: (cc) => `${number(cc)} ${unit('cc')}`,
+    power: (kw) => `${number(kw)} ${unit('kw')} (${number(kwToPs(kw))} ${unit('ps')})`,
   }
 }
 

@@ -4,6 +4,13 @@ import { useTranslation } from 'react-i18next'
 export const inputClass =
   'focus-ring block w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-400 disabled:text-zinc-400 aria-[invalid=true]:border-red-500'
 
+/** Briefly marks a field that a catalog lookup just filled (vehicle form). */
+export const autoFilledClass = 'border-amber-500/70 bg-amber-500/10 ring-2 ring-amber-500/50 transition-colors duration-500'
+
+export function fieldInputClass(highlighted?: boolean): string {
+  return highlighted ? `${inputClass} ${autoFilledClass}` : `${inputClass} transition-colors duration-500`
+}
+
 interface FieldProps {
   label: ReactNode
   /** Error code from the API (translated via the errors namespace) or a ready message. */
@@ -42,12 +49,13 @@ type TextFieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'onChange' | '
   error?: string | undefined
   hint?: ReactNode
   optional?: boolean
+  highlighted?: boolean
 }
 
-export function TextField({ label, value, onChange, error, hint, optional, className, ...rest }: TextFieldProps) {
+export function TextField({ label, value, onChange, error, hint, optional, highlighted, className, ...rest }: TextFieldProps) {
   return (
     <Field label={label} error={error} hint={hint} optional={optional ?? false} className={className ?? ''}>
-      {(a) => <input {...a} {...rest} value={value} onChange={(e) => { onChange(e.target.value) }} className={inputClass} />}
+      {(a) => <input {...a} {...rest} value={value} onChange={(e) => { onChange(e.target.value) }} className={fieldInputClass(highlighted)} />}
     </Field>
   )
 }
@@ -79,13 +87,14 @@ type SelectFieldProps = Omit<SelectHTMLAttributes<HTMLSelectElement>, 'onChange'
   error?: string | undefined
   hint?: ReactNode
   optional?: boolean
+  highlighted?: boolean
 }
 
-export function SelectField({ label, value, onChange, options, error, hint, optional, className, ...rest }: SelectFieldProps) {
+export function SelectField({ label, value, onChange, options, error, hint, optional, highlighted, className, ...rest }: SelectFieldProps) {
   return (
     <Field label={label} error={error} hint={hint} optional={optional ?? false} className={className ?? ''}>
       {(a) => (
-        <select {...a} {...rest} value={value} onChange={(e) => { onChange(e.target.value) }} className={inputClass}>
+        <select {...a} {...rest} value={value} onChange={(e) => { onChange(e.target.value) }} className={fieldInputClass(highlighted)}>
           {options.map((o) => (
             <option key={o.value} value={o.value}>
               {o.label}

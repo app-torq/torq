@@ -20,3 +20,27 @@ test('pages never scroll horizontally at 360 px and focus is visible', async ({ 
   const shadow = await page.evaluate(() => getComputedStyle(document.activeElement ?? document.body).boxShadow)
   expect(shadow).not.toBe('none')
 })
+
+test('vehicle form with quick-fill, variant pills and an open combobox fits 360 px and is labelled', async ({ page }) => {
+  const { catalogKeys } = await import('./helpers')
+  const keys = await catalogKeys()
+  await login(page)
+  for (const path of ['/vehicles/new', '/settings/about']) {
+    await page.goto(path)
+    await page.waitForLoadState('networkidle')
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+    expect(overflow, `${path} overflows by ${overflow}px`).toBeLessThanOrEqual(0)
+  }
+  await page.goto('/vehicles/new')
+  await page.getByLabel('HSN (2.1)').fill(keys.multi.key.slice(0, 4))
+  await page.getByLabel('TSN (2.2)').fill(keys.multi.key.slice(5))
+  await expect(page.getByRole('button', { name: 'None of these' })).toBeVisible()
+  const make = page.getByRole('combobox', { name: 'Make' })
+  await make.fill('a')
+  await expect(page.getByRole('listbox')).toBeVisible()
+  for (const name of ['Make', 'Model', 'Generation / chassis code', 'Engine / trim']) {
+    await expect(page.getByRole('combobox', { name })).toBeVisible()
+  }
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+  expect(overflow, `form with pills and listbox overflows by ${overflow}px`).toBeLessThanOrEqual(0)
+})
