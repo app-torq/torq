@@ -113,6 +113,7 @@
     "autofill_key_invalid": "Google rejected the API key. An administrator needs to check GEMINI_API_KEY.",
     "autofill_search_quota": "The Tavily search credits are used up (the free plan includes 1,000 per month). Try again next month or check your plan at app.tavily.com.",
     "autofill_search_key_invalid": "Tavily rejected the API key. An administrator needs to check TAVILY_API_KEY.",
-    "autofill_timeout": "The lookup took more than 3 minutes and was stopped. The Gemini model is probably answering slowly; an administrator can set a faster one with GEMINI_MODEL (default: gemini-3.5-flash)."
+    "autofill_timeout": "The lookup took more than 3 minutes and was stopped. The Gemini model is probably answering slowly; an administrator can set a faster one with GEMINI_MODEL (default: gemini-3.5-flash).",
+    "autofill_busy": "Gemini is overloaded right now (Google reports high demand). Try again in a minute."
   }
 }

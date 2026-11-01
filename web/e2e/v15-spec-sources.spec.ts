@@ -49,4 +49,30 @@ test('V15: auto-filled spec values link their source and turn manual when edited
     engine_oil_viscosity: { is_auto: false },
     tire_pressure_front_bar: { is_auto: true, source_url: 'https://www.adac.de/reifendruck', source_name: 'adac.de' },
   })
+  // The sheet already shows the saved value, without a reload.
+  await expect(page.getByText('0W-30')).toBeVisible()
+})
+
+test('V15b: tyre pressure can be a range and the sheet updates on Save without a reload', async ({ page }) => {
+  await login(page)
+  const id = await createVehicle(page.request, 150000)
+  await page.goto(`/vehicles/${String(id)}/specs`)
+  await expect(page.getByText('Tire pressure front: —')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Edit specs' }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('textbox', { name: 'Tire pressure front', exact: true }).fill('2.2')
+  await dialog.getByRole('textbox', { name: 'Tire pressure front, up to' }).fill('2.4')
+  await dialog.getByRole('textbox', { name: 'Tire pressure rear', exact: true }).fill('2.5')
+  await dialog.getByRole('button', { name: 'Save' }).click()
+  await expect(dialog).toBeHidden()
+  await expect(page.getByText('Tire pressure front: 2.2–2.4 bar')).toBeVisible()
+  await expect(page.getByText('Tire pressure rear: 2.5 bar')).toBeVisible()
+
+  // An upper value below the lower one is refused.
+  await page.getByRole('button', { name: 'Edit specs' }).click()
+  await dialog.getByRole('textbox', { name: 'Tire pressure rear, up to' }).fill('2.1')
+  await dialog.getByRole('button', { name: 'Save' }).click()
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByText('Out of the allowed range.')).toBeVisible()
 })

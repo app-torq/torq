@@ -80,6 +80,28 @@ export function editField(
   return { ...d, values, meta };
 }
 
+/** The upper-bound field of a tyre pressure range, keyed by its lower-bound field. */
+export const RANGE_MAX: Partial<Record<SpecFieldKey, SpecFieldKey>> = {
+  tire_pressure_front_bar: "tire_pressure_front_max_bar",
+  tire_pressure_rear_bar: "tire_pressure_rear_max_bar",
+};
+const rangeMaxKeys = new Set<SpecFieldKey>(Object.values(RANGE_MAX));
+
+/**
+ * The badge state of a range: auto while every filled end is auto-filled,
+ * otherwise the manual marker of whichever end was changed.
+ */
+export function rangeMeta(
+  d: SpecsDraft,
+  lo: SpecFieldKey,
+  hi: SpecFieldKey,
+): SpecMeta | undefined {
+  const metas = [d.meta[lo], d.meta[hi]].filter(
+    (m): m is SpecMeta => m !== undefined,
+  );
+  return metas.find((m) => !m.is_auto) ?? metas[0];
+}
+
 /** Applies an auto-fill answer; with overwrite off, fields that have a value stay untouched. */
 export function applyAutofill(
   d: SpecsDraft,
@@ -94,6 +116,8 @@ export function applyAutofill(
   };
   const summary: AutofillSummary = { filled: [], kept: [], missing: [] };
   for (const k of SPEC_FIELD_KEYS) {
+    // Range maxima arrive with their lower value as value_max.
+    if (rangeMaxKeys.has(k)) continue;
     const f = fields[k.replace(/_capacity_ml$/, "_capacity_l")];
     if (!f || f.value === null || f.value === "" || !f.source_url) {
       summary.missing.push(k);
@@ -113,6 +137,21 @@ export function applyAutofill(
     draft.values[k] = text;
     draft.meta[k] = meta;
     draft.auto[k] = { value: text, meta };
+    const maxKey = RANGE_MAX[k];
+    if (maxKey) {
+      // A single value replaces a former range; a range sets both ends.
+      const hi = f.value_max ?? null;
+      const hiText = hi === null ? "" : inputText(maxKey, hi, nf);
+      draft.values[maxKey] = hiText;
+      if (hi === null) {
+        draft.meta = Object.fromEntries(
+          Object.entries(draft.meta).filter(([key]) => key !== maxKey),
+        );
+      } else {
+        draft.meta[maxKey] = meta;
+        draft.auto[maxKey] = { value: hiText, meta };
+      }
+    }
     summary.filled.push(k);
   }
   return { draft, summary };

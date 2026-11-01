@@ -21,7 +21,10 @@
     "pressureFront": "Tire pressure front",
     "pressureRear": "Tire pressure rear",
     "label": "Label",
-    "value": "Value"
+    "value": "Value",
+    "pressureUpTo": "{{field}}, up to",
+    "pressureMax": "max",
+    "pressureRangeHint": "A single value, or a range from normal to full load."
   },
   "entries": {
     "add": "Add entry",

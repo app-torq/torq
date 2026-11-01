@@ -27,6 +27,8 @@ type specsJSON struct {
 	WheelLugTorqueNm            *float64 `json:"wheel_lug_torque_nm"`
 	TirePressureFrontBar        *float64 `json:"tire_pressure_front_bar"`
 	TirePressureRearBar         *float64 `json:"tire_pressure_rear_bar"`
+	TirePressureFrontMaxBar     *float64 `json:"tire_pressure_front_max_bar"`
+	TirePressureRearMaxBar      *float64 `json:"tire_pressure_rear_max_bar"`
 	// Meta is the per-field provenance (auto-filled from a web source or
 	// adjusted by hand); fields without an entry were entered manually.
 	Meta map[string]vehicles.SpecMeta `json:"meta"`
@@ -40,7 +42,8 @@ func toSpecsJSON(s store.VehicleSpec) specsJSON {
 		BrakeFluidSpec: s.BrakeFluidSpec, BrakeFluidCapacityMl: intPtr(s.BrakeFluidCapacityMl),
 		CoolantSpec: s.CoolantSpec, CoolantCapacityMl: intPtr(s.CoolantCapacityMl),
 		WheelLugTorqueNm: floatPtr(s.WheelLugTorqueNm), TirePressureFrontBar: floatPtr(s.TirePressureFrontBar),
-		TirePressureRearBar: floatPtr(s.TirePressureRearBar), Meta: vehicles.ParseSpecsMeta(s.SpecsMeta),
+		TirePressureRearBar: floatPtr(s.TirePressureRearBar), TirePressureFrontMaxBar: floatPtr(s.TirePressureFrontMaxBar),
+		TirePressureRearMaxBar: floatPtr(s.TirePressureRearMaxBar), Meta: vehicles.ParseSpecsMeta(s.SpecsMeta),
 	}
 }
 
@@ -97,6 +100,7 @@ func (s *Server) putSpecs(w http.ResponseWriter, r *http.Request) error {
 		BrakeFluidSpec: in.BrakeFluidSpec, BrakeFluidCapacityMl: in.BrakeFluidCapacityMl,
 		CoolantSpec: in.CoolantSpec, CoolantCapacityMl: in.CoolantCapacityMl,
 		WheelLugTorqueNm: in.WheelLugTorqueNm, TirePressureFrontBar: in.TirePressureFrontBar, TirePressureRearBar: in.TirePressureRearBar,
+		TirePressureFrontMaxBar: in.TirePressureFrontMaxBar, TirePressureRearMaxBar: in.TirePressureRearMaxBar,
 		Meta: in.Meta,
 	})
 	if err != nil {
@@ -251,6 +255,8 @@ func autofillError(err error) error {
 		code = "specs.autofill_model_unavailable"
 	case api.Status == http.StatusTooManyRequests:
 		code = "specs.autofill_quota"
+	case api.Status == http.StatusServiceUnavailable:
+		code = "specs.autofill_busy"
 	case api.Status == http.StatusUnauthorized || api.Status == http.StatusForbidden ||
 		(api.Status == http.StatusBadRequest && strings.Contains(strings.ToLower(api.Message), "api key")):
 		code = "specs.autofill_key_invalid"

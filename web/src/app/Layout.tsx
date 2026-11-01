@@ -4,9 +4,10 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { LogOut, Menu, Search, X } from 'lucide-react'
 import { api } from '../lib/api'
-import { BRAND, QUICK_ACTIONS_HOTKEY } from '../lib/brand'
+import { QUICK_ACTIONS_HOTKEY } from '../lib/brand'
 import { queryKeys } from '../lib/queryKeys'
 import { IconButton } from '../components/Button'
+import { HomeLink } from '../components/Logo'
 import { mainNav } from './nav'
 import { QuickActions, useQuickActionsHotkey } from './QuickActions'
 import { VehicleSwitcher } from './VehicleSwitcher'
@@ -79,7 +80,9 @@ export function Layout() {
   return (
     <div className="flex min-h-dvh">
       <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-zinc-800 bg-zinc-900 md:flex">
-        <div className="px-6 py-5 text-lg font-semibold tracking-tight text-sky-400">{BRAND}</div>
+        <div className="px-6 py-5">
+          <HomeLink className="h-9" />
+        </div>
         <div className="space-y-3 px-3 pb-3">
           {quickButton}
           <VehicleSwitcher />
@@ -93,7 +96,7 @@ export function Layout() {
           <IconButton aria-label={t('nav.openMenu')} onClick={() => { setDrawer(true) }}>
             <Menu size={20} />
           </IconButton>
-          <span className="font-semibold text-sky-400">{BRAND}</span>
+          <HomeLink className="h-8" />
           <IconButton aria-label={t('actions.quickActions')} onClick={openQuick}>
             <Search size={18} />
           </IconButton>
@@ -104,7 +107,7 @@ export function Layout() {
             <button type="button" aria-label={t('nav.closeMenu')} className="absolute inset-0 bg-zinc-950/80" onClick={() => { setDrawer(false) }} />
             <div className="absolute inset-y-0 left-0 flex w-72 max-w-[85%] flex-col border-r border-zinc-800 bg-zinc-900">
               <div className="flex items-center justify-between px-5 py-4">
-                <span className="text-lg font-semibold text-sky-400">{BRAND}</span>
+                <HomeLink className="h-8" onClick={() => { setDrawer(false) }} />
                 <IconButton aria-label={t('nav.closeMenu')} onClick={() => { setDrawer(false) }}>
                   <X size={18} />
                 </IconButton>

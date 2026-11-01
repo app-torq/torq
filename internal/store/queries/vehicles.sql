@@ -59,7 +59,8 @@ SET engine_oil_viscosity = ?, engine_oil_spec = ?, engine_oil_capacity_ml = ?,
     differential_fluid_spec = ?, differential_fluid_capacity_ml = ?,
     brake_fluid_spec = ?, brake_fluid_capacity_ml = ?,
     coolant_spec = ?, coolant_capacity_ml = ?,
-    wheel_lug_torque_nm = ?, tire_pressure_front_bar = ?, tire_pressure_rear_bar = ?, specs_meta = ?,
+    wheel_lug_torque_nm = ?, tire_pressure_front_bar = ?, tire_pressure_rear_bar = ?,
+    tire_pressure_front_max_bar = ?, tire_pressure_rear_max_bar = ?, specs_meta = ?,
     updated_at = ?
 WHERE vehicle_id = ?
 RETURNING *;

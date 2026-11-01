@@ -199,7 +199,7 @@ func (q *Queries) GetVehicle(ctx context.Context, id int64) (Vehicle, error) {
 }
 
 const getVehicleSpecs = `-- name: GetVehicleSpecs :one
-SELECT vehicle_id, engine_oil_viscosity, engine_oil_spec, engine_oil_capacity_ml, transmission_fluid_spec, transmission_fluid_capacity_ml, differential_fluid_spec, differential_fluid_capacity_ml, brake_fluid_spec, brake_fluid_capacity_ml, coolant_spec, coolant_capacity_ml, wheel_lug_torque_nm, tire_pressure_front_bar, tire_pressure_rear_bar, updated_at, specs_meta FROM vehicle_specs WHERE vehicle_id = ?
+SELECT vehicle_id, engine_oil_viscosity, engine_oil_spec, engine_oil_capacity_ml, transmission_fluid_spec, transmission_fluid_capacity_ml, differential_fluid_spec, differential_fluid_capacity_ml, brake_fluid_spec, brake_fluid_capacity_ml, coolant_spec, coolant_capacity_ml, wheel_lug_torque_nm, tire_pressure_front_bar, tire_pressure_rear_bar, updated_at, specs_meta, tire_pressure_front_max_bar, tire_pressure_rear_max_bar FROM vehicle_specs WHERE vehicle_id = ?
 `
 
 func (q *Queries) GetVehicleSpecs(ctx context.Context, vehicleID int64) (VehicleSpec, error) {
@@ -223,6 +223,8 @@ func (q *Queries) GetVehicleSpecs(ctx context.Context, vehicleID int64) (Vehicle
 		&i.TirePressureRearBar,
 		&i.UpdatedAt,
 		&i.SpecsMeta,
+		&i.TirePressureFrontMaxBar,
+		&i.TirePressureRearMaxBar,
 	)
 	return i, err
 }
@@ -576,10 +578,11 @@ SET engine_oil_viscosity = ?, engine_oil_spec = ?, engine_oil_capacity_ml = ?,
     differential_fluid_spec = ?, differential_fluid_capacity_ml = ?,
     brake_fluid_spec = ?, brake_fluid_capacity_ml = ?,
     coolant_spec = ?, coolant_capacity_ml = ?,
-    wheel_lug_torque_nm = ?, tire_pressure_front_bar = ?, tire_pressure_rear_bar = ?, specs_meta = ?,
+    wheel_lug_torque_nm = ?, tire_pressure_front_bar = ?, tire_pressure_rear_bar = ?,
+    tire_pressure_front_max_bar = ?, tire_pressure_rear_max_bar = ?, specs_meta = ?,
     updated_at = ?
 WHERE vehicle_id = ?
-RETURNING vehicle_id, engine_oil_viscosity, engine_oil_spec, engine_oil_capacity_ml, transmission_fluid_spec, transmission_fluid_capacity_ml, differential_fluid_spec, differential_fluid_capacity_ml, brake_fluid_spec, brake_fluid_capacity_ml, coolant_spec, coolant_capacity_ml, wheel_lug_torque_nm, tire_pressure_front_bar, tire_pressure_rear_bar, updated_at, specs_meta
+RETURNING vehicle_id, engine_oil_viscosity, engine_oil_spec, engine_oil_capacity_ml, transmission_fluid_spec, transmission_fluid_capacity_ml, differential_fluid_spec, differential_fluid_capacity_ml, brake_fluid_spec, brake_fluid_capacity_ml, coolant_spec, coolant_capacity_ml, wheel_lug_torque_nm, tire_pressure_front_bar, tire_pressure_rear_bar, updated_at, specs_meta, tire_pressure_front_max_bar, tire_pressure_rear_max_bar
 `
 
 type UpdateVehicleSpecsParams struct {
@@ -597,6 +600,8 @@ type UpdateVehicleSpecsParams struct {
 	WheelLugTorqueNm            sql.NullFloat64
 	TirePressureFrontBar        sql.NullFloat64
 	TirePressureRearBar         sql.NullFloat64
+	TirePressureFrontMaxBar     sql.NullFloat64
+	TirePressureRearMaxBar      sql.NullFloat64
 	SpecsMeta                   string
 	UpdatedAt                   string
 	VehicleID                   int64
@@ -618,6 +623,8 @@ func (q *Queries) UpdateVehicleSpecs(ctx context.Context, arg UpdateVehicleSpecs
 		arg.WheelLugTorqueNm,
 		arg.TirePressureFrontBar,
 		arg.TirePressureRearBar,
+		arg.TirePressureFrontMaxBar,
+		arg.TirePressureRearMaxBar,
 		arg.SpecsMeta,
 		arg.UpdatedAt,
 		arg.VehicleID,
@@ -641,6 +648,8 @@ func (q *Queries) UpdateVehicleSpecs(ctx context.Context, arg UpdateVehicleSpecs
 		&i.TirePressureRearBar,
 		&i.UpdatedAt,
 		&i.SpecsMeta,
+		&i.TirePressureFrontMaxBar,
+		&i.TirePressureRearMaxBar,
 	)
 	return i, err
 }

@@ -13,6 +13,7 @@ const specs: VehicleSpecs = {
   brake_fluid_spec: '', brake_fluid_capacity_ml: null,
   coolant_spec: '', coolant_capacity_ml: null,
   wheel_lug_torque_nm: null, tire_pressure_front_bar: null, tire_pressure_rear_bar: null,
+  tire_pressure_front_max_bar: null, tire_pressure_rear_max_bar: null,
   meta: {},
 }
 
@@ -29,13 +30,16 @@ describe('SpecsEditDialog auto-fill', () => {
         engine_oil_spec: { value: 'MB 229.51', source_url: 'https://www.carwiki.de/w203', source_name: 'carwiki.de' },
         engine_oil_capacity_l: { value: 6.5, source_url: 'https://www.liqui-moly.com/oel', source_name: 'liqui-moly.com' },
         differential_fluid_spec: { value: null, source_url: null, source_name: null },
+        tire_pressure_front_bar: { value: 2.2, value_max: 2.4, source_url: 'https://www.tpressure.com/w203', source_name: 'tpressure.com' },
       },
     })
     const put = vi.spyOn(api, 'put').mockResolvedValue({})
     renderWithApp(<SpecsEditDialog vehicleId={7} specs={specs} onClose={() => undefined} />, withAutofill)
 
     await user.click(screen.getByRole('button', { name: 'Look up data automatically' }))
-    await screen.findByText(/2 values found and filled in, 1 kept/)
+    await screen.findByText(/3 values found and filled in, 1 kept/)
+    expect(screen.getByRole('textbox', { name: 'Tire pressure front' })).toHaveValue('2.2')
+    expect(screen.getByRole('textbox', { name: 'Tire pressure front, up to' })).toHaveValue('2.4')
 
     const viscosity = screen.getByRole('textbox', { name: 'Viscosity' })
     expect(viscosity).toHaveValue('5W-30')

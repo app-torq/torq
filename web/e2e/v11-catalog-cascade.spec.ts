@@ -45,11 +45,16 @@ test('V11: keyboard-only cascade fills engine data; custom values save as typed'
     await page.keyboard.type(text)
     const opt = page.getByRole('option', { name: option, exact: false }).first()
     await expect(opt).toBeVisible()
+    // Focus first shows the unfiltered list; wait until the debounced search for the typed text replaced it.
+    await expect
+      .poll(async () => (await page.locator('[role="listbox"] [role="option"]').allTextContents()).every((o) => o.toLowerCase().includes(text.toLowerCase())))
+      .toBe(true)
     // Move to the option with the arrow keys, then Enter.
-    const count = await page.getByRole('option').count()
+    const count = await page.locator('[role="listbox"] [role="option"]').count()
     for (let i = 0; i < count; i++) {
       const selected = await page.locator('[role="option"][aria-selected="true"]').textContent()
-      if (selected?.startsWith(option)) break
+      // The option text is the name, then details in parentheses ("Golf (1974–)"); "Golf Plus" must not match "Golf".
+      if (selected === option || selected?.startsWith(`${option} (`)) break
       await page.keyboard.press('ArrowDown')
     }
     await page.keyboard.press('Enter')

@@ -10,12 +10,12 @@ import type { AutofillValue, SpecEntry, SpecFieldKey, SpecMeta, VehicleSpecs } f
 import { useSession } from '../../app/session'
 import { Button, IconButton } from '../../components/Button'
 import { Checkbox, TextAreaField, TextField } from '../../components/Field'
-import { NumberField } from '../../components/NumberField'
+import { NumberField, NumberRangeField } from '../../components/NumberField'
 import { ConfirmDialog, Dialog } from '../../components/Dialog'
 import { Card, ErrorBanner, Loading, Notice } from '../../components/ui'
 import { useVehicleContext } from './VehicleDetailLayout'
 import { SpecEntryImages } from './SpecEntryImages'
-import { applyAutofill, editField, initialDraft, toRequestBody, type AutofillSummary } from './specsDraft'
+import { applyAutofill, editField, initialDraft, rangeMeta, toRequestBody, type AutofillSummary } from './specsDraft'
 
 interface SpecsResponse {
   specs: VehicleSpecs
@@ -92,10 +92,10 @@ export function SpecSheetPage() {
           <div className="space-y-0.5">
             <div>{t('fields.lugTorque')}: {s.wheel_lug_torque_nm ? fmt.nm(s.wheel_lug_torque_nm) : none}</div>
             <div>
-              {t('fields.pressureFront')}: {s.tire_pressure_front_bar ? fmt.bar(s.tire_pressure_front_bar) : none}
+              {t('fields.pressureFront')}: {s.tire_pressure_front_bar ? fmt.barRange(s.tire_pressure_front_bar, s.tire_pressure_front_max_bar) : none}
             </div>
             <div>
-              {t('fields.pressureRear')}: {s.tire_pressure_rear_bar ? fmt.bar(s.tire_pressure_rear_bar) : none}
+              {t('fields.pressureRear')}: {s.tire_pressure_rear_bar ? fmt.barRange(s.tire_pressure_rear_bar, s.tire_pressure_rear_max_bar) : none}
             </div>
           </div>
         </Pin>
@@ -127,8 +127,10 @@ export function SpecsEditDialog({ vehicleId, specs, onClose }: { vehicleId: numb
   const [summary, setSummary] = useState<AutofillSummary | null>(null)
 
   const save = useMutation({
-    mutationFn: (body: Record<string, unknown>) => api.put(`/vehicles/${vehicleId}/specs`, body),
-    onSuccess: async () => {
+    mutationFn: (body: Record<string, unknown>) => api.put<{ specs: VehicleSpecs }>(`/vehicles/${vehicleId}/specs`, body),
+    onSuccess: async ({ specs: saved }) => {
+      // Show the saved values right away; the refetch then confirms them.
+      qc.setQueryData<SpecsResponse>(queryKeys.specs(vehicleId), (prev) => (prev ? { ...prev, specs: saved } : prev))
       await qc.invalidateQueries({ queryKey: queryKeys.specs(vehicleId) })
       onClose()
     },
@@ -212,8 +214,27 @@ export function SpecsEditDialog({ vehicleId, specs, onClose }: { vehicleId: numb
         <fieldset className="form-grid grid grid-cols-1 gap-3 sm:grid-cols-3">
           <legend className="mb-2 text-sm font-semibold text-zinc-200">{t('groups.wheels')}</legend>
           <NumberField label={t('fields.lugTorque')} unit={t('common:units.nm')} {...bind('wheel_lug_torque_nm')} />
-          <NumberField label={t('fields.pressureFront')} unit={t('common:units.bar')} {...bind('tire_pressure_front_bar')} />
-          <NumberField label={t('fields.pressureRear')} unit={t('common:units.bar')} {...bind('tire_pressure_rear_bar')} />
+          {(['front', 'rear'] as const).map((axle) => {
+            const lo = `tire_pressure_${axle}_bar` as const
+            const hi = `tire_pressure_${axle}_max_bar` as const
+            const label = t(axle === 'front' ? 'fields.pressureFront' : 'fields.pressureRear')
+            return (
+              <NumberRangeField
+                key={axle}
+                label={label}
+                labelAside={<SourceBadge meta={rangeMeta(draft, lo, hi)} />}
+                from={draft.values[lo]}
+                to={draft.values[hi]}
+                onFromChange={(x) => { setDraft((prev) => editField(prev, lo, x)) }}
+                onToChange={(x) => { setDraft((prev) => editField(prev, hi, x)) }}
+                toLabel={t('fields.pressureUpTo', { field: label })}
+                toPlaceholder={t('fields.pressureMax')}
+                unit={t('common:units.bar')}
+                error={fe[lo] ?? fe[hi]}
+                hint={t('fields.pressureRangeHint')}
+              />
+            )
+          })}
         </fieldset>
       </div>
     </Dialog>

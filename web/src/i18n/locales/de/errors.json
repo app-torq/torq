@@ -113,6 +113,7 @@
     "autofill_key_invalid": "Google hat den API-Key abgelehnt. Ein Administrator muss GEMINI_API_KEY prüfen.",
     "autofill_search_quota": "Die Tavily-Suchguthaben sind aufgebraucht (der kostenlose Tarif enthält 1.000 pro Monat). Versuche es im nächsten Monat erneut oder prüfe deinen Tarif unter app.tavily.com.",
     "autofill_search_key_invalid": "Tavily hat den API-Key abgelehnt. Ein Administrator muss TAVILY_API_KEY prüfen.",
-    "autofill_timeout": "Die Ermittlung hat länger als 3 Minuten gedauert und wurde abgebrochen. Vermutlich antwortet das Gemini-Modell gerade langsam; ein Administrator kann mit GEMINI_MODEL ein schnelleres einstellen (Standard: gemini-3.5-flash)."
+    "autofill_timeout": "Die Ermittlung hat länger als 3 Minuten gedauert und wurde abgebrochen. Vermutlich antwortet das Gemini-Modell gerade langsam; ein Administrator kann mit GEMINI_MODEL ein schnelleres einstellen (Standard: gemini-3.5-flash).",
+    "autofill_busy": "Gemini ist gerade überlastet (Google meldet hohe Nachfrage). Versuche es in einer Minute erneut."
   }
 }

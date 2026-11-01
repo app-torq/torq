@@ -15,7 +15,8 @@
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
     "main": "Main navigation",
-    "about": "About & data sources"
+    "about": "About & data sources",
+    "home": "{{brand}} – go to dashboard"
   },
   "actions": {
     "save": "Save",

@@ -158,6 +158,9 @@ export interface VehicleSpecs {
   wheel_lug_torque_nm: number | null
   tire_pressure_front_bar: number | null
   tire_pressure_rear_bar: number | null
+  /** Upper end of a tyre pressure range (normal to full load); null for a single value. */
+  tire_pressure_front_max_bar: number | null
+  tire_pressure_rear_max_bar: number | null
   /** Provenance per field; fields without an entry were entered by hand. */
   meta: Partial<Record<SpecFieldKey, SpecMeta>>
 }
@@ -169,6 +172,7 @@ export const SPEC_FIELD_KEYS = [
   'brake_fluid_spec', 'brake_fluid_capacity_ml',
   'coolant_spec', 'coolant_capacity_ml',
   'wheel_lug_torque_nm', 'tire_pressure_front_bar', 'tire_pressure_rear_bar',
+  'tire_pressure_front_max_bar', 'tire_pressure_rear_max_bar',
 ] as const
 export type SpecFieldKey = (typeof SPEC_FIELD_KEYS)[number]
 
@@ -182,6 +186,8 @@ export interface SpecMeta {
 /** One field of POST /vehicles/{id}/autofill-specs; capacities are keyed *_capacity_l and given in litres. */
 export interface AutofillValue {
   value: string | number | null
+  /** Upper end of a range (tyre pressure); absent or null for a single value. */
+  value_max?: number | null
   source_url: string | null
   source_name: string | null
 }

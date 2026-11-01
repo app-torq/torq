@@ -15,6 +15,8 @@ describe('createFormatter', () => {
     expect(f.date('2026-10-15')).toBe('15.10.2026')
     expect(nbsp(f.liters(6500))).toBe('6,5 L')
     expect(nbsp(f.bar(2.3))).toBe('2,3 bar')
+    expect(nbsp(f.barRange(2.2, 2.4))).toBe('2,2–2,4 bar')
+    expect(nbsp(f.barRange(2.5, null))).toBe('2,5 bar')
   })
 
   it('formats with point decimals', () => {

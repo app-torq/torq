@@ -1,4 +1,4 @@
-# torq — see specs/001-torq-core-platform/quickstart.md
+# torq — see the wiki: https://github.com/marekbeckmann/torq/wiki/Development
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 DATA_DIR ?= ./.data
 
@@ -46,7 +46,7 @@ e2e: build
 	npm run e2e --prefix web
 
 # Maintainers only: regenerates the embedded vehicle catalog from downloaded source
-# files (specs/002-vehicle-catalog-lookup/quickstart.md). Never run by builds or CI.
+# files (see the wiki page "Development"). Never run by builds or CI.
 #   FZ6       KBA FZ 6 workbook (.xlsx), dl-de/by-2-0
 #   GOR3A     gor3a/vehicle-makes-models data/json/all.json at GOR3A_SHA, ODbL 1.0
 #   RETRIEVED retrieval date of the source files (YYYY-MM-DD)

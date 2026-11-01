@@ -175,7 +175,8 @@ func (s *Service) History(ctx context.Context, vehicleID int64, opt ExportOption
 			"brake_fluid_spec": spec.BrakeFluidSpec, "brake_fluid_capacity_ml": ptrI(spec.BrakeFluidCapacityMl),
 			"coolant_spec": spec.CoolantSpec, "coolant_capacity_ml": ptrI(spec.CoolantCapacityMl),
 			"wheel_lug_torque_nm": ptrF(spec.WheelLugTorqueNm), "tire_pressure_front_bar": ptrF(spec.TirePressureFrontBar),
-			"tire_pressure_rear_bar": ptrF(spec.TirePressureRearBar),
+			"tire_pressure_rear_bar": ptrF(spec.TirePressureRearBar), "tire_pressure_front_max_bar": ptrF(spec.TirePressureFrontMaxBar),
+			"tire_pressure_rear_max_bar": ptrF(spec.TirePressureRearMaxBar),
 		},
 		Entries: []HistoryEntry{}, Services: []HistoryService{}, Repairs: []HistoryRepair{},
 	}

@@ -1,118 +1,114 @@
-# torq
+<div align="center">
 
-Self-hosted maintenance logbook and DIY repair tracker for people who work on their own cars.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/torq-logo-w-title-dark.svg">
+  <img alt="torq" src="docs/assets/torq-logo-w-title-light.svg" width="280">
+</picture>
 
-- **Service Logbook**: routine interval maintenance (oil, fluids, filters, plugs, brakes, timing). One entry can cover several items, each with brand, spec, quantity, part numbers and cost. Logging a service resets the linked reminder automatically.
-- **Self-Repair Projects**: troubleshooting, repairs, overhauls and modifications. Each project has a workflow (`Planned → In Progress → Waiting on Parts → Completed`), symptoms with OBD2 fault codes, root cause, procedure notes, critical torque specs, special tools, a parts bill of materials with per-part status, and photos, manuals and invoices.
-- **Reminders**: by km, by time, or whichever comes first, with configurable "due soon" lead thresholds. Any odometer update re-evaluates them immediately.
-- **Offline vehicle catalog**: type the HSN/TSN from the German registration certificate (Fahrzeugschein fields 2.1/2.2) to fill make and model, or pick make → model → chassis code (W203, E46, Golf IV (1J), …) → engine from searchable lists that fill power (kW), displacement (cm³) and fuel type. Model names follow your language (C-Class / C-Klasse). Any field also accepts your own text. Lookups never leave your server and need no API keys; admins can refresh the catalog from its sources with one click.
-- **Spec sheet auto-fill** (optional, needs `TAVILY_API_KEY` and `GEMINI_API_KEY`): searches the web for oil, fluid, wheel-torque and tyre-pressure values (Tavily) and lets Gemini pick them out of the search results. Every filled value links the search result that states it; a value that is not written in its cited result is left empty instead of guessed. Everything stays editable, and edited values are marked as adjusted manually.
-- **Quick-reference spec sheet** per vehicle: oil and fluid specs and capacities, lug torque, tire pressures, and custom entries with images.
-- **Webhook notifications** only (no email): Discord, ntfy, Gotify, Home Assistant and Generic JSON, with custom headers, a test button, a delivery log and retries.
-- **Reports**: spending split by routine service vs. repairs and by parts vs. fluids, cost per km, a combined timeline, and a printable history with JSON/CSV export (for archiving or selling a car).
-- English and German. Metric units only (km, L/mL, Nm, bar); power shows kW or PS first, per user. One dark theme.
+**The maintenance logbook and repair tracker for people who work on their own cars.**
 
-Out of scope by design: fuel logs and consumption, insurance/registration/inspection tracking, imperial units, light themes, email.
+Self-hosted · one small Docker container · your data stays on your server
 
-## Quick start (Docker)
+[![CI](https://github.com/marekbeckmann/torq/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/marekbeckmann/torq/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/marekbeckmann/torq?sort=semver&display_name=tag)](https://github.com/marekbeckmann/torq/releases)
+[![Container](https://img.shields.io/badge/container-ghcr.io-2496ED?logo=docker&logoColor=white)](https://github.com/marekbeckmann/torq/pkgs/container/torq)
+[![Go](https://img.shields.io/github/go-mod/go-version/marekbeckmann/torq?logo=go&logoColor=white)](go.mod)
+[![License: MIT](https://img.shields.io/github/license/marekbeckmann/torq)](LICENSE)
+[![Languages](https://img.shields.io/badge/i18n-English%20%7C%20Deutsch-informational)](#)
+
+[Quick start](#quick-start) · [Features](#features) · [Configuration](#configuration) · [Wiki](https://github.com/marekbeckmann/torq/wiki)
+
+</div>
+
+<p align="center">
+  <img src="docs/assets/screenshot-vehicle.png" alt="Vehicle overview with details and odometer history" width="49%">
+  <img src="docs/assets/screenshot-repairs.png" alt="Self-repair projects on a board from planned to completed" width="49%">
+</p>
+
+## Features
+
+- 🛢️ **Service logbook**: oil changes, fluids, filters, brakes. Each entry records brand, spec, quantity, part numbers and cost, and resets its reminder.
+- 🔧 **Self-repair projects**: a board from *Planned* to *Completed*, with OBD2 fault codes, root cause, procedure notes, torque specs, a parts list and photos.
+- ⏰ **Reminders** by kilometres, by time or whichever comes first, re-checked with every odometer update.
+- 🚗 **Vehicle catalog that works offline**: enter the HSN/TSN from the German registration certificate, or pick make → model → chassis code (W203, E46, Golf IV) → engine to fill in the technical data.
+- 📋 **Spec sheet** with oil and fluid specs, capacities, lug torque and tyre pressure, filled in from the web on request, with a source link for every value.
+- 🔔 **Notifications** via webhooks to Discord, ntfy, Gotify, Home Assistant or any JSON endpoint.
+- 📊 **Reports**: costs per vehicle, service vs. repair, cost per km, a timeline and a printable history with JSON/CSV export.
+- 🌍 English and German, metric units, multiple users per garage.
+
+## Quick start
 
 ```bash
-docker compose up -d        # uses docker-compose.yml in this repository
-# open http://localhost:8080 and create the administrator account
+docker run -d --name torq -p 8080:8080 -v torq-data:/data -e TZ=Europe/Berlin \
+  ghcr.io/marekbeckmann/torq:latest
 ```
 
-Or with plain Docker:
+Open <http://localhost:8080> and create the administrator account.
 
-```bash
-docker build -t torq .
-docker run -d --name torq -p 8080:8080 -v torq-data:/data -e TZ=Europe/Berlin torq
-```
+> [!IMPORTANT]
+> Create the administrator account right after the first start. Until it exists, anyone who can reach torq can create it.
 
-The image is a ~25 MB static binary on a distroless base, runs as non-root, and needs nothing but the `/data` volume. It uses about 30 MB of RAM.
+Prefer Compose or building it yourself? `docker compose up -d` builds the image from this repository using [`docker-compose.yml`](docker-compose.yml).
+
+> [!TIP]
+> To run torq on a small VPS with automatic deployments on every push, HTTPS and your own domain via Cloudflare Tunnel, follow [`docs/deployment.md`](docs/deployment.md).
+
+The image is a ~29 MB static binary on a distroless base. It runs as non-root, needs only the `/data` volume and typically uses well under 100 MB of RAM.
 
 ## Configuration
 
-All settings are optional environment variables.
+All settings are optional environment variables. The most common ones:
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `TORQ_DATA_DIR` | `/data` | Database, attachments and automatic backups |
-| `TORQ_LISTEN_ADDR` | `:8080` | HTTP listen address |
-| `TORQ_BASE_URL` | *(empty)* | Public URL, e.g. `https://torq.example.com`. Enables links in notifications and, when https, the `Secure` cookie flag |
-| `TORQ_COOKIE_SECURE` | `auto` | `true`/`false` to force the `Secure` cookie flag |
-| `TORQ_TRUSTED_PROXIES` | *(empty)* | Comma-separated CIDRs whose `X-Forwarded-For` header is trusted (for login throttling behind a reverse proxy) |
+| `TZ` | `UTC` | Time zone for reminder dates and digests |
+| `TORQ_BASE_URL` | *(empty)* | Public URL, e.g. `https://torq.example.com`. Enables links in notifications and, with https, `Secure` cookies |
+| `TORQ_TRUSTED_PROXIES` | *(empty)* | CIDRs of your reverse proxy, so login throttling sees real client IPs |
 | `TORQ_MAX_UPLOAD_MB` | `25` | Per-file upload limit (JPEG, PNG, WebP, HEIC, PDF) |
-| `TORQ_LOG_LEVEL` / `TORQ_LOG_FORMAT` | `info` / `json` | Logging (`debug`/`info`/`warn`/`error`; `json`/`text`) |
-| `TAVILY_API_KEY` | *(empty)* | Optional, together with `GEMINI_API_KEY`. Enables **Look up data automatically** in the spec sheet's edit dialog: torq runs two web searches with [Tavily](https://tavily.com) (free plan: 1,000 credits per month; one lookup uses 4) and sends the results to Gemini, which picks out the values. The vehicle's make, model, chassis code, year and engine go to Tavily |
-| `GEMINI_API_KEY` | *(empty)* | Optional, together with `TAVILY_API_KEY`. Google Gemini key for the auto-fill (free at [aistudio.google.com/apikey](https://aistudio.google.com/apikey)); no Google Search grounding is used. The vehicle data, HSN/TSN and the search results go to Google. For `make dev`, put both keys in a `.env` file in the repository root (see `.env.example`) |
-| `GEMINI_MODEL` | `gemini-3.5-flash` | Gemini model for the auto-fill. A lookup is stopped after 3 minutes, so the model must answer quickly (`gemini-3.8-flash` took 60–110 s on a free key). Google retires old models for new keys; set a current one if the dialog reports the model as unavailable or too slow |
-| `TORQ_CATALOG_ONLINE_UPDATES` | `true` | Lets admins refresh the vehicle catalog from KBA and GitHub (*About & data sources* → *Update now*). `false` keeps torq fully offline |
-| `TZ` | `UTC` | Time zone for reminder dates and digest schedules |
+| `TAVILY_API_KEY`, `GEMINI_API_KEY` | *(empty)* | Both together enable the optional spec-sheet auto-fill |
+
+The full list, including logging, cookies, the Gemini model and catalog updates, is in the wiki under [Configuration](https://github.com/marekbeckmann/torq/wiki/Configuration).
+
+> [!NOTE]
+> The spec-sheet auto-fill is the only feature that sends data to third parties: the vehicle's make, model, chassis code, year, engine and HSN/TSN go to [Tavily](https://tavily.com) and Google Gemini. It is off unless both keys are set. Both services have free tiers. See [Spec sheet auto-fill](https://github.com/marekbeckmann/torq/wiki/Spec-Sheet-Auto-Fill).
 
 ## Data and backups
 
-Everything lives in the data directory:
+Everything lives in the data directory (`/data` in the container): the SQLite database, uploaded photos and PDFs, and automatic copies taken before each schema upgrade.
 
-```
-/data/torq.db (+ -wal, -shm)   SQLite database (WAL mode)
-/data/attachments/             uploaded photos and PDFs
-/data/backups/                 automatic copies taken before each schema upgrade (newest 3 kept)
-```
+> [!WARNING]
+> Back up `/data` regularly. Copying it while torq is running can catch the database mid-write: stop the container first, or use the [online backup command](https://github.com/marekbeckmann/torq/wiki/Data-and-Backups#backups) from the wiki.
 
-To back up, copy the directory. For a consistent copy while torq is running, stop the container first or use `sqlite3 torq.db ".backup backup.db"`. Schema migrations only move forward and run automatically at startup.
+Schema migrations only move forward and run automatically at startup. More in [Data and backups](https://github.com/marekbeckmann/torq/wiki/Data-and-Backups).
 
-## Deploying to a server
+## Documentation
 
-[`docs/deployment.md`](docs/deployment.md) sets up automatic deployment to a small VPS: every push to `main` that passes CI is published to the GitHub Container Registry and rolled out over SSH, behind a Cloudflare Tunnel on your own domain. The production stack is in [`deploy/`](deploy/).
-
-## Behind a reverse proxy
-
-- Set `TORQ_BASE_URL` to the public https URL. Session cookies then get `Secure` and notifications link back to torq.
-- Set `TORQ_TRUSTED_PROXIES` to your proxy's address range so login throttling sees real client IPs.
-- torq does not terminate TLS itself.
-
-## Notifications
-
-Add endpoints under **Settings → Webhooks** (administrators only). Each endpoint sends in its owner's language and formats.
-
-| Preset | URL to enter | Notes |
-|---|---|---|
-| Discord | Channel webhook URL | Rich embeds, colored by severity |
-| ntfy | Topic URL, e.g. `https://ntfy.example/torq` | Add `Authorization: Bearer …` for protected topics |
-| Gotify | `https://gotify.example/message` | Add the app token as header `X-Gotify-Key` |
-| Home Assistant | Webhook trigger URL `…/api/webhook/<id>` | Use `trigger.json.title`, `trigger.json.reminder.state`, … in automations |
-| Generic JSON | Any URL | `torq.notification/v1` schema; see `specs/001-torq-core-platform/contracts/webhook-payloads.md` |
-
-Header values are write-only: the API never returns them. Failed deliveries are retried after 30 s, 2 min and 10 min. Weekly and monthly digests are scheduled under **Settings → Instance**.
+The [wiki](https://github.com/marekbeckmann/torq/wiki) covers installation, all settings, notifications and webhook payloads, the vehicle catalog, the spec-sheet auto-fill, backups, deployment and development.
 
 ## Vehicle data & licenses
 
-The vehicle catalog ships inside torq and is imported into the local database on first start after an upgrade. Lookups run entirely offline. Admins can also refresh it under **Settings → About & data sources → Update now**: torq then downloads the current FZ 6 workbook from the KBA and the latest vehicle-makes-models data from GitHub, rebuilds the catalog and replaces it in one transaction. An online catalog is kept across restarts until a release bundles newer data; set `TORQ_CATALOG_ONLINE_UPDATES=false` to disable the button. The bundled data comes from:
+The vehicle catalog ships with torq and lookups run offline. Admins can refresh it from its sources under **Settings → About & data sources** (disable with `TORQ_CATALOG_ONLINE_UPDATES=false`). The bundled data comes from:
 
-- **Kraftfahrt-Bundesamt (KBA), FZ 6** — "Bestand an Kraftfahrzeugen und Kraftfahrzeuganhängern nach Herstellern und Typen", stand 1 January 2024, [kba.de](https://www.kba.de/DE/Statistik/Fahrzeuge/Bestand/ListeHerstellerTypSchluesselnummern/typschluesselnummern_node.html).
+- **Kraftfahrt-Bundesamt (KBA), FZ 6**: "Bestand an Kraftfahrzeugen und Kraftfahrzeuganhängern nach Herstellern und Typen", stand 1 January 2024, [kba.de](https://www.kba.de/DE/Statistik/Fahrzeuge/Bestand/ListeHerstellerTypSchluesselnummern/typschluesselnummern_node.html).
   © Kraftfahrt-Bundesamt, Flensburg. Datenquelle: Kraftfahrt-Bundesamt, FZ 6, 2026-10-31; [Datenlizenz Deutschland – Namensnennung – Version 2.0](https://www.govdata.de/dl-de/by-2-0) (dl-de/by-2-0); Daten geändert (data modified by torq).
-- **vehicle-makes-models** — [github.com/gor3a/vehicle-makes-models](https://github.com/gor3a/vehicle-makes-models), `data/json/all.json` at commit `ee99776470a45214bf524cdfe22e5dbf4bd67f93`, compiled from publicly available information on [autoevolution.com](https://www.autoevolution.com). Licensed under the [Open Database License (ODbL) 1.0](https://opendatacommons.org/licenses/odbl/1-0/); changes were made.
+- **vehicle-makes-models**: [github.com/gor3a/vehicle-makes-models](https://github.com/gor3a/vehicle-makes-models), `data/json/all.json` at commit `ee99776470a45214bf524cdfe22e5dbf4bd67f93`, compiled from publicly available information on [autoevolution.com](https://www.autoevolution.com). Licensed under the [Open Database License (ODbL) 1.0](https://opendatacommons.org/licenses/odbl/1-0/); changes were made.
 
-The combined catalog database (`internal/catalog/data/catalog_seed.json.gz`) is a derived database and is distributed under the ODbL 1.0 ([full text](internal/catalog/data/LICENSE-ODbL.txt)). Sources, retrieval dates and every transformation are documented in [`internal/catalog/data/NOTICE.md`](internal/catalog/data/NOTICE.md). The torq program code is licensed separately.
-
-The KBA's SV 4.2 directory (with kW, cm³ and fuel per HSN/TSN) is **not** bundled: the KBA publishes it as "all rights reserved". Because of this, an HSN/TSN lookup fills make and model; power, displacement and fuel come from the engine list or manual entry. The same attributions are shown in the app under **Settings → About & data sources**.
-
-Maintainers refresh the bundled catalog with `make catalog` (see the Makefile). Chassis codes come from the hand-maintained table `internal/catalog/catalogsync/chassis.txt`, because the sources only carry production years; corrections are welcome.
+The combined catalog (`internal/catalog/data/catalog_seed.json.gz`) is a derived database distributed under the ODbL 1.0 ([full text](internal/catalog/data/LICENSE-ODbL.txt)). Sources, retrieval dates and every transformation are documented in [`NOTICE.md`](internal/catalog/data/NOTICE.md). The same attributions appear in the app under **Settings → About & data sources**.
 
 ## Development
 
 ```bash
-make setup     # go mod download + npm ci
-make dev       # Go API on :8080 (data in ./.data) + Vite on :5173 (proxies /api)
-make check     # go vet, golangci-lint, sqlc diff, tsc, eslint, i18n key and error-code check
-make test      # go test + vitest
-make e2e       # builds bin/torq and runs the Playwright suite against it
-make build     # bin/torq with the SPA embedded
-make docker    # production image
+make setup   # go mod download + npm ci
+make dev     # Go API on :8080 + Vite on :5173
+make check   # vet, golangci-lint, sqlc diff, tsc, eslint, i18n check
+make test    # go test + vitest
+make e2e     # Playwright suite against bin/torq
 ```
 
-Requirements: Go 1.26+, Node.js 22, sqlc 1.27+ (only after editing `internal/store/queries`), golangci-lint v2.
+Requirements: Go 1.26+, Node.js 22, golangci-lint v2, and sqlc (only after editing `internal/store/queries`). More in [Development](https://github.com/marekbeckmann/torq/wiki/Development).
 
-Sample data for local testing: `TORQ_ENABLE_SEED=true TORQ_DATA_DIR=./.data ./bin/torq seed-demo` creates the user `demo` / `torq-demo-password` and one vehicle with a year of history. Add `--vehicles 10 --years 5` for bulk data.
+Contributions are welcome, from bug reports to corrections of the chassis-code table (`internal/catalog/catalogsync/chassis.txt`).
 
-Design documents (spec, plan, data model, API contract) live in `specs/001-torq-core-platform/` and `specs/002-vehicle-catalog-lookup/`. Project rules are in `.specify/memory/constitution.md`.
+## License
+
+The torq source code is licensed under the [MIT License](LICENSE). The bundled vehicle catalog is licensed separately under the ODbL 1.0 (see above).

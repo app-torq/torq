@@ -30,28 +30,41 @@ type Source struct {
 	Title   string `json:"title"`
 	URL     string `json:"url"`
 	Content string `json:"content"`
+	// RawContent is the whole page as Markdown, requested for searches
+	// whose answers sit in long tables (tyre pressure per engine variant).
+	RawContent string `json:"raw_content"`
+}
+
+// query is one Tavily search; raw asks for the whole page text.
+type query struct {
+	text string
+	raw  bool
 }
 
 // search runs one Tavily query. "advanced" depth returns the passages most
 // relevant to the query (2 credits per query on the free plan).
-func (c *Client) search(ctx context.Context, query string) ([]Source, error) {
-	body, err := json.Marshal(map[string]any{
-		"query":             query,
+func (c *Client) search(ctx context.Context, q query) ([]Source, error) {
+	req := map[string]any{
+		"query":             q.text,
 		"search_depth":      "advanced",
 		"chunks_per_source": 3,
 		"max_results":       6,
 		"include_answer":    false,
-	})
+	}
+	if q.raw {
+		req["include_raw_content"] = "markdown"
+	}
+	body, err := json.Marshal(req)
 	if err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.TavilyURL, bytes.NewReader(body))
+	hreq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.TavilyURL, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+c.TavilyKey)
-	resp, err := c.HTTP.Do(req)
+	hreq.Header.Set("Content-Type", "application/json")
+	hreq.Header.Set("Authorization", "Bearer "+c.TavilyKey)
+	resp, err := c.HTTP.Do(hreq)
 	if err != nil {
 		return nil, fmt.Errorf("specfill: tavily: %w", err)
 	}
@@ -80,14 +93,24 @@ func (c *Client) search(ctx context.Context, query string) ([]Source, error) {
 	return out.Results, nil
 }
 
-// queries are the searches for one vehicle: fluids and capacities, then
-// wheels and tyres. German terms, because most users and sources for these
-// values (KBA vehicles, German manuals and shops) are German.
-func queries(v Vehicle) []string {
+// queries are the searches for one vehicle, one per group of fields, so each
+// search finds pages about that topic (oil advisors, capacity tables, tyre
+// pressure tables) instead of shop listings. German terms, because most
+// users and sources for these values are German. Four advanced searches
+// cost 8 Tavily credits per lookup. The engine's trade name ("C 220 CDI"),
+// when known, is part of every search. The tyre search asks for whole pages:
+// tyre pressure tables list every engine variant, and the search excerpt
+// rarely holds this vehicle's block.
+func queries(v Vehicle, names []string) []query {
 	name := vehicleName(v)
-	return []string{
-		name + " Motoröl Freigabe Viskosität Füllmenge Getriebeöl Kühlmittel Bremsflüssigkeit",
-		name + " Reifendruck Anzugsmoment Radschrauben Nm",
+	if len(names) > 0 {
+		name += " " + names[0]
+	}
+	return []query{
+		{text: name + " Motoröl Freigabe Viskosität Ölmenge mit Filter Liter"},
+		{text: name + " Getriebeöl Freigabe Füllmenge Liter Differenzial Hinterachse"},
+		{text: name + " Kühlmittel Frostschutz Freigabe Füllmenge Bremsflüssigkeit DOT"},
+		{text: name + " Reifendruck vorne hinten bar Radschrauben Anzugsmoment Nm", raw: true},
 	}
 }
 

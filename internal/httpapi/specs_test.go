@@ -136,6 +136,7 @@ func TestAutofillSpecs(t *testing.T) {
 		&specfill.APIError{Status: 429, Message: "You exceeded your current quota"}:                      "specs.autofill_quota",
 		&specfill.APIError{Status: 400, Message: "API key not valid. Please pass a valid key."}:          "specs.autofill_key_invalid",
 		&specfill.APIError{Status: 403, Message: "Permission denied"}:                                    "specs.autofill_key_invalid",
+		&specfill.APIError{Status: 503, Message: "This model is currently experiencing high demand."}:    "specs.autofill_busy",
 		&specfill.APIError{Status: 500, Message: "Internal error"}:                                       "specs.autofill_failed",
 		&specfill.SearchError{Status: 401, Message: "Unauthorized: missing or invalid API key."}:         "specs.autofill_search_key_invalid",
 		&specfill.SearchError{Status: 432, Message: "This request exceeds your plan's set usage limit."}: "specs.autofill_search_quota",
@@ -164,5 +165,35 @@ func TestAutofillNeedsBothKeys(t *testing.T) {
 		if want := name == "both"; me.Instance.SpecAutofill != want {
 			t.Errorf("%s: spec_autofill %v", name, me.Instance.SpecAutofill)
 		}
+	}
+}
+
+func TestTyrePressureRange(t *testing.T) {
+	e := newEnv(t)
+	c := e.admin()
+	base := "/vehicles/" + itoa(createVehicle(t, c, 1000).ID)
+
+	var out struct {
+		Specs specsJSON `json:"specs"`
+	}
+	c.call(http.MethodPut, base+"/specs", map[string]any{
+		"tire_pressure_front_bar": 2.2, "tire_pressure_front_max_bar": 2.4, "tire_pressure_rear_bar": 2.5,
+	}, http.StatusOK, &out)
+	s := out.Specs
+	if *s.TirePressureFrontBar != 2.2 || *s.TirePressureFrontMaxBar != 2.4 || *s.TirePressureRearBar != 2.5 || s.TirePressureRearMaxBar != nil {
+		t.Fatalf("range %+v", s)
+	}
+
+	var bad struct {
+		Error struct {
+			Fields map[string]string `json:"fields"`
+		} `json:"error"`
+	}
+	c.call(http.MethodPut, base+"/specs", map[string]any{
+		"tire_pressure_front_bar": 2.4, "tire_pressure_front_max_bar": 2.2, // below the lower value
+		"tire_pressure_rear_max_bar": 2.9, // no lower value
+	}, http.StatusUnprocessableEntity, &bad)
+	if bad.Error.Fields["tire_pressure_front_max_bar"] != "validation.range" || bad.Error.Fields["tire_pressure_rear_max_bar"] != "validation.range" {
+		t.Fatalf("validation %v", bad.Error.Fields)
 	}
 }

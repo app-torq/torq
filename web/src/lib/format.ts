@@ -41,6 +41,8 @@ export interface Formatter {
   ml: (n: number) => string
   nm: (n: number) => string
   bar: (n: number) => string
+  /** A pressure or a pressure range, e.g. "2,2–2,4 bar". */
+  barRange: (lo: number, hi: number | null) => string
   /** Formats a fluid quantity the way the user entered it. */
   quantity: (ml: number, unit: 'L' | 'mL') => string
   /** Engine displacement, e.g. "2.148 cm³". */
@@ -134,6 +136,10 @@ export function createFormatter(prefs: FormatPrefs, unit: UnitLabel): Formatter 
     ml: (n) => `${number(n)} ${unit('ml')}`,
     nm: (n) => `${number(n, { maxDecimals: 1 })} ${unit('nm')}`,
     bar: (n) => `${number(n, { maxDecimals: 2 })} ${unit('bar')}`,
+    barRange: (lo, hi) =>
+      hi === null || hi === lo
+        ? `${number(lo, { maxDecimals: 2 })} ${unit('bar')}`
+        : `${number(lo, { maxDecimals: 2 })}–${number(hi, { maxDecimals: 2 })} ${unit('bar')}`,
     quantity: (ml, u) => (u === 'L' ? `${number(ml / 1000, { maxDecimals: 3 })} ${unit('l')}` : `${number(ml)} ${unit('ml')}`),
     displacement: (cc) => `${number(cc)} ${unit('cc')}`,
     power: (kw) =>

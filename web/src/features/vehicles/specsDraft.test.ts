@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AutofillValue, VehicleSpecs } from '../../lib/types'
-import { applyAutofill, editField, initialDraft, toRequestBody } from './specsDraft'
+import { applyAutofill, editField, initialDraft, rangeMeta, toRequestBody } from './specsDraft'
 
 const empty: VehicleSpecs = {
   engine_oil_viscosity: '', engine_oil_spec: '', engine_oil_capacity_ml: null,
@@ -9,6 +9,7 @@ const empty: VehicleSpecs = {
   brake_fluid_spec: '', brake_fluid_capacity_ml: null,
   coolant_spec: '', coolant_capacity_ml: null,
   wheel_lug_torque_nm: null, tire_pressure_front_bar: null, tire_pressure_rear_bar: null,
+  tire_pressure_front_max_bar: null, tire_pressure_rear_max_bar: null,
   meta: {},
 }
 
@@ -89,5 +90,29 @@ describe('spec auto-fill draft', () => {
     })
 
     expect(toRequestBody(editField(d, 'tire_pressure_rear_bar', 'abc'), 'point').errors).toEqual({ tire_pressure_rear_bar: 'validation.number' })
+  })
+
+  it('fills tyre pressure ranges and replaces an old range with a single value', () => {
+    const range = (lo: number, hi: number | null): AutofillValue => ({ ...found(lo, 'tpressure.com'), value_max: hi })
+    let d = applyAutofill(initialDraft(empty, 'comma'), {
+      tire_pressure_front_bar: range(2.2, 2.4),
+      tire_pressure_rear_bar: range(2.2, 2.9),
+    }, false, 'comma').draft
+    expect([d.values.tire_pressure_front_bar, d.values.tire_pressure_front_max_bar]).toEqual(['2,2', '2,4'])
+    expect(d.meta.tire_pressure_front_max_bar?.is_auto).toBe(true)
+    expect(rangeMeta(d, 'tire_pressure_front_bar', 'tire_pressure_front_max_bar')?.source_name).toBe('tpressure.com')
+
+    // Changing one end marks the range as adjusted by hand.
+    d = editField(d, 'tire_pressure_front_max_bar', '2,5')
+    expect(rangeMeta(d, 'tire_pressure_front_bar', 'tire_pressure_front_max_bar')).toEqual({ is_auto: false })
+
+    const single = applyAutofill(d, { tire_pressure_rear_bar: range(2.5, null) }, true, 'comma')
+    expect(single.draft.values.tire_pressure_rear_max_bar).toBe('')
+    expect(single.draft.meta.tire_pressure_rear_max_bar).toBeUndefined()
+    // The maxima are no separate lookup fields.
+    expect(single.summary.missing).not.toContain('tire_pressure_front_max_bar')
+
+    const { body } = toRequestBody(d, 'comma')
+    expect(body).toMatchObject({ tire_pressure_front_bar: 2.2, tire_pressure_front_max_bar: 2.5, tire_pressure_rear_max_bar: 2.9 })
   })
 })

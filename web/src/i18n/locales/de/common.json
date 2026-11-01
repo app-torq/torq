@@ -15,7 +15,8 @@
     "openMenu": "Menü öffnen",
     "closeMenu": "Menü schließen",
     "main": "Hauptnavigation",
-    "about": "Über & Datenquellen"
+    "about": "Über & Datenquellen",
+    "home": "{{brand}} – zur Startseite"
   },
   "actions": {
     "save": "Speichern",

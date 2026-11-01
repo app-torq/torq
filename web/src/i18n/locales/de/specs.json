@@ -21,7 +21,10 @@
     "pressureFront": "Reifendruck vorne",
     "pressureRear": "Reifendruck hinten",
     "label": "Bezeichnung",
-    "value": "Wert"
+    "value": "Wert",
+    "pressureUpTo": "{{field}}, bis",
+    "pressureMax": "max.",
+    "pressureRangeHint": "Ein Wert oder ein Bereich von normaler bis voller Beladung."
   },
   "entries": {
     "add": "Eintrag hinzufügen",

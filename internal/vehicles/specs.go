@@ -31,6 +31,10 @@ type Specs struct {
 	WheelLugTorqueNm            *float64
 	TirePressureFrontBar        *float64
 	TirePressureRearBar         *float64
+	// TirePressure*MaxBar make the pressure a range (normal to full load);
+	// they need the lower value and must not be below it.
+	TirePressureFrontMaxBar *float64
+	TirePressureRearMaxBar  *float64
 	// Meta records, per spec field, where its value came from. Entries for
 	// empty fields are dropped on save.
 	Meta map[string]SpecMeta
@@ -54,6 +58,7 @@ var SpecFields = []string{
 	"brake_fluid_spec", "brake_fluid_capacity_ml",
 	"coolant_spec", "coolant_capacity_ml",
 	"wheel_lug_torque_nm", "tire_pressure_front_bar", "tire_pressure_rear_bar",
+	"tire_pressure_front_max_bar", "tire_pressure_rear_max_bar",
 }
 
 // filled reports which spec fields hold a value.
@@ -66,7 +71,8 @@ func (in Specs) filled() map[string]bool {
 		"brake_fluid_spec": in.BrakeFluidSpec != "", "brake_fluid_capacity_ml": in.BrakeFluidCapacityMl != nil,
 		"coolant_spec": in.CoolantSpec != "", "coolant_capacity_ml": in.CoolantCapacityMl != nil,
 		"wheel_lug_torque_nm": in.WheelLugTorqueNm != nil, "tire_pressure_front_bar": in.TirePressureFrontBar != nil,
-		"tire_pressure_rear_bar": in.TirePressureRearBar != nil,
+		"tire_pressure_rear_bar":      in.TirePressureRearBar != nil,
+		"tire_pressure_front_max_bar": in.TirePressureFrontMaxBar != nil, "tire_pressure_rear_max_bar": in.TirePressureRearMaxBar != nil,
 	}
 }
 
@@ -142,8 +148,18 @@ func (s *Service) PutSpecs(ctx context.Context, vehicleID int64, in Specs) (stor
 		v.Check(ml != nil && *ml <= 0, field, "validation.positive")
 	}
 	v.Check(in.WheelLugTorqueNm != nil && *in.WheelLugTorqueNm <= 0, "wheel_lug_torque_nm", "validation.positive")
-	for field, bar := range map[string]*float64{"tire_pressure_front_bar": in.TirePressureFrontBar, "tire_pressure_rear_bar": in.TirePressureRearBar} {
+	for field, bar := range map[string]*float64{
+		"tire_pressure_front_bar": in.TirePressureFrontBar, "tire_pressure_rear_bar": in.TirePressureRearBar,
+		"tire_pressure_front_max_bar": in.TirePressureFrontMaxBar, "tire_pressure_rear_max_bar": in.TirePressureRearMaxBar,
+	} {
 		v.Check(bar != nil && (*bar <= 0 || *bar > 10), field, "validation.range")
+	}
+	// A maximum needs a lower value and must not be below it.
+	for field, r := range map[string][2]*float64{
+		"tire_pressure_front_max_bar": {in.TirePressureFrontBar, in.TirePressureFrontMaxBar},
+		"tire_pressure_rear_max_bar":  {in.TirePressureRearBar, in.TirePressureRearMaxBar},
+	} {
+		v.Check(r[1] != nil && (r[0] == nil || *r[1] < *r[0]), field, "validation.range")
 	}
 	texts := map[string]*string{
 		"engine_oil_viscosity": &in.EngineOilViscosity, "engine_oil_spec": &in.EngineOilSpec,
@@ -165,7 +181,8 @@ func (s *Service) PutSpecs(ctx context.Context, vehicleID int64, in Specs) (stor
 		BrakeFluidSpec: in.BrakeFluidSpec, BrakeFluidCapacityMl: nullInt(in.BrakeFluidCapacityMl),
 		CoolantSpec: in.CoolantSpec, CoolantCapacityMl: nullInt(in.CoolantCapacityMl),
 		WheelLugTorqueNm: nullFloat(in.WheelLugTorqueNm), TirePressureFrontBar: nullFloat(in.TirePressureFrontBar),
-		TirePressureRearBar: nullFloat(in.TirePressureRearBar), SpecsMeta: meta, UpdatedAt: clock.Timestamp(s.Clock.Now()), VehicleID: vehicleID,
+		TirePressureRearBar: nullFloat(in.TirePressureRearBar), TirePressureFrontMaxBar: nullFloat(in.TirePressureFrontMaxBar),
+		TirePressureRearMaxBar: nullFloat(in.TirePressureRearMaxBar), SpecsMeta: meta, UpdatedAt: clock.Timestamp(s.Clock.Now()), VehicleID: vehicleID,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return store.VehicleSpec{}, apperr.NotFound()
