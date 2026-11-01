@@ -2,8 +2,12 @@ package httpapi
 
 import (
 	"context"
+	"errors"
 	"net/http"
+	"strings"
 
+	"github.com/marekbeckmann/torq/internal/apperr"
+	"github.com/marekbeckmann/torq/internal/specfill"
 	"github.com/marekbeckmann/torq/internal/store"
 	"github.com/marekbeckmann/torq/internal/vehicles"
 )
@@ -23,6 +27,9 @@ type specsJSON struct {
 	WheelLugTorqueNm            *float64 `json:"wheel_lug_torque_nm"`
 	TirePressureFrontBar        *float64 `json:"tire_pressure_front_bar"`
 	TirePressureRearBar         *float64 `json:"tire_pressure_rear_bar"`
+	// Meta is the per-field provenance (auto-filled from a web source or
+	// adjusted by hand); fields without an entry were entered manually.
+	Meta map[string]vehicles.SpecMeta `json:"meta"`
 }
 
 func toSpecsJSON(s store.VehicleSpec) specsJSON {
@@ -33,7 +40,7 @@ func toSpecsJSON(s store.VehicleSpec) specsJSON {
 		BrakeFluidSpec: s.BrakeFluidSpec, BrakeFluidCapacityMl: intPtr(s.BrakeFluidCapacityMl),
 		CoolantSpec: s.CoolantSpec, CoolantCapacityMl: intPtr(s.CoolantCapacityMl),
 		WheelLugTorqueNm: floatPtr(s.WheelLugTorqueNm), TirePressureFrontBar: floatPtr(s.TirePressureFrontBar),
-		TirePressureRearBar: floatPtr(s.TirePressureRearBar),
+		TirePressureRearBar: floatPtr(s.TirePressureRearBar), Meta: vehicles.ParseSpecsMeta(s.SpecsMeta),
 	}
 }
 
@@ -90,6 +97,7 @@ func (s *Server) putSpecs(w http.ResponseWriter, r *http.Request) error {
 		BrakeFluidSpec: in.BrakeFluidSpec, BrakeFluidCapacityMl: in.BrakeFluidCapacityMl,
 		CoolantSpec: in.CoolantSpec, CoolantCapacityMl: in.CoolantCapacityMl,
 		WheelLugTorqueNm: in.WheelLugTorqueNm, TirePressureFrontBar: in.TirePressureFrontBar, TirePressureRearBar: in.TirePressureRearBar,
+		Meta: in.Meta,
 	})
 	if err != nil {
 		return err
@@ -181,4 +189,71 @@ func (s *Server) reorderSpecEntries(w http.ResponseWriter, r *http.Request) erro
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"entries": ej})
 	return nil
+}
+
+// autofillSpecs looks up the vehicle's fluid and wheel specifications on the
+// web (optional feature, TAVILY_API_KEY and GEMINI_API_KEY). It saves nothing: the edit dialog
+// shows the values with their sources, and the user saves them.
+func (s *Server) autofillSpecs(w http.ResponseWriter, r *http.Request) error {
+	if s.specfill == nil {
+		return apperr.Forbidden("specs.autofill_disabled")
+	}
+	id, err := pathID(r, "id")
+	if err != nil {
+		return err
+	}
+	v, err := s.vehicles.Get(r.Context(), id)
+	if err != nil {
+		return err
+	}
+	fields, err := s.specfill.Lookup(r.Context(), specfill.Vehicle{
+		Make: v.Make, Model: v.Model, ChassisCode: v.ChassisCode, EngineCode: v.EngineCode,
+		FuelType: v.FuelType.String, HSN: v.Hsn.String, TSN: v.Tsn.String,
+		ModelYear: v.ModelYear.Int64, DisplacementCC: v.DisplacementCc.Int64, PowerKW: v.PowerKw.Int64,
+	})
+	switch {
+	case errors.Is(err, specfill.ErrNoSources):
+		fields = map[string]specfill.Value{}
+		for _, k := range specfill.Keys() {
+			fields[k] = specfill.Value{}
+		}
+	case err != nil:
+		s.Log.ErrorContext(r.Context(), "spec auto-fill failed", "vehicle", id, "err", err)
+		return autofillError(err)
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"fields": fields})
+	return nil
+}
+
+// autofillError tells the admin what to fix: a retired model (GEMINI_MODEL),
+// a used-up quota, or a rejected key, for Tavily or Gemini.
+func autofillError(err error) error {
+	if errors.Is(err, specfill.ErrTimeout) {
+		return apperr.BadGateway("specs.autofill_timeout")
+	}
+	var search *specfill.SearchError
+	if errors.As(err, &search) {
+		switch search.Status {
+		case http.StatusUnauthorized, http.StatusForbidden:
+			return apperr.BadGateway("specs.autofill_search_key_invalid")
+		case http.StatusTooManyRequests, 432, 433: // 432/433: Tavily plan or pay-as-you-go limit
+			return apperr.BadGateway("specs.autofill_search_quota")
+		}
+		return apperr.BadGateway("specs.autofill_failed")
+	}
+	var api *specfill.APIError
+	if !errors.As(err, &api) {
+		return apperr.BadGateway("specs.autofill_failed")
+	}
+	code := "specs.autofill_failed"
+	switch {
+	case api.Status == http.StatusNotFound:
+		code = "specs.autofill_model_unavailable"
+	case api.Status == http.StatusTooManyRequests:
+		code = "specs.autofill_quota"
+	case api.Status == http.StatusUnauthorized || api.Status == http.StatusForbidden ||
+		(api.Status == http.StatusBadRequest && strings.Contains(strings.ToLower(api.Message), "api key")):
+		code = "specs.autofill_key_invalid"
+	}
+	return apperr.BadGateway(code)
 }

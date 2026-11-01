@@ -47,10 +47,13 @@ type meResponse struct {
 type instanceInfo struct {
 	MaxUploadMB int    `json:"max_upload_mb"`
 	Version     string `json:"version"`
+	// SpecAutofill tells the UI whether the web spec lookup is configured
+	// (GEMINI_API_KEY and TAVILY_API_KEY).
+	SpecAutofill bool `json:"spec_autofill"`
 }
 
 func (s *Server) instanceInfo() instanceInfo {
-	return instanceInfo{MaxUploadMB: s.Config.MaxUploadMB, Version: s.Version}
+	return instanceInfo{MaxUploadMB: s.Config.MaxUploadMB, Version: s.Version, SpecAutofill: s.specfill != nil}
 }
 
 func (s *Server) setupStatus(w http.ResponseWriter, r *http.Request) error {

@@ -31,6 +31,9 @@ func Unauthenticated() *Error {
 }
 func Forbidden(code string) *Error { return &Error{Status: http.StatusForbidden, Code: code} }
 func NotFound() *Error             { return &Error{Status: http.StatusNotFound, Code: "not_found"} }
+
+// BadGateway reports that an upstream service torq depends on failed.
+func BadGateway(code string) *Error { return &Error{Status: http.StatusBadGateway, Code: code} }
 func Unsupported(code string) *Error {
 	return &Error{Status: http.StatusUnsupportedMediaType, Code: code}
 }

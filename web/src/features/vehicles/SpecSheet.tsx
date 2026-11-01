@@ -1,21 +1,21 @@
 import { useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { ArrowDown, ArrowUp, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, ExternalLink, Loader2, Pencil, PencilLine, Plus, Sparkles, Trash2 } from 'lucide-react'
 import { api } from '../../lib/api'
 import { queryKeys } from '../../lib/queryKeys'
-import { parseNumber, toInputValue } from '../../lib/format'
 import { useFormat } from '../../lib/useFormat'
 import { fieldErrors, useErrorText } from '../../lib/errors'
-import type { SpecEntry, VehicleSpecs } from '../../lib/types'
+import type { AutofillValue, SpecEntry, SpecFieldKey, SpecMeta, VehicleSpecs } from '../../lib/types'
 import { useSession } from '../../app/session'
 import { Button, IconButton } from '../../components/Button'
-import { TextAreaField, TextField } from '../../components/Field'
+import { Checkbox, TextAreaField, TextField } from '../../components/Field'
 import { NumberField } from '../../components/NumberField'
 import { ConfirmDialog, Dialog } from '../../components/Dialog'
-import { Card, ErrorBanner, Loading } from '../../components/ui'
+import { Card, ErrorBanner, Loading, Notice } from '../../components/ui'
 import { useVehicleContext } from './VehicleDetailLayout'
 import { SpecEntryImages } from './SpecEntryImages'
+import { applyAutofill, editField, initialDraft, toRequestBody, type AutofillSummary } from './specsDraft'
 
 interface SpecsResponse {
   specs: VehicleSpecs
@@ -115,34 +115,16 @@ function Pin({ title, children }: { title: ReactNode; children: ReactNode }) {
   )
 }
 
-const capacityKeys = ['engine_oil', 'transmission_fluid', 'differential_fluid', 'brake_fluid', 'coolant'] as const
-type CapacityKey = (typeof capacityKeys)[number]
-
-function SpecsEditDialog({ vehicleId, specs, onClose }: { vehicleId: number; specs: VehicleSpecs; onClose: () => void }) {
+export function SpecsEditDialog({ vehicleId, specs, onClose }: { vehicleId: number; specs: VehicleSpecs; onClose: () => void }) {
   const { t } = useTranslation('specs')
-  const { user } = useSession()
+  const { user, instance } = useSession()
   const qc = useQueryClient()
   const errorText = useErrorText()
   const nf = user.number_format
-  const [text, setText] = useState({
-    engine_oil_viscosity: specs.engine_oil_viscosity,
-    engine_oil_spec: specs.engine_oil_spec,
-    transmission_fluid_spec: specs.transmission_fluid_spec,
-    differential_fluid_spec: specs.differential_fluid_spec,
-    brake_fluid_spec: specs.brake_fluid_spec,
-    coolant_spec: specs.coolant_spec,
-  })
-  const [caps, setCaps] = useState<Record<CapacityKey, string>>({
-    engine_oil: toInputValue(specs.engine_oil_capacity_ml === null ? null : specs.engine_oil_capacity_ml / 1000, nf),
-    transmission_fluid: toInputValue(specs.transmission_fluid_capacity_ml === null ? null : specs.transmission_fluid_capacity_ml / 1000, nf),
-    differential_fluid: toInputValue(specs.differential_fluid_capacity_ml === null ? null : specs.differential_fluid_capacity_ml / 1000, nf),
-    brake_fluid: toInputValue(specs.brake_fluid_capacity_ml === null ? null : specs.brake_fluid_capacity_ml / 1000, nf),
-    coolant: toInputValue(specs.coolant_capacity_ml === null ? null : specs.coolant_capacity_ml / 1000, nf),
-  })
-  const [torque, setTorque] = useState(toInputValue(specs.wheel_lug_torque_nm, nf, 1))
-  const [front, setFront] = useState(toInputValue(specs.tire_pressure_front_bar, nf, 2))
-  const [rear, setRear] = useState(toInputValue(specs.tire_pressure_rear_bar, nf, 2))
+  const [draft, setDraft] = useState(() => initialDraft(specs, nf))
   const [local, setLocal] = useState<Record<string, string>>({})
+  const [overwrite, setOverwrite] = useState(false)
+  const [summary, setSummary] = useState<AutofillSummary | null>(null)
 
   const save = useMutation({
     mutationFn: (body: Record<string, unknown>) => api.put(`/vehicles/${vehicleId}/specs`, body),
@@ -151,27 +133,32 @@ function SpecsEditDialog({ vehicleId, specs, onClose }: { vehicleId: number; spe
       onClose()
     },
   })
+  const autofill = useMutation({
+    mutationFn: () => api.post<{ fields: Record<string, AutofillValue> }>(`/vehicles/${vehicleId}/autofill-specs`),
+    onSuccess: ({ fields }) => {
+      // Applied to the latest draft, so edits made while the lookup ran survive.
+      setDraft((prev) => {
+        const res = applyAutofill(prev, fields, overwrite, nf)
+        setSummary(res.summary)
+        return res.draft
+      })
+    },
+  })
   const fe = { ...fieldErrors(save.error), ...local }
 
   const submit = () => {
-    const errs: Record<string, string> = {}
-    const num = (field: string, raw: string): number | null => {
-      if (raw.trim() === '') return null
-      const n = parseNumber(raw, nf)
-      if (n === null) errs[field] = 'validation.number'
-      return n
-    }
-    const body: Record<string, unknown> = { ...text }
-    for (const k of capacityKeys) {
-      const liters = num(`${k}_capacity_ml`, caps[k])
-      body[`${k === 'coolant' ? 'coolant' : k}_capacity_ml`] = liters === null ? null : Math.round(liters * 1000)
-    }
-    body.wheel_lug_torque_nm = num('wheel_lug_torque_nm', torque)
-    body.tire_pressure_front_bar = num('tire_pressure_front_bar', front)
-    body.tire_pressure_rear_bar = num('tire_pressure_rear_bar', rear)
-    setLocal(errs)
-    if (Object.keys(errs).length === 0) save.mutate(body)
+    const { body, errors } = toRequestBody(draft, nf)
+    setLocal(errors)
+    if (Object.keys(errors).length === 0) save.mutate(body)
   }
+
+  /** Props shared by every spec input: value, change handler and the source badge. */
+  const bind = (k: SpecFieldKey) => ({
+    value: draft.values[k],
+    onChange: (x: string) => { setDraft((prev) => editField(prev, k, x)) },
+    labelAside: <SourceBadge meta={draft.meta[k]} />,
+    error: fe[k],
+  })
 
   const L = t('common:units.l')
   return (
@@ -183,41 +170,85 @@ function SpecsEditDialog({ vehicleId, specs, onClose }: { vehicleId: number; spe
       footer={
         <>
           <Button onClick={onClose}>{t('common:actions.cancel')}</Button>
-          <Button variant="primary" onClick={submit} disabled={save.isPending}>
+          <Button variant="primary" onClick={submit} disabled={save.isPending || autofill.isPending}>
             {t('common:actions.save')}
           </Button>
         </>
       }
     >
       <div className="space-y-5">
+        <div className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <Button size="sm" onClick={() => { autofill.mutate() }} disabled={!instance.spec_autofill || autofill.isPending}>
+              {autofill.isPending ? <Loader2 aria-hidden size={14} className="animate-spin" /> : <Sparkles aria-hidden size={14} />}
+              {autofill.isPending ? t('autofill.running') : t('autofill.button')}
+            </Button>
+            <Checkbox label={t('autofill.overwrite')} checked={overwrite} onChange={setOverwrite} disabled={!instance.spec_autofill || autofill.isPending} />
+          </div>
+          <p className="text-xs text-zinc-400">{instance.spec_autofill ? t('autofill.hint') : t('autofill.unavailable')}</p>
+          {autofill.isError && <ErrorBanner message={errorText(autofill.error)} />}
+          {summary && !autofill.isPending && (
+            <Notice tone={summary.filled.length > 0 ? 'emerald' : 'amber'}>
+              {summary.filled.length > 0
+                ? t('autofill.summary', { filled: summary.filled.length, kept: summary.kept.length, missing: summary.missing.length })
+                : t('autofill.nothing', { kept: summary.kept.length })}
+            </Notice>
+          )}
+        </div>
         {save.isError && Object.keys(fieldErrors(save.error)).length === 0 && <ErrorBanner message={errorText(save.error)} />}
-        <fieldset className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <fieldset className="form-grid grid grid-cols-1 gap-3 sm:grid-cols-3">
           <legend className="mb-2 text-sm font-semibold text-zinc-200">{t('groups.engineOil')}</legend>
-          <TextField label={t('fields.viscosity')} value={text.engine_oil_viscosity} onChange={(x) => { setText({ ...text, engine_oil_viscosity: x }) }} placeholder="5W-30" error={fe.engine_oil_viscosity} />
-          <TextField label={t('fields.spec')} value={text.engine_oil_spec} onChange={(x) => { setText({ ...text, engine_oil_spec: x }) }} placeholder="MB 229.51" error={fe.engine_oil_spec} />
-          <NumberField label={t('fields.capacity')} unit={L} value={caps.engine_oil} onChange={(x) => { setCaps({ ...caps, engine_oil: x }) }} error={fe.engine_oil_capacity_ml} />
+          <TextField label={t('fields.viscosity')} placeholder="5W-30" {...bind('engine_oil_viscosity')} />
+          <TextField label={t('fields.spec')} placeholder="MB 229.51" {...bind('engine_oil_spec')} />
+          <NumberField label={t('fields.capacity')} unit={L} {...bind('engine_oil_capacity_ml')} />
         </fieldset>
         {fluidGroups.map((g) => (
-          <fieldset key={g.key} className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <fieldset key={g.key} className="form-grid grid grid-cols-1 gap-3 sm:grid-cols-3">
             <legend className="mb-2 text-sm font-semibold text-zinc-200">{t(g.label)}</legend>
-            <TextField
-              label={t('fields.spec')}
-              className="sm:col-span-2"
-              value={text[`${g.key}_spec` as keyof typeof text]}
-              onChange={(x) => { setText({ ...text, [`${g.key}_spec`]: x }) }}
-              error={fe[`${g.key}_spec`]}
-            />
-            <NumberField label={t('fields.capacity')} unit={L} value={caps[g.key]} onChange={(x) => { setCaps({ ...caps, [g.key]: x }) }} error={fe[`${g.key}_capacity_ml`]} />
+            <TextField label={t('fields.spec')} className="sm:col-span-2" {...bind(`${g.key}_spec`)} />
+            <NumberField label={t('fields.capacity')} unit={L} {...bind(`${g.key}_capacity_ml`)} />
           </fieldset>
         ))}
-        <fieldset className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <fieldset className="form-grid grid grid-cols-1 gap-3 sm:grid-cols-3">
           <legend className="mb-2 text-sm font-semibold text-zinc-200">{t('groups.wheels')}</legend>
-          <NumberField label={t('fields.lugTorque')} unit={t('common:units.nm')} value={torque} onChange={setTorque} error={fe.wheel_lug_torque_nm} />
-          <NumberField label={t('fields.pressureFront')} unit={t('common:units.bar')} value={front} onChange={setFront} error={fe.tire_pressure_front_bar} />
-          <NumberField label={t('fields.pressureRear')} unit={t('common:units.bar')} value={rear} onChange={setRear} error={fe.tire_pressure_rear_bar} />
+          <NumberField label={t('fields.lugTorque')} unit={t('common:units.nm')} {...bind('wheel_lug_torque_nm')} />
+          <NumberField label={t('fields.pressureFront')} unit={t('common:units.bar')} {...bind('tire_pressure_front_bar')} />
+          <NumberField label={t('fields.pressureRear')} unit={t('common:units.bar')} {...bind('tire_pressure_rear_bar')} />
         </fieldset>
       </div>
     </Dialog>
+  )
+}
+
+/**
+ * Marks an auto-filled value with a link to its source, or a value the user
+ * changed after the auto-fill. Manually entered values get no badge.
+ */
+function SourceBadge({ meta }: { meta: SpecMeta | undefined }) {
+  const { t } = useTranslation('specs')
+  if (!meta) return null
+  if (!meta.is_auto || !meta.source_url) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium text-zinc-400 ring-1 ring-zinc-700 ring-inset">
+        <PencilLine aria-hidden size={11} />
+        {t('autofill.manual')}
+      </span>
+    )
+  }
+  const name = meta.source_name || new URL(meta.source_url).hostname.replace(/^www\./, '')
+  return (
+    <a
+      href={meta.source_url}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={t('autofill.openSource', { url: meta.source_url })}
+      aria-label={t('autofill.sourceLabel', { name })}
+      className="focus-ring inline-flex max-w-full items-center gap-1 rounded-full bg-sky-500/10 px-2 py-0.5 text-[11px] font-medium text-sky-300 ring-1 ring-sky-500/30 ring-inset transition-colors hover:bg-sky-500/20 hover:text-sky-200"
+    >
+      <Sparkles aria-hidden size={11} className="shrink-0" />
+      <span className="truncate">{t('autofill.auto')} · {name}</span>
+      <ExternalLink aria-hidden size={10} className="shrink-0" />
+    </a>
   )
 }
 

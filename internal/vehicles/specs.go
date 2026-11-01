@@ -3,7 +3,9 @@ package vehicles
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
+	"net/url"
 	"strings"
 	"unicode/utf8"
 
@@ -29,6 +31,81 @@ type Specs struct {
 	WheelLugTorqueNm            *float64
 	TirePressureFrontBar        *float64
 	TirePressureRearBar         *float64
+	// Meta records, per spec field, where its value came from. Entries for
+	// empty fields are dropped on save.
+	Meta map[string]SpecMeta
+}
+
+// SpecMeta is the provenance of one spec field. IsAuto is true while the
+// value is the one the auto-fill found at SourceURL; a manual change sets it
+// to false.
+type SpecMeta struct {
+	IsAuto     bool   `json:"is_auto"`
+	SourceURL  string `json:"source_url,omitempty"`
+	SourceName string `json:"source_name,omitempty"`
+}
+
+// SpecFields are the keys of the structured spec sheet, as used in the API
+// and in specs_meta.
+var SpecFields = []string{
+	"engine_oil_viscosity", "engine_oil_spec", "engine_oil_capacity_ml",
+	"transmission_fluid_spec", "transmission_fluid_capacity_ml",
+	"differential_fluid_spec", "differential_fluid_capacity_ml",
+	"brake_fluid_spec", "brake_fluid_capacity_ml",
+	"coolant_spec", "coolant_capacity_ml",
+	"wheel_lug_torque_nm", "tire_pressure_front_bar", "tire_pressure_rear_bar",
+}
+
+// filled reports which spec fields hold a value.
+func (in Specs) filled() map[string]bool {
+	return map[string]bool{
+		"engine_oil_viscosity": in.EngineOilViscosity != "", "engine_oil_spec": in.EngineOilSpec != "",
+		"engine_oil_capacity_ml":  in.EngineOilCapacityMl != nil,
+		"transmission_fluid_spec": in.TransmissionFluidSpec != "", "transmission_fluid_capacity_ml": in.TransmissionFluidCapacityMl != nil,
+		"differential_fluid_spec": in.DifferentialFluidSpec != "", "differential_fluid_capacity_ml": in.DifferentialFluidCapacityMl != nil,
+		"brake_fluid_spec": in.BrakeFluidSpec != "", "brake_fluid_capacity_ml": in.BrakeFluidCapacityMl != nil,
+		"coolant_spec": in.CoolantSpec != "", "coolant_capacity_ml": in.CoolantCapacityMl != nil,
+		"wheel_lug_torque_nm": in.WheelLugTorqueNm != nil, "tire_pressure_front_bar": in.TirePressureFrontBar != nil,
+		"tire_pressure_rear_bar": in.TirePressureRearBar != nil,
+	}
+}
+
+// ParseSpecsMeta decodes the stored specs_meta column; a damaged value reads
+// as no metadata rather than failing the spec sheet.
+func ParseSpecsMeta(raw string) map[string]SpecMeta {
+	out := map[string]SpecMeta{}
+	if json.Unmarshal([]byte(raw), &out) != nil {
+		return map[string]SpecMeta{}
+	}
+	return out
+}
+
+// validateMeta checks the metadata of filled fields and returns it as JSON.
+func validateMeta(v *apperr.Validation, meta map[string]SpecMeta, filled map[string]bool) string {
+	keep := map[string]SpecMeta{}
+	for field, m := range meta {
+		known := false
+		for _, f := range SpecFields {
+			known = known || f == field
+		}
+		if !known {
+			v.Add("meta", "validation.invalid_choice")
+			continue
+		}
+		if !filled[field] {
+			continue
+		}
+		m.SourceURL, m.SourceName = strings.TrimSpace(m.SourceURL), strings.TrimSpace(m.SourceName)
+		if m.SourceURL != "" {
+			u, err := url.Parse(m.SourceURL)
+			v.Check(err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" || len(m.SourceURL) > 2048, "meta."+field, "validation.url")
+		}
+		v.Check(m.IsAuto && m.SourceURL == "", "meta."+field, "validation.required")
+		v.Check(utf8.RuneCountInString(m.SourceName) > 100, "meta."+field, "validation.length")
+		keep[field] = m
+	}
+	b, _ := json.Marshal(keep)
+	return string(b)
 }
 
 // GetSpecs returns the spec sheet and its custom entries.
@@ -77,6 +154,7 @@ func (s *Service) PutSpecs(ctx context.Context, vehicleID int64, in Specs) (stor
 		*p = strings.TrimSpace(*p)
 		v.Check(utf8.RuneCountInString(*p) > 120, field, "validation.length")
 	}
+	meta := validateMeta(&v, in.Meta, in.filled())
 	if err := v.Err(); err != nil {
 		return store.VehicleSpec{}, err
 	}
@@ -87,7 +165,7 @@ func (s *Service) PutSpecs(ctx context.Context, vehicleID int64, in Specs) (stor
 		BrakeFluidSpec: in.BrakeFluidSpec, BrakeFluidCapacityMl: nullInt(in.BrakeFluidCapacityMl),
 		CoolantSpec: in.CoolantSpec, CoolantCapacityMl: nullInt(in.CoolantCapacityMl),
 		WheelLugTorqueNm: nullFloat(in.WheelLugTorqueNm), TirePressureFrontBar: nullFloat(in.TirePressureFrontBar),
-		TirePressureRearBar: nullFloat(in.TirePressureRearBar), UpdatedAt: clock.Timestamp(s.Clock.Now()), VehicleID: vehicleID,
+		TirePressureRearBar: nullFloat(in.TirePressureRearBar), SpecsMeta: meta, UpdatedAt: clock.Timestamp(s.Clock.Now()), VehicleID: vehicleID,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return store.VehicleSpec{}, apperr.NotFound()

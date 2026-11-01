@@ -1,7 +1,7 @@
 import { useState, type KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { X } from 'lucide-react'
-import { Field, inputClass } from '../../components/Field'
+import { Field, inputBaseClass } from '../../components/Field'
 
 /** Chip input for OBD2 fault codes; codes are uppercased. */
 export function FaultCodeInput({ value, onChange }: { value: string[]; onChange: (codes: string[]) => void }) {
@@ -32,7 +32,7 @@ export function FaultCodeInput({ value, onChange }: { value: string[]; onChange:
               </button>
             </span>
           ))}
-          <input {...a} value={draft} onChange={(e) => { setDraft(e.target.value) }} onKeyDown={onKey} onBlur={commit} className={`${inputClass} min-w-24 flex-1 border-0 bg-transparent p-1 font-mono uppercase`} />
+          <input {...a} value={draft} onChange={(e) => { setDraft(e.target.value) }} onKeyDown={onKey} onBlur={commit} className={`${inputBaseClass} min-w-24 flex-1 border-0 bg-transparent p-1 font-mono uppercase`} />
         </div>
       )}
     </Field>

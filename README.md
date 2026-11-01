@@ -6,6 +6,7 @@ Self-hosted maintenance logbook and DIY repair tracker for people who work on th
 - **Self-Repair Projects**: troubleshooting, repairs, overhauls and modifications. Each project has a workflow (`Planned → In Progress → Waiting on Parts → Completed`), symptoms with OBD2 fault codes, root cause, procedure notes, critical torque specs, special tools, a parts bill of materials with per-part status, and photos, manuals and invoices.
 - **Reminders**: by km, by time, or whichever comes first, with configurable "due soon" lead thresholds. Any odometer update re-evaluates them immediately.
 - **Offline vehicle catalog**: type the HSN/TSN from the German registration certificate (Fahrzeugschein fields 2.1/2.2) to fill make and model, or pick make → model → chassis code (W203, E46, Golf IV (1J), …) → engine from searchable lists that fill power (kW), displacement (cm³) and fuel type. Model names follow your language (C-Class / C-Klasse). Any field also accepts your own text. Lookups never leave your server and need no API keys; admins can refresh the catalog from its sources with one click.
+- **Spec sheet auto-fill** (optional, needs `TAVILY_API_KEY` and `GEMINI_API_KEY`): searches the web for oil, fluid, wheel-torque and tyre-pressure values (Tavily) and lets Gemini pick them out of the search results. Every filled value links the search result that states it; a value that is not written in its cited result is left empty instead of guessed. Everything stays editable, and edited values are marked as adjusted manually.
 - **Quick-reference spec sheet** per vehicle: oil and fluid specs and capacities, lug torque, tire pressures, and custom entries with images.
 - **Webhook notifications** only (no email): Discord, ntfy, Gotify, Home Assistant and Generic JSON, with custom headers, a test button, a delivery log and retries.
 - **Reports**: spending split by routine service vs. repairs and by parts vs. fluids, cost per km, a combined timeline, and a printable history with JSON/CSV export (for archiving or selling a car).
@@ -42,6 +43,9 @@ All settings are optional environment variables.
 | `TORQ_TRUSTED_PROXIES` | *(empty)* | Comma-separated CIDRs whose `X-Forwarded-For` header is trusted (for login throttling behind a reverse proxy) |
 | `TORQ_MAX_UPLOAD_MB` | `25` | Per-file upload limit (JPEG, PNG, WebP, HEIC, PDF) |
 | `TORQ_LOG_LEVEL` / `TORQ_LOG_FORMAT` | `info` / `json` | Logging (`debug`/`info`/`warn`/`error`; `json`/`text`) |
+| `TAVILY_API_KEY` | *(empty)* | Optional, together with `GEMINI_API_KEY`. Enables **Look up data automatically** in the spec sheet's edit dialog: torq runs two web searches with [Tavily](https://tavily.com) (free plan: 1,000 credits per month; one lookup uses 4) and sends the results to Gemini, which picks out the values. The vehicle's make, model, chassis code, year and engine go to Tavily |
+| `GEMINI_API_KEY` | *(empty)* | Optional, together with `TAVILY_API_KEY`. Google Gemini key for the auto-fill (free at [aistudio.google.com/apikey](https://aistudio.google.com/apikey)); no Google Search grounding is used. The vehicle data, HSN/TSN and the search results go to Google. For `make dev`, put both keys in a `.env` file in the repository root (see `.env.example`) |
+| `GEMINI_MODEL` | `gemini-3.5-flash` | Gemini model for the auto-fill. A lookup is stopped after 3 minutes, so the model must answer quickly (`gemini-3.8-flash` took 60–110 s on a free key). Google retires old models for new keys; set a current one if the dialog reports the model as unavailable or too slow |
 | `TORQ_CATALOG_ONLINE_UPDATES` | `true` | Lets admins refresh the vehicle catalog from KBA and GitHub (*About & data sources* → *Update now*). `false` keeps torq fully offline |
 | `TZ` | `UTC` | Time zone for reminder dates and digest schedules |
 
@@ -56,6 +60,10 @@ Everything lives in the data directory:
 ```
 
 To back up, copy the directory. For a consistent copy while torq is running, stop the container first or use `sqlite3 torq.db ".backup backup.db"`. Schema migrations only move forward and run automatically at startup.
+
+## Deploying to a server
+
+[`docs/deployment.md`](docs/deployment.md) sets up automatic deployment to a small VPS: every push to `main` that passes CI is published to the GitHub Container Registry and rolled out over SSH, behind a Cloudflare Tunnel on your own domain. The production stack is in [`deploy/`](deploy/).
 
 ## Behind a reverse proxy
 

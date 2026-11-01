@@ -202,7 +202,7 @@ function PartDialog({ repairId, part, onClose }: { repairId: number; part: Repai
     >
       <div className="space-y-4">
         {save.isError && Object.keys(fieldErrors(save.error)).length === 0 && <ErrorBanner message={errorText(save.error)} />}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="form-grid grid grid-cols-1 gap-4 sm:grid-cols-2">
           <TextField label={t('parts.name')} value={name} onChange={setName} error={fe.name} maxLength={120} autoFocus className="sm:col-span-2" />
           <TextField label={t('parts.oem')} value={oem} onChange={setOem} error={fe.oem_part_number} optional />
           <TextField label={t('parts.aftermarketBrand')} value={brand} onChange={setBrand} error={fe.aftermarket_brand} optional />

@@ -64,7 +64,7 @@ export function WebhookForm({ webhook, onClose }: { webhook: Webhook | null; onC
     >
       <div className="space-y-4">
         {save.isError && Object.keys(fe).length === 0 && <ErrorBanner message={errorText(save.error)} />}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="form-grid grid grid-cols-1 gap-4 sm:grid-cols-2">
           <TextField label={t('fields.name')} value={name} onChange={setName} error={fe.name} maxLength={64} />
           <SelectField label={t('fields.preset')} value={preset} onChange={(v) => { setPreset(v as WebhookPreset) }} error={fe.preset} options={presets.map((p) => ({ value: p, label: t(`presets.${p}`) }))} />
         </div>

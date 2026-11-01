@@ -23,6 +23,7 @@ import (
 	"github.com/marekbeckmann/torq/internal/repairs"
 	"github.com/marekbeckmann/torq/internal/reports"
 	"github.com/marekbeckmann/torq/internal/servicelog"
+	"github.com/marekbeckmann/torq/internal/specfill"
 	"github.com/marekbeckmann/torq/internal/vehicles"
 )
 
@@ -62,6 +63,9 @@ type Server struct {
 	reports    *reports.Service
 	// catalogUpdate runs admin-triggered online catalog updates.
 	catalogUpdate *catalogUpdater
+	// specfill looks up spec sheets on the web; nil unless GEMINI_API_KEY and
+	// TAVILY_API_KEY are set.
+	specfill specLookup
 	// patterns records every registered API route (used by the CSRF route-walk test).
 	patterns []string
 }
@@ -96,6 +100,9 @@ func NewServer(d Deps) *Server {
 	}
 	s.reports = &reports.Service{DB: d.DB, Vehicles: s.vehicles, ServiceLog: s.servicelog, Repairs: s.repairs}
 	fetcher := catalogsync.NewFetcher("torq/" + d.Version + " (+https://github.com/marekbeckmann/torq)")
+	if d.Config.GeminiAPIKey != "" && d.Config.TavilyAPIKey != "" {
+		s.specfill = specfill.New(d.Config.GeminiAPIKey, d.Config.TavilyAPIKey, d.Config.GeminiModel)
+	}
 	s.catalogUpdate = &catalogUpdater{log: d.Log, now: d.Clock.Now, run: func(ctx context.Context) (catalog.Result, error) {
 		return fetcher.Update(ctx, d.DB, d.Clock.Now())
 	}}
@@ -165,4 +172,9 @@ func (s *Server) healthz(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "version": s.Version})
+}
+
+// specLookup is the web spec lookup (specfill.Client); tests replace it.
+type specLookup interface {
+	Lookup(ctx context.Context, v specfill.Vehicle) (map[string]specfill.Value, error)
 }

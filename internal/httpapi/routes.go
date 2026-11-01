@@ -43,6 +43,7 @@ func (s *Server) routes() {
 	// Spec sheet
 	s.route("GET /vehicles/{id}/specs", member, s.getSpecs)
 	s.route("PUT /vehicles/{id}/specs", member, s.putSpecs)
+	s.route("POST /vehicles/{id}/autofill-specs", member, s.autofillSpecs)
 	s.route("POST /vehicles/{id}/spec-entries", member, s.createSpecEntry)
 	s.route("PUT /vehicles/{id}/spec-entries/order", member, s.reorderSpecEntries)
 	s.route("PATCH /spec-entries/{id}", member, s.updateSpecEntry)

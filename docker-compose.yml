@@ -7,6 +7,9 @@ services:
       - "8080:8080"
     volumes:
       - torq-data:/data
+    env_file:
+      - path: .env # optional, e.g. GEMINI_API_KEY for the spec auto-fill
+        required: false
     environment:
       TZ: Europe/Berlin
       # TORQ_BASE_URL: https://torq.example.com   # enables links in notifications and Secure cookies

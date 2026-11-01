@@ -3,6 +3,7 @@ import { Field, fieldInputClass } from './Field'
 
 type NumberFieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value' | 'type'> & {
   label: ReactNode
+  labelAside?: ReactNode
   /** Raw text as typed; parse with parseNumber() using the user's number format. */
   value: string
   onChange: (value: string) => void
@@ -15,9 +16,9 @@ type NumberFieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'onChange' |
 }
 
 /** Text input for locale-formatted numbers (accepts "6,5" or "6.5") with a metric unit suffix. */
-export function NumberField({ label, value, onChange, unit, error, hint, optional, decimal = true, highlighted, className, ...rest }: NumberFieldProps) {
+export function NumberField({ label, labelAside, value, onChange, unit, error, hint, optional, decimal = true, highlighted, className, ...rest }: NumberFieldProps) {
   return (
-    <Field label={label} error={error} hint={hint} optional={optional ?? false} className={className ?? ''}>
+    <Field label={label} labelAside={labelAside} error={error} hint={hint} optional={optional ?? false} className={className ?? ''}>
       {(a) => (
         <div className="relative">
           <input

@@ -10,17 +10,17 @@ export const testSession: Session = {
     id: 1, username: 'marek', display_name: 'Marek', role: 'admin', locale: 'en', date_format: 'YYYY-MM-DD',
     number_format: 'point', currency_code: 'EUR', currency_symbol: null, power_unit: 'kw', disabled: false,
   },
-  instance: { max_upload_mb: 25, version: 'test' },
+  instance: { max_upload_mb: 25, version: 'test', spec_autofill: false },
 }
 
 /** Renders ui with a fresh query client, i18n (English) and a signed-in session. */
-export function renderWithApp(ui: ReactNode) {
+export function renderWithApp(ui: ReactNode, session: Session = testSession) {
   void i18n.changeLanguage('en')
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
       <I18nextProvider i18n={i18n}>
-        <SessionContext.Provider value={testSession}>{ui}</SessionContext.Provider>
+        <SessionContext.Provider value={session}>{ui}</SessionContext.Provider>
       </I18nextProvider>
     </QueryClientProvider>,
   )

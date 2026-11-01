@@ -73,7 +73,7 @@ export function PreferencesPage() {
           {save.isSuccess && <Notice tone="emerald">{t('common:state.saved')}</Notice>}
           {save.isError && Object.keys(fe).length === 0 && <ErrorBanner message={errorText(save.error)} />}
           <TextField label={t('auth:fields.displayName')} value={displayName} onChange={setDisplayName} error={fe.display_name} />
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="form-grid grid grid-cols-1 gap-4 sm:grid-cols-2">
             <SelectField
               label={t('preferences.language')}
               value={locale}

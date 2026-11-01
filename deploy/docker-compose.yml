@@ -1,0 +1,53 @@
+# Production stack for a VPS (docs/deployment.md): torq plus a Cloudflare
+# Tunnel. No port is published; cloudflared dials out to Cloudflare, which
+# serves https://<your domain> and forwards to torq over the private network.
+#
+# The deploy workflow copies this file to /opt/torq and runs
+#   docker compose pull && docker compose up -d
+# Settings live in /opt/torq/torq.env (template: env.example), which never
+# leaves the server.
+
+name: torq
+
+services:
+  torq:
+    # The deploy workflow pins the commit it built; "latest" is the fallback.
+    image: ${TORQ_IMAGE:-ghcr.io/marekbeckmann/torq:latest}
+    restart: unless-stopped
+    env_file: torq.env
+    environment:
+      # cloudflared is the only proxy; trust X-Forwarded-For from this network.
+      TORQ_TRUSTED_PROXIES: 172.30.0.0/24
+    volumes:
+      - torq-data:/data
+    networks: [torq]
+    healthcheck:
+      test: ["CMD", "/torq", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options: { max-size: 10m, max-file: "3" }
+
+  cloudflared:
+    image: cloudflare/cloudflared:2026.9.3
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    env_file: torq.env # provides TUNNEL_TOKEN
+    depends_on:
+      torq:
+        condition: service_healthy
+    networks: [torq]
+    logging:
+      driver: json-file
+      options: { max-size: 10m, max-file: "3" }
+
+volumes:
+  torq-data:
+
+networks:
+  torq:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24

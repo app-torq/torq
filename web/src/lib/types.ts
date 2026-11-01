@@ -23,6 +23,8 @@ export interface User {
 export interface InstanceInfo {
   max_upload_mb: number
   version: string
+  /** The web spec lookup is configured (GEMINI_API_KEY). */
+  spec_autofill: boolean
 }
 
 export interface MeResponse {
@@ -156,6 +158,32 @@ export interface VehicleSpecs {
   wheel_lug_torque_nm: number | null
   tire_pressure_front_bar: number | null
   tire_pressure_rear_bar: number | null
+  /** Provenance per field; fields without an entry were entered by hand. */
+  meta: Partial<Record<SpecFieldKey, SpecMeta>>
+}
+
+export const SPEC_FIELD_KEYS = [
+  'engine_oil_viscosity', 'engine_oil_spec', 'engine_oil_capacity_ml',
+  'transmission_fluid_spec', 'transmission_fluid_capacity_ml',
+  'differential_fluid_spec', 'differential_fluid_capacity_ml',
+  'brake_fluid_spec', 'brake_fluid_capacity_ml',
+  'coolant_spec', 'coolant_capacity_ml',
+  'wheel_lug_torque_nm', 'tire_pressure_front_bar', 'tire_pressure_rear_bar',
+] as const
+export type SpecFieldKey = (typeof SPEC_FIELD_KEYS)[number]
+
+/** Where a spec value came from: the web auto-fill (is_auto) or a manual adjustment of it. */
+export interface SpecMeta {
+  is_auto: boolean
+  source_url?: string
+  source_name?: string
+}
+
+/** One field of POST /vehicles/{id}/autofill-specs; capacities are keyed *_capacity_l and given in litres. */
+export interface AutofillValue {
+  value: string | number | null
+  source_url: string | null
+  source_name: string | null
 }
 
 export interface Attachment {

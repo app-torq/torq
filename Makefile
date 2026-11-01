@@ -2,6 +2,11 @@
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 DATA_DIR ?= ./.data
 
+# Optional local settings for `make dev`, e.g. GEMINI_API_KEY=… (one KEY=value
+# per line, no quotes). The file is git-ignored.
+-include .env
+export $(shell sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/\1/p' .env 2>/dev/null)
+
 .PHONY: setup generate dev dev-api dev-web build-web build check test e2e docker clean catalog
 
 setup:

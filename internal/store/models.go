@@ -282,6 +282,7 @@ type VehicleSpec struct {
 	TirePressureFrontBar        sql.NullFloat64
 	TirePressureRearBar         sql.NullFloat64
 	UpdatedAt                   string
+	SpecsMeta                   string
 }
 
 type VehicleSpecEntry struct {

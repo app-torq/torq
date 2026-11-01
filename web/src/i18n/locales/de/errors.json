@@ -104,5 +104,15 @@
     "tsn_invalid": "Die TSN muss genau 3 Buchstaben oder Ziffern haben.",
     "updates_disabled": "Online-Aktualisierungen des Katalogs sind auf diesem Server abgeschaltet (TORQ_CATALOG_ONLINE_UPDATES).",
     "update_running": "Es läuft bereits eine Katalog-Aktualisierung."
+  },
+  "specs": {
+    "autofill_disabled": "Die automatische Datenermittlung ist auf diesem Server nicht eingerichtet (GEMINI_API_KEY und TAVILY_API_KEY).",
+    "autofill_failed": "Die automatische Ermittlung ist fehlgeschlagen: Die Websuche oder Gemini hat nicht geantwortet. Versuche es später erneut.",
+    "autofill_model_unavailable": "Das eingestellte Gemini-Modell ist nicht mehr verfügbar. Ein Administrator muss GEMINI_MODEL auf ein aktuelles Modell setzen (Standard: gemini-3.5-flash).",
+    "autofill_quota": "Das Gemini-Kontingent dieses API-Keys ist aufgebraucht. Prüfe die Limits unter ai.dev/rate-limit und versuche es später erneut.",
+    "autofill_key_invalid": "Google hat den API-Key abgelehnt. Ein Administrator muss GEMINI_API_KEY prüfen.",
+    "autofill_search_quota": "Die Tavily-Suchguthaben sind aufgebraucht (der kostenlose Tarif enthält 1.000 pro Monat). Versuche es im nächsten Monat erneut oder prüfe deinen Tarif unter app.tavily.com.",
+    "autofill_search_key_invalid": "Tavily hat den API-Key abgelehnt. Ein Administrator muss TAVILY_API_KEY prüfen.",
+    "autofill_timeout": "Die Ermittlung hat länger als 3 Minuten gedauert und wurde abgebrochen. Vermutlich antwortet das Gemini-Modell gerade langsam; ein Administrator kann mit GEMINI_MODEL ein schnelleres einstellen (Standard: gemini-3.5-flash)."
   }
 }

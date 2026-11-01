@@ -32,5 +32,18 @@
     "image": "Image",
     "valueOrImage": "Enter a value or attach an image after saving."
   },
-  "hint": "Spec: {{value}}"
+  "hint": "Spec: {{value}}",
+  "autofill": {
+    "button": "Look up data automatically",
+    "running": "Searching the web…",
+    "overwrite": "Also replace filled-in values",
+    "hint": "Searches the web for this vehicle (Tavily) and lets Google Gemini pick out values that a search result states, with its link. Check the sources before you save; nothing is saved until you click Save.",
+    "unavailable": "Not set up on this server: an administrator needs to set GEMINI_API_KEY and TAVILY_API_KEY.",
+    "summary": "{{filled}} values found and filled in, {{kept}} kept because they were already filled in, {{missing}} without a reliable source.",
+    "nothing": "No new values: nothing with a reliable source was found ({{kept}} found values were not applied because the fields were already filled in).",
+    "auto": "Auto",
+    "manual": "Adjusted manually",
+    "openSource": "Open source in a new tab: {{url}}",
+    "sourceLabel": "Filled automatically, source: {{name}} (opens in a new tab)"
+  }
 }

@@ -32,6 +32,14 @@ type Config struct {
 	// CatalogOnlineUpdates lets admins refresh the vehicle catalog from its
 	// upstream sources (Constitution VII); lookups always stay offline.
 	CatalogOnlineUpdates bool
+	// GeminiAPIKey and TavilyAPIKey enable the optional spec-sheet auto-fill
+	// (Tavily web search, Gemini extraction); the feature is off unless both
+	// are set.
+	GeminiAPIKey string
+	TavilyAPIKey string
+	// GeminiModel overrides the Gemini model of the auto-fill; empty uses
+	// specfill.DefaultModel.
+	GeminiModel string
 }
 
 // MaxUploadBytes returns the per-file upload limit in bytes.
@@ -102,6 +110,10 @@ func Load(getenv func(string) string) (Config, error) {
 		return Config{}, fmt.Errorf("TORQ_MAX_UPLOAD_MB must be a positive integer")
 	}
 	cfg.MaxUploadMB = mb
+
+	cfg.GeminiAPIKey = get("GEMINI_API_KEY", "")
+	cfg.GeminiModel = get("GEMINI_MODEL", "")
+	cfg.TavilyAPIKey = get("TAVILY_API_KEY", "")
 
 	switch v := strings.ToLower(get("TORQ_CATALOG_ONLINE_UPDATES", "true")); v {
 	case "true", "false":

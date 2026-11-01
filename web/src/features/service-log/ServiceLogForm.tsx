@@ -10,7 +10,7 @@ import { fieldErrors, useErrorText } from '../../lib/errors'
 import { vehicleName, type CostType, type ServiceCategory, type ServiceLog } from '../../lib/types'
 import { useSession } from '../../app/session'
 import { Button, IconButton } from '../../components/Button'
-import { SelectField, TextAreaField, TextField } from '../../components/Field'
+import { FieldPair, SelectField, TextAreaField, TextField } from '../../components/Field'
 import { NumberField } from '../../components/NumberField'
 import { Card, ErrorBanner, Loading, PageHeader } from '../../components/ui'
 import { invalidateOdometerDependents, useVehicles } from '../vehicles/hooks'
@@ -163,7 +163,7 @@ function ServiceLogForm({ log }: { log?: ServiceLog }) {
       <form onSubmit={submit} className="space-y-6" noValidate>
         {generalError && <ErrorBanner message={generalError} />}
         <Card>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="form-grid grid grid-cols-1 gap-4 sm:grid-cols-3">
             <SelectField
               label={t('fields.vehicle')}
               value={vehicleId}
@@ -205,10 +205,10 @@ function ServiceLogForm({ log }: { log?: ServiceLog }) {
                     </IconButton>
                   </div>
                   {vehicleId && <SpecHint vehicleId={Number(vehicleId)} category={cat} />}
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="form-grid grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <TextField label={t('fields.brand')} value={it.brand} onChange={(v) => { update(it.key, { brand: v }) }} error={fe[`${p}brand`]} optional />
                     <TextField label={t('fields.specification')} value={it.specification} onChange={(v) => { update(it.key, { specification: v }) }} error={fe[`${p}specification`]} optional />
-                    <div className="flex gap-2">
+                    <FieldPair>
                       <NumberField label={t('fields.quantity')} value={it.quantity} onChange={(v) => { update(it.key, { quantity: v }) }} error={fe[`${p}quantity_ml`]} className="flex-1" optional />
                       <SelectField
                         label={t('fields.unit')}
@@ -217,7 +217,7 @@ function ServiceLogForm({ log }: { log?: ServiceLog }) {
                         options={[{ value: 'L', label: unitL }, { value: 'mL', label: unitMl }]}
                         className="w-20"
                       />
-                    </div>
+                    </FieldPair>
                     <NumberField label={t('fields.cost')} value={it.cost} onChange={(v) => { update(it.key, { cost: v }) }} error={fe[`${p}cost_cents`]} optional />
                     <TextField label={t('fields.oemPart')} value={it.oemPart} onChange={(v) => { update(it.key, { oemPart: v }) }} error={fe[`${p}oem_part_number`]} optional />
                     <TextField label={t('fields.aftermarketPart')} value={it.aftermarketPart} onChange={(v) => { update(it.key, { aftermarketPart: v }) }} error={fe[`${p}aftermarket_part_number`]} optional />
@@ -235,7 +235,7 @@ function ServiceLogForm({ log }: { log?: ServiceLog }) {
         </Card>
 
         <Card>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="form-grid grid grid-cols-1 gap-4 sm:grid-cols-2">
             <NumberField label={t('fields.extraCost')} value={extraCost} onChange={setExtraCost} error={fe.extra_cost_cents} optional />
             <TextField label={t('fields.extraCostLabel')} value={extraLabel} onChange={setExtraLabel} hint={t('fields.extraCostHint')} error={fe.extra_cost_label} optional />
             <TextAreaField label={t('fields.notes')} value={notes} onChange={setNotes} error={fe.notes} className="sm:col-span-2" optional />

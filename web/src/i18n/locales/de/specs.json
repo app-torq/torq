@@ -32,5 +32,18 @@
     "image": "Bild",
     "valueOrImage": "Gib einen Wert ein oder hänge nach dem Speichern ein Bild an."
   },
-  "hint": "Vorgabe: {{value}}"
+  "hint": "Vorgabe: {{value}}",
+  "autofill": {
+    "button": "Daten automatisch ermitteln",
+    "running": "Suche im Web…",
+    "overwrite": "Auch ausgefüllte Felder ersetzen",
+    "hint": "Sucht im Web nach diesem Fahrzeug (Tavily) und lässt Google Gemini die Werte herausziehen, die ein Suchtreffer belegt, mit Link darauf. Prüfe die Quellen vor dem Speichern; gespeichert wird erst mit „Speichern“.",
+    "unavailable": "Auf diesem Server nicht eingerichtet: Ein Administrator muss GEMINI_API_KEY und TAVILY_API_KEY setzen.",
+    "summary": "{{filled}} Werte gefunden und eingetragen, {{kept}} behalten, weil schon ausgefüllt, {{missing}} ohne verlässliche Quelle.",
+    "nothing": "Keine neuen Werte: Es wurde nichts mit verlässlicher Quelle gefunden ({{kept}} gefundene Werte wurden nicht übernommen, weil die Felder schon ausgefüllt sind).",
+    "auto": "Auto",
+    "manual": "Manuell angepasst",
+    "openSource": "Quelle in neuem Tab öffnen: {{url}}",
+    "sourceLabel": "Automatisch ermittelt, Quelle: {{name}} (öffnet in neuem Tab)"
+  }
 }

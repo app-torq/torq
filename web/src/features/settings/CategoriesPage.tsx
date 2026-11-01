@@ -170,7 +170,7 @@ function CategoryDialog({ category, onClose }: { category: ServiceCategory | nul
             <Checkbox label={t('categoryAdmin.isFluid')} checked={fluid} onChange={setFluid} />
           </>
         )}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="form-grid grid grid-cols-1 gap-4 sm:grid-cols-2">
           <NumberField label={t('categoryAdmin.defaultIntervalKm')} unit={t('common:units.km')} decimal={false} value={km} onChange={setKm} error={fe.default_interval_km} optional />
           <NumberField label={t('categoryAdmin.defaultIntervalMonths')} decimal={false} value={months} onChange={setMonths} error={fe.default_interval_months} optional />
         </div>

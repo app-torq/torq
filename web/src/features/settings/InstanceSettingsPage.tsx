@@ -43,7 +43,7 @@ function InstanceForm({ settings }: { settings: InstanceSettings }) {
         <div className="space-y-4">
           {save.isSuccess && <Notice tone="emerald">{t('common:state.saved')}</Notice>}
           {save.isError && Object.keys(fe).length === 0 && <ErrorBanner message={errorText(save.error)} />}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="form-grid grid grid-cols-1 gap-4 sm:grid-cols-2">
             <SelectField label={t('instance.weeklyDay')} value={weekday} onChange={setWeekday} options={weekdays} error={fe.weekly_digest_weekday} />
             <SelectField label={t('instance.weeklyHour')} value={weeklyHour} onChange={setWeeklyHour} options={hours} error={fe.weekly_digest_hour} />
             <SelectField label={t('instance.monthlyDay')} value={monthDay} onChange={setMonthDay} options={days} hint={t('instance.monthlyDayHint')} error={fe.monthly_digest_day} />

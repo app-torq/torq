@@ -256,7 +256,7 @@ function EditRepairDialog({ repair, onClose }: { repair: Repair; onClose: () => 
       <div className="space-y-4">
         {save.isError && Object.keys(fieldErrors(save.error)).length === 0 && <ErrorBanner message={errorText(save.error)} />}
         <TextField label={t('fields.title')} value={title} onChange={setTitle} error={fe.title} maxLength={120} />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="form-grid grid grid-cols-1 gap-4 sm:grid-cols-3">
           <TextField label={t('fields.startedOn')} type="date" value={startedOn} onChange={setStartedOn} error={fe.started_on} optional />
           {repair.status === 'completed' && (
             <>

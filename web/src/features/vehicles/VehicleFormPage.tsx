@@ -229,7 +229,7 @@ function VehicleForm({ vehicle }: { vehicle?: Vehicle }) {
             hsnError={fe.hsn}
             tsnError={fe.tsn}
           />
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="form-grid grid grid-cols-1 gap-4 sm:grid-cols-2">
             <CreatableCombobox
               label={t('fields.make')}
               value={values.make}

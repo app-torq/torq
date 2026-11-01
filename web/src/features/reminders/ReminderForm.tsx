@@ -8,7 +8,7 @@ import { fieldErrors, useErrorText } from '../../lib/errors'
 import { vehicleName, type Reminder } from '../../lib/types'
 import { useSession } from '../../app/session'
 import { Button } from '../../components/Button'
-import { SelectField, TextField } from '../../components/Field'
+import { FieldPair, SelectField, TextField } from '../../components/Field'
 import { NumberField } from '../../components/NumberField'
 import { Dialog } from '../../components/Dialog'
 import { ErrorBanner } from '../../components/ui'
@@ -116,7 +116,7 @@ export function ReminderForm({ reminder, vehicleId, onClose }: Props) {
     >
       <div className="space-y-4">
         {save.isError && Object.keys(fieldErrors(save.error)).length === 0 && <ErrorBanner message={errorText(save.error)} />}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="form-grid grid grid-cols-1 gap-4 sm:grid-cols-2">
           <SelectField
             label={t('fields.vehicle')}
             value={vehicle}
@@ -144,7 +144,7 @@ export function ReminderForm({ reminder, vehicleId, onClose }: Props) {
             <TextField label={t('fields.title')} value={title} onChange={setTitle} hint={t('fields.titleHint')} error={fe.title} maxLength={120} className="sm:col-span-2" />
           )}
           <NumberField label={t('fields.intervalKm')} unit={km} decimal={false} value={intervalKm} onChange={setIntervalKm} error={fe.interval_km} optional />
-          <div className="flex gap-2">
+          <FieldPair>
             <NumberField label={t('fields.intervalTime')} decimal={false} value={intervalTime} onChange={setIntervalTime} error={fe.interval_months ?? fe.interval_days} className="flex-1" optional />
             <SelectField
               label={t('fields.timeUnit')}
@@ -153,7 +153,7 @@ export function ReminderForm({ reminder, vehicleId, onClose }: Props) {
               options={[{ value: 'months', label: t('fields.months') }, { value: 'days', label: t('fields.days') }]}
               className="w-32"
             />
-          </div>
+          </FieldPair>
           <NumberField label={t('fields.leadKm')} unit={km} decimal={false} value={leadKm} onChange={setLeadKm} error={fe.lead_km} hint={t('fields.leadHint')} optional />
           <NumberField label={t('fields.leadDays')} unit={t('fields.days')} decimal={false} value={leadDays} onChange={setLeadDays} error={fe.lead_days} optional />
           <TextField label={t('fields.startDate')} type="date" value={startDate} onChange={setStartDate} error={fe.start_date} hint={t('fields.startHint')} optional />

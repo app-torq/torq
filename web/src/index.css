@@ -13,6 +13,27 @@ html {
   }
 }
 
+/*
+ * Form grids (class `form-grid` on a grid of fields; FieldPair in
+ * components/Field.tsx): every field spans three rows shared with its
+ * neighbours (label, control, hint/error) via subgrid, so controls in a row
+ * start at the same height even when a label wraps to two lines or only one
+ * field shows a hint. Unlayered, so it wins over the fields' flex utilities.
+ */
+.form-grid > :where(.field, .field-pair),
+.form-grid > .field-pair > .field {
+  grid-row: span 3;
+  display: grid;
+  grid-template-rows: subgrid;
+  row-gap: 0.375rem;
+  align-content: start;
+}
+.form-grid > .field-pair {
+  grid-auto-flow: column;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 0.5rem;
+}
+
 /* Paper only: the printable history report prints black on white. The screen stays dark. */
 @media print {
   html,
