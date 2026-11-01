@@ -1,0 +1,94 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "vehicles": "Vehicles",
+    "serviceLog": "Service Logbook",
+    "repairs": "Self-Repair Projects",
+    "reminders": "Reminders",
+    "reports": "Reports",
+    "settings": "Settings",
+    "preferences": "Preferences",
+    "users": "Users",
+    "categories": "Service categories",
+    "webhooks": "Webhooks",
+    "instance": "Instance",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "main": "Main navigation",
+    "about": "About & data sources",
+    "home": "{{brand}} – go to dashboard"
+  },
+  "actions": {
+    "save": "Save",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "create": "Create",
+    "close": "Close",
+    "confirm": "Confirm",
+    "back": "Back",
+    "retry": "Retry",
+    "search": "Search",
+    "clear": "Clear",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "remove": "Remove",
+    "loadMore": "Load more",
+    "logout": "Sign out",
+    "changePassword": "Change password",
+    "quickActions": "Quick actions"
+  },
+  "units": {
+    "km": "km",
+    "l": "L",
+    "ml": "mL",
+    "nm": "Nm",
+    "bar": "bar",
+    "cc": "cm³",
+    "kw": "kW",
+    "ps": "PS"
+  },
+  "state": {
+    "loading": "Loading…",
+    "empty": "Nothing here yet.",
+    "error": "Something went wrong.",
+    "saved": "Saved",
+    "optional": "optional",
+    "none": "—",
+    "yes": "Yes",
+    "no": "No",
+    "all": "All"
+  },
+  "confirm": {
+    "typeToConfirm": "Type <strong>{{value}}</strong> to confirm."
+  },
+  "quick": {
+    "placeholder": "Type an action…",
+    "noResults": "No matching actions",
+    "hint": "Press Enter to run, Esc to close",
+    "pickVehicle": "Choose a vehicle"
+  },
+  "dates": {
+    "today": "Today"
+  },
+  "pagination": {
+    "showing": "Showing {{count}} of {{total}}"
+  },
+  "attachments": {
+    "drop": "Drop files here or click to choose",
+    "types": "JPEG, PNG, WebP, HEIC or PDF, up to {{mb}} MB",
+    "uploading": "Uploading… {{percent}} %",
+    "caption": "Caption",
+    "download": "Download",
+    "deleteTitle": "Delete attachment",
+    "deleteBody": "Delete \"{{name}}\"?",
+    "empty": "No attachments yet.",
+    "tooLarge": "{{name}} is larger than {{mb}} MB.",
+    "photo": "Photo",
+    "changePhoto": "Change photo",
+    "removePhoto": "Remove photo",
+    "preview": "Preview"
+  }
+}

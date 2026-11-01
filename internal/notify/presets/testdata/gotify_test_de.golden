@@ -1,0 +1,12 @@
+Content-Type: application/json
+
+{
+  "extras": {
+    "client::display": {
+      "contentType": "text/markdown"
+    }
+  },
+  "message": "Dies ist ein Test von torq.",
+  "priority": 2,
+  "title": "torq-Testbenachrichtigung"
+}

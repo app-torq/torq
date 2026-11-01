@@ -1,0 +1,15 @@
+Content-Type: application/json
+
+{
+  "digest": {
+    "due_soon": [],
+    "overdue": [],
+    "period": "weekly"
+  },
+  "event": "digest_weekly",
+  "message": "—",
+  "schema": "torq.notification/v1",
+  "sent_at": "2026-10-30T08:00:00Z",
+  "severity": "info",
+  "title": "Wöchentliche Wartungsübersicht"
+}

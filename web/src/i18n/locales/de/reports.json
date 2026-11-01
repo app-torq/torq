@@ -1,0 +1,60 @@
+{
+  "title": "Auswertungen",
+  "subtitle": "Ausgaben für Wartung und Reparaturen",
+  "filters": {
+    "vehicle": "Fahrzeug",
+    "allVehicles": "Alle Fahrzeuge",
+    "range": "Zeitraum",
+    "from": "Von",
+    "to": "Bis",
+    "presets": {
+      "thisYear": "Dieses Jahr",
+      "lastYear": "Letztes Jahr",
+      "last12": "Letzte 12 Monate",
+      "all": "Gesamter Zeitraum",
+      "custom": "Benutzerdefiniert"
+    }
+  },
+  "tiles": {
+    "total": "Gesamtausgaben",
+    "costPerKm": "Kosten pro km",
+    "distance": "Gefahrene Strecke",
+    "notEnoughData": "Nicht genug Daten",
+    "perKm": "{{value}}/km"
+  },
+  "breakdown": {
+    "bySource": "Wartung vs. Reparaturprojekte",
+    "byType": "Teile vs. Flüssigkeiten",
+    "service": "Regelwartung",
+    "repairs": "Reparaturprojekte",
+    "parts": "Teile",
+    "fluids": "Flüssigkeiten & Verbrauchsmaterial",
+    "other": "Sonstiges"
+  },
+  "byVehicle": "Nach Fahrzeug",
+  "empty": "Keine Ausgaben in diesem Zeitraum.",
+  "timeline": {
+    "title": "Historie",
+    "empty": "Noch keine Wartungseinträge oder abgeschlossenen Reparaturen.",
+    "service": "Wartung",
+    "repair": "Reparatur",
+    "export": "Export & Druck"
+  },
+  "history": {
+    "title": "Fahrzeughistorie",
+    "options": "Optionen",
+    "includeCosts": "Kosten einbeziehen",
+    "includeNotes": "Notizen einbeziehen",
+    "print": "Drucken",
+    "downloadJson": "JSON herunterladen",
+    "downloadCsv": "CSV herunterladen",
+    "generated": "Erstellt am {{date}}",
+    "profile": "Fahrzeug",
+    "specs": "Technische Daten",
+    "services": "Wartungshistorie",
+    "repairs": "Abgeschlossene Reparaturen",
+    "noServices": "Keine Wartungseinträge.",
+    "noRepairs": "Keine abgeschlossenen Reparaturen.",
+    "back": "Zurück zum Fahrzeug"
+  }
+}

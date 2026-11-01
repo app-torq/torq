@@ -1,0 +1,17 @@
+Content-Type: application/json
+
+{
+  "extras": {
+    "client::display": {
+      "contentType": "text/markdown"
+    },
+    "client::notification": {
+      "click": {
+        "url": "https://torq.example/vehicles/1/reminders"
+      }
+    }
+  },
+  "message": "650 km",
+  "priority": 5,
+  "title": "Bald fällig: Motoröl \u0026 Filter — Mercedes-Benz C 220 CDI"
+}

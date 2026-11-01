@@ -1,0 +1,73 @@
+{
+  "title": "Erinnerungen",
+  "subtitle": "Was als Nächstes fällig ist",
+  "add": "Erinnerung hinzufügen",
+  "edit": "Erinnerung bearbeiten",
+  "empty": "Noch keine Erinnerungen.",
+  "states": {
+    "upcoming": "Anstehend",
+    "due_soon": "Bald fällig",
+    "overdue": "Überfällig"
+  },
+  "paused": "Pausiert",
+  "kind": {
+    "linked": "Wartungskategorie",
+    "standalone": "Eigenständige Prüfung"
+  },
+  "fields": {
+    "vehicle": "Fahrzeug",
+    "category": "Wartungskategorie",
+    "title": "Titel",
+    "titleHint": "z. B. Achsmanschetten prüfen",
+    "intervalKm": "Alle",
+    "intervalTime": "Alle",
+    "timeUnit": "Zeiteinheit",
+    "months": "Monate",
+    "days": "Tage",
+    "leadKm": "Bald fällig ab",
+    "leadDays": "Bald fällig ab",
+    "leadHint": "So viel vor dem Fälligkeitspunkt warnen.",
+    "startDate": "Zuletzt erledigt (Datum)",
+    "startOdometer": "Zuletzt erledigt (km-Stand)",
+    "startHint": "Gilt, bis ein passender Wartungseintrag existiert.",
+    "kind": "Art"
+  },
+  "due": {
+    "km": "bei {{km}}",
+    "date": "am {{date}}",
+    "remainingKm": "noch {{value}}",
+    "overKm": "{{value}} überschritten",
+    "remainingDays_one": "noch {{count}} Tag",
+    "remainingDays_other": "noch {{count}} Tage",
+    "overDays_one": "{{count}} Tag überfällig",
+    "overDays_other": "{{count}} Tage überfällig",
+    "dueToday": "heute fällig",
+    "trigger": {
+      "km": "nach Laufleistung",
+      "time": "nach Zeit"
+    },
+    "interval": "Alle {{value}}",
+    "intervalMonths_one": "{{count}} Monat",
+    "intervalMonths_other": "{{count}} Monate",
+    "intervalDays_one": "{{count}} Tag",
+    "intervalDays_other": "{{count}} Tage",
+    "or": "oder",
+    "whicheverFirst": "je nachdem, was zuerst eintritt",
+    "baseline": "Zuletzt am {{date}} bei {{km}}",
+    "baselineStart": "Gezählt ab {{date}} bei {{km}}"
+  },
+  "actions": {
+    "markDone": "Als erledigt markieren",
+    "pause": "Pausieren",
+    "resume": "Fortsetzen",
+    "logService": "Wartung eintragen"
+  },
+  "markDone": {
+    "title": "Prüfung als erledigt markieren",
+    "date": "Erledigt am",
+    "odometer": "Kilometerstand"
+  },
+  "deleteTitle": "Erinnerung löschen",
+  "deleteBody": "Diese Erinnerung löschen?",
+  "showPaused": "Pausierte anzeigen"
+}

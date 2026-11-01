@@ -1,0 +1,111 @@
+{
+  "preferences": {
+    "title": "Preferences",
+    "intro": "Language and formats apply to you only. Units are always metric.",
+    "language": "Language",
+    "dateFormat": "Date format",
+    "numberFormat": "Number format",
+    "numberPoint": "1,234.5 (decimal point)",
+    "numberComma": "1.234,5 (decimal comma)",
+    "currency": "Currency",
+    "currencySymbol": "Custom currency symbol",
+    "currencySymbolHint": "Optional, up to 5 characters. Overrides the symbol shown for the currency.",
+    "preview": "Preview",
+    "languages": {
+      "en": "English",
+      "de": "Deutsch"
+    },
+    "currencies": {
+      "EUR": "Euro (EUR)",
+      "USD": "US dollar (USD)",
+      "GBP": "Pound sterling (GBP)",
+      "CHF": "Swiss franc (CHF)"
+    },
+    "powerUnit": "Power unit",
+    "powerUnitHint": "Power is stored in kW; this only changes which unit is shown first.",
+    "powerUnits": {
+      "kw": "kW (kilowatt)",
+      "ps": "PS (metric horsepower)"
+    }
+  },
+  "users": {
+    "title": "Users",
+    "intro": "Everyone in the household shares one garage. Administrators also manage users, webhooks and instance settings.",
+    "add": "Add user",
+    "role": "Role",
+    "roles": {
+      "admin": "Administrator",
+      "member": "Member"
+    },
+    "status": "Status",
+    "active": "Active",
+    "disabled": "Disabled",
+    "disable": "Disable",
+    "enable": "Enable",
+    "resetPassword": "Reset password",
+    "resetPasswordIntro": "Set a new password for {{name}}. All of their sessions will be signed out.",
+    "passwordReset": "Password reset.",
+    "deleteTitle": "Delete user",
+    "deleteBody": "Delete {{name}}? Records they created stay in the garage.",
+    "you": "you"
+  },
+  "instance": {
+    "title": "Instance",
+    "intro": "Settings that apply to the whole torq instance.",
+    "digests": "Digest schedule",
+    "weeklyDay": "Weekly digest day",
+    "weeklyHour": "Weekly digest hour",
+    "monthlyDay": "Monthly digest day",
+    "monthlyHour": "Monthly digest hour",
+    "monthlyDayHint": "1–28, so every month has the day.",
+    "about": "About",
+    "version": "Version",
+    "timeZone": "Time zone",
+    "baseUrl": "Base URL (TORQ_BASE_URL)",
+    "baseUrlSet": "Configured — notifications link back to torq",
+    "baseUrlUnset": "Not set — notifications contain no links",
+    "maxUpload": "Upload limit",
+    "weekdays": {
+      "1": "Monday",
+      "2": "Tuesday",
+      "3": "Wednesday",
+      "4": "Thursday",
+      "5": "Friday",
+      "6": "Saturday",
+      "7": "Sunday"
+    }
+  },
+  "about": {
+    "title": "About torq",
+    "intro": "Version and the open vehicle data torq uses.",
+    "version": "Version",
+    "datasets": "Vehicle data sources",
+    "offline": "Vehicle lookups (HSN/TSN quick-fill and make/model suggestions) always run offline against the catalog stored in torq. No API keys, no external services.",
+    "publisher": "Publisher",
+    "license": "License",
+    "source": "Source",
+    "stand": "Data as of",
+    "retrieved": "Retrieved",
+    "commit": "Source commit",
+    "modified": "torq modified this data (normalized names, merged sources). See NOTICE.md in the repository for details.",
+    "counts": "{{kba}} HSN/TSN entries and {{vehicles}} make/model/engine entries.",
+    "derived": "The combined catalog database is distributed under the Open Database License (ODbL) 1.0.",
+    "empty": "No vehicle catalog is loaded. Vehicles can still be entered manually.",
+    "catalogSource": "Catalog",
+    "sources": {
+      "bundled": "Bundled with this version",
+      "online": "Updated online"
+    },
+    "imported": "Imported",
+    "update": "Update now",
+    "updating": "Updating…",
+    "updateHint": "Downloads the current KBA FZ 6 list and the vehicle-makes-models data, rebuilds the catalog and replaces it in one step. This takes a few minutes; lookups keep working meanwhile.",
+    "updateDisabled": "Online updates are turned off on this server (TORQ_CATALOG_ONLINE_UPDATES=false).",
+    "updateStates": {
+      "running": "Update running since {{time}}.",
+      "succeeded": "Catalog updated {{time}}.",
+      "unchanged": "Sources unchanged since the last update ({{time}}).",
+      "failed": "Update failed {{time}}; the previous catalog is still in use."
+    }
+  }
+}

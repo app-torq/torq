@@ -1,0 +1,87 @@
+{
+  "title": "Reparaturprojekte",
+  "subtitle": "Fehlersuche, Reparaturen, Überholungen und Umbauten",
+  "add": "Neues Projekt",
+  "addTitle": "Neues Reparaturprojekt",
+  "empty": "Keine Projekte vorhanden.",
+  "statuses": {
+    "planned": "Geplant",
+    "in_progress": "In Arbeit",
+    "waiting_on_parts": "Wartet auf Teile",
+    "completed": "Abgeschlossen"
+  },
+  "view": {
+    "board": "Board",
+    "list": "Liste"
+  },
+  "moveTo": "Verschieben nach",
+  "openProject": "Projekt öffnen",
+  "fields": {
+    "title": "Titel",
+    "vehicle": "Fahrzeug",
+    "status": "Status",
+    "startedOn": "Begonnen",
+    "completedOn": "Abgeschlossen",
+    "completionOdometer": "Kilometerstand bei Abschluss",
+    "symptom": "Symptom / Fehlerbeschreibung",
+    "faultCodes": "OBD2-Fehlercodes",
+    "faultCodesHint": "Enter oder Komma fügt einen Code hinzu, z. B. P0201.",
+    "rootCause": "Ursache",
+    "procedure": "Notizen zum Vorgehen",
+    "specialTools": "Spezialwerkzeug",
+    "specialToolsHint": "Ein Werkzeug pro Zeile, z. B. E12 Torx",
+    "torqueSpecs": "Wichtige Anzugsmomente",
+    "torqueLabel": "Verschraubung",
+    "torqueValue": "Drehmoment",
+    "torqueNote": "Hinweis",
+    "addTorque": "Anzugsmoment hinzufügen"
+  },
+  "sections": {
+    "diagnostics": "Diagnose",
+    "procedure": "Vorgehen",
+    "reference": "Referenz: Drehmomente & Werkzeug",
+    "parts": "Teile (Stückliste)",
+    "attachments": "Fotos, Handbücher & Rechnungen"
+  },
+  "parts": {
+    "add": "Teil hinzufügen",
+    "name": "Teil",
+    "oem": "OE-Nummer",
+    "aftermarketBrand": "Zubehör-Marke",
+    "aftermarketNumber": "Zubehör-Nummer",
+    "supplier": "Händler-/Shop-URL",
+    "quantity": "Menge",
+    "unitCost": "Stückpreis",
+    "lineTotal": "Summe",
+    "status": "Status",
+    "costType": "Kostenart",
+    "total": "Summe Teile",
+    "statuses": {
+      "needed": "Benötigt",
+      "ordered": "Bestellt",
+      "in_stock": "Vorrätig",
+      "installed": "Verbaut"
+    },
+    "countSummary": "{{needed}} benötigt · {{ordered}} bestellt",
+    "openShop": "Händlerseite öffnen",
+    "editTitle": "Teil bearbeiten",
+    "deleteTitle": "Teil löschen",
+    "deleteBody": "„{{name}}“ aus der Stückliste löschen?"
+  },
+  "complete": {
+    "title": "Projekt abschließen",
+    "intro": "Abschlussdatum und Kilometerstand fließen in die Fahrzeughistorie ein und aktualisieren den Kilometerstand.",
+    "submit": "Als abgeschlossen markieren"
+  },
+  "reopenHint": "Beim Wiedereröffnen verschwindet das Projekt aus Zeitachse und Kostenauswertung, bis es erneut abgeschlossen wird.",
+  "deleteTitle": "Projekt löschen",
+  "deleteBody": "„{{title}}“ mit Stückliste und Anhängen löschen?",
+  "filters": {
+    "allStatuses": "Alle Status",
+    "search": "Titel, Fehlercodes, Teilenummern durchsuchen"
+  },
+  "quick": {
+    "newRepair": "Neues Reparaturprojekt"
+  },
+  "partsCount": "{{count}} Teile"
+}

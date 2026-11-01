@@ -1,0 +1,119 @@
+{
+  "generic": "Something went wrong. Please try again.",
+  "internal": "The server ran into a problem. Please try again.",
+  "not_found": "This item no longer exists.",
+  "network": {
+    "unreachable": "torq is not reachable. Check your connection."
+  },
+  "request": {
+    "malformed": "The request could not be understood.",
+    "too_large": "The request is too large.",
+    "failed": "The request failed."
+  },
+  "csrf": {
+    "missing_header": "The request was blocked for security reasons. Reload the page.",
+    "origin_mismatch": "The request was blocked for security reasons. Reload the page."
+  },
+  "auth": {
+    "unauthenticated": "Please sign in again.",
+    "forbidden": "Only administrators can do this.",
+    "invalid_credentials": "Wrong username or password.",
+    "throttled": "Too many attempts. Try again in {{retry_after_s}} s."
+  },
+  "setup": {
+    "already_completed": "This instance is already set up."
+  },
+  "user": {
+    "last_admin": "At least one active administrator is required.",
+    "cannot_delete_self": "You cannot delete your own account.",
+    "cannot_disable_self": "You cannot disable your own account.",
+    "username_taken": "This username is already taken."
+  },
+  "validation": {
+    "failed": "Please check the highlighted fields.",
+    "required": "Required.",
+    "username_format": "3–32 characters: letters, digits, dot, dash, underscore.",
+    "password_too_short": "At least 10 characters.",
+    "length": "Too short or too long.",
+    "invalid_choice": "Choose one of the options.",
+    "currency_code": "Use a three-letter code such as EUR.",
+    "number": "Enter a valid number.",
+    "positive": "Must be greater than zero.",
+    "non_negative": "Must not be negative.",
+    "range": "Out of the allowed range.",
+    "date": "Enter a valid date.",
+    "future_date": "Must not be in the future.",
+    "url": "Enter a full http(s) address.",
+    "vin": "17 characters, letters and digits (no I, O or Q).",
+    "header_name": "Not an allowed header name.",
+    "duplicate": "Duplicate entry.",
+    "header_value": "Header values must not contain line breaks."
+  },
+  "vehicle": {
+    "confirm_name_mismatch": "The name does not match.",
+    "odometer_use_quick_update": "Use the odometer update to change the reading.",
+    "hsn_invalid": "HSN must be exactly 4 digits.",
+    "tsn_invalid": "TSN must be exactly 3 letters or digits.",
+    "displacement_out_of_range": "Displacement must be a whole number between 1 and 20,000 cm³.",
+    "power_out_of_range": "Power must be a whole number between 1 and 2,000 kW.",
+    "fuel_type_invalid": "Choose a fuel type from the list."
+  },
+  "odometer": {
+    "decrease_requires_confirmation": "Lowering the odometer needs confirmation.",
+    "large_jump_requires_confirmation": "This large jump needs confirmation."
+  },
+  "spec_entries": {
+    "order_mismatch": "The list changed meanwhile. Reload and try again."
+  },
+  "service_log": {
+    "items_required": "Add at least one item.",
+    "duplicate_category": "Each category can appear only once per entry.",
+    "category_archived": "This category is archived."
+  },
+  "category": {
+    "in_use": "This category is used by service entries or reminders. Archive it instead.",
+    "builtin_readonly": "Built-in categories cannot be changed this way."
+  },
+  "reminder": {
+    "interval_required": "Set a distance or time interval.",
+    "months_and_days_exclusive": "Use months or days, not both.",
+    "title_required": "A standalone check needs a title.",
+    "lead_exceeds_interval": "Must be smaller than the interval.",
+    "linked_use_service_log": "Log a service entry to reset this reminder."
+  },
+  "attachment": {
+    "too_large": "The file is larger than {{max_mb}} MB.",
+    "type_not_allowed": "Only JPEG, PNG, WebP, HEIC images and PDF files are allowed.",
+    "empty": "The file is empty.",
+    "missing_file": "No file was sent."
+  },
+  "repair": {
+    "completed_before_started": "Completion cannot be before the start date.",
+    "torque_spec_invalid": "Each torque spec needs a label and a value above 0 Nm.",
+    "status_use_status_endpoint": "Change the status with the status menu.",
+    "vehicle_immutable": "A project cannot move to another vehicle."
+  },
+  "parts": {
+    "order_mismatch": "The parts list changed meanwhile. Reload and try again."
+  },
+  "report": {
+    "invalid_range": "The start date must be before the end date."
+  },
+  "catalog": {
+    "hsn_invalid": "HSN must be exactly 4 digits.",
+    "tsn_invalid": "TSN must be exactly 3 letters or digits.",
+    "updates_disabled": "Online catalog updates are turned off on this server (TORQ_CATALOG_ONLINE_UPDATES).",
+    "update_running": "A catalog update is already running."
+  },
+  "specs": {
+    "autofill_disabled": "Automatic data lookup is not set up on this server (GEMINI_API_KEY and TAVILY_API_KEY).",
+    "autofill_failed": "The automatic lookup failed: the web search or Gemini did not answer. Try again later.",
+    "autofill_model_unavailable": "The configured Gemini model is no longer available. An administrator needs to set GEMINI_MODEL to a current model (default: gemini-3.5-flash).",
+    "autofill_quota": "The Gemini quota of this API key is used up. Check the limits at ai.dev/rate-limit and try again later.",
+    "autofill_key_invalid": "Google rejected the API key. An administrator needs to check GEMINI_API_KEY.",
+    "autofill_search_quota": "The Tavily search credits are used up (the free plan includes 1,000 per month). Try again next month or check your plan at app.tavily.com.",
+    "autofill_search_key_invalid": "Tavily rejected the API key. An administrator needs to check TAVILY_API_KEY.",
+    "autofill_timeout": "The lookup took more than 3 minutes and was stopped. The Gemini model is probably answering slowly; an administrator can set a faster one with GEMINI_MODEL (default: gemini-3.5-flash).",
+    "autofill_busy": "Gemini is overloaded right now (Google reports high demand). Try again in a minute."
+  }
+}

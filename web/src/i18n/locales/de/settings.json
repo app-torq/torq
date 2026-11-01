@@ -1,0 +1,111 @@
+{
+  "preferences": {
+    "title": "Präferenzen",
+    "intro": "Sprache und Formate gelten nur für dich. Einheiten sind immer metrisch.",
+    "language": "Sprache",
+    "dateFormat": "Datumsformat",
+    "numberFormat": "Zahlenformat",
+    "numberPoint": "1,234.5 (Dezimalpunkt)",
+    "numberComma": "1.234,5 (Dezimalkomma)",
+    "currency": "Währung",
+    "currencySymbol": "Eigenes Währungssymbol",
+    "currencySymbolHint": "Optional, bis zu 5 Zeichen. Ersetzt das angezeigte Währungssymbol.",
+    "preview": "Vorschau",
+    "languages": {
+      "en": "English",
+      "de": "Deutsch"
+    },
+    "currencies": {
+      "EUR": "Euro (EUR)",
+      "USD": "US-Dollar (USD)",
+      "GBP": "Britisches Pfund (GBP)",
+      "CHF": "Schweizer Franken (CHF)"
+    },
+    "powerUnit": "Leistungseinheit",
+    "powerUnitHint": "Die Leistung wird in kW gespeichert; hier wählst du nur, welche Einheit zuerst angezeigt wird.",
+    "powerUnits": {
+      "kw": "kW (Kilowatt)",
+      "ps": "PS (Pferdestärke)"
+    }
+  },
+  "users": {
+    "title": "Benutzer",
+    "intro": "Alle im Haushalt teilen sich eine Garage. Administratoren verwalten zusätzlich Benutzer, Webhooks und Instanz-Einstellungen.",
+    "add": "Benutzer hinzufügen",
+    "role": "Rolle",
+    "roles": {
+      "admin": "Administrator",
+      "member": "Mitglied"
+    },
+    "status": "Status",
+    "active": "Aktiv",
+    "disabled": "Deaktiviert",
+    "disable": "Deaktivieren",
+    "enable": "Aktivieren",
+    "resetPassword": "Passwort zurücksetzen",
+    "resetPasswordIntro": "Neues Passwort für {{name}} festlegen. Alle Sitzungen werden beendet.",
+    "passwordReset": "Passwort zurückgesetzt.",
+    "deleteTitle": "Benutzer löschen",
+    "deleteBody": "{{name}} löschen? Von ihnen angelegte Einträge bleiben in der Garage erhalten.",
+    "you": "du"
+  },
+  "instance": {
+    "title": "Instanz",
+    "intro": "Einstellungen, die für die gesamte torq-Instanz gelten.",
+    "digests": "Zeitplan für Übersichten",
+    "weeklyDay": "Tag der Wochenübersicht",
+    "weeklyHour": "Uhrzeit der Wochenübersicht",
+    "monthlyDay": "Tag der Monatsübersicht",
+    "monthlyHour": "Uhrzeit der Monatsübersicht",
+    "monthlyDayHint": "1–28, damit jeder Monat den Tag hat.",
+    "about": "Info",
+    "version": "Version",
+    "timeZone": "Zeitzone",
+    "baseUrl": "Basis-URL (TORQ_BASE_URL)",
+    "baseUrlSet": "Konfiguriert — Benachrichtigungen verlinken auf torq",
+    "baseUrlUnset": "Nicht gesetzt — Benachrichtigungen enthalten keine Links",
+    "maxUpload": "Upload-Limit",
+    "weekdays": {
+      "1": "Montag",
+      "2": "Dienstag",
+      "3": "Mittwoch",
+      "4": "Donnerstag",
+      "5": "Freitag",
+      "6": "Samstag",
+      "7": "Sonntag"
+    }
+  },
+  "about": {
+    "title": "Über torq",
+    "intro": "Version und die offenen Fahrzeugdaten, die torq verwendet.",
+    "version": "Version",
+    "datasets": "Datenquellen für Fahrzeugdaten",
+    "offline": "Fahrzeugsuchen (HSN/TSN-Schnellerfassung und Vorschläge für Marke/Modell) laufen immer offline gegen den in torq gespeicherten Katalog. Keine API-Schlüssel, keine externen Dienste.",
+    "publisher": "Herausgeber",
+    "license": "Lizenz",
+    "source": "Quelle",
+    "stand": "Datenstand",
+    "retrieved": "Abgerufen",
+    "commit": "Quell-Commit",
+    "modified": "torq hat diese Daten verändert (Namen vereinheitlicht, Quellen zusammengeführt). Details in NOTICE.md im Repository.",
+    "counts": "{{kba}} HSN/TSN-Einträge und {{vehicles}} Einträge zu Marke/Modell/Motor.",
+    "derived": "Die zusammengeführte Katalogdatenbank wird unter der Open Database License (ODbL) 1.0 verbreitet.",
+    "empty": "Es ist kein Fahrzeugkatalog geladen. Fahrzeuge können weiterhin manuell erfasst werden.",
+    "catalogSource": "Katalog",
+    "sources": {
+      "bundled": "Mit dieser Version ausgeliefert",
+      "online": "Online aktualisiert"
+    },
+    "imported": "Importiert",
+    "update": "Jetzt aktualisieren",
+    "updating": "Wird aktualisiert…",
+    "updateHint": "Lädt die aktuelle KBA-FZ-6-Liste und die vehicle-makes-models-Daten, baut den Katalog neu auf und ersetzt ihn in einem Schritt. Das dauert einige Minuten; die Suche funktioniert währenddessen weiter.",
+    "updateDisabled": "Online-Aktualisierungen sind auf diesem Server abgeschaltet (TORQ_CATALOG_ONLINE_UPDATES=false).",
+    "updateStates": {
+      "running": "Aktualisierung läuft seit {{time}}.",
+      "succeeded": "Katalog aktualisiert am {{time}}.",
+      "unchanged": "Quellen seit der letzten Aktualisierung unverändert ({{time}}).",
+      "failed": "Aktualisierung am {{time}} fehlgeschlagen; der bisherige Katalog wird weiter verwendet."
+    }
+  }
+}

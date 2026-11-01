@@ -1,0 +1,79 @@
+{
+  "title": "Wartungsheft",
+  "subtitle": "Regelmäßige Intervallwartung",
+  "add": "Wartung eintragen",
+  "edit": "Wartungseintrag bearbeiten",
+  "detail": "Wartungseintrag",
+  "empty": "Noch keine Wartungseinträge.",
+  "categories": {
+    "engine_oil": "Motoröl & Filter",
+    "transmission_fluid": "Getriebeöl",
+    "brake_fluid": "Bremsflüssigkeit",
+    "coolant": "Kühlmittel",
+    "differential_fluid": "Differenzialöl",
+    "air_filter": "Luftfilter",
+    "cabin_filter": "Innenraumfilter",
+    "fuel_filter": "Kraftstofffilter",
+    "spark_glow_plugs": "Zünd-/Glühkerzen",
+    "brake_pads_rotors": "Bremsbeläge/-scheiben",
+    "timing_belt_chain": "Zahnriemen/Steuerkette"
+  },
+  "fields": {
+    "vehicle": "Fahrzeug",
+    "date": "Datum",
+    "odometer": "Kilometerstand",
+    "notes": "Notizen",
+    "extraCost": "Sonstige Kosten",
+    "extraCostLabel": "Beschreibung",
+    "extraCostHint": "z. B. Werkstattbedarf, Entsorgung",
+    "category": "Kategorie",
+    "brand": "Marke",
+    "specification": "Verwendete Spezifikation",
+    "quantity": "Menge",
+    "unit": "Einheit",
+    "oemPart": "OE-Teilenummer",
+    "aftermarketPart": "Zubehör-Teilenummer",
+    "cost": "Kosten",
+    "costType": "Kostenart",
+    "total": "Gesamt"
+  },
+  "costTypes": { "parts": "Teile", "fluids": "Flüssigkeiten & Verbrauchsmaterial" },
+  "items": {
+    "title": "Durchgeführte Arbeiten",
+    "add": "Position hinzufügen",
+    "remove": "Position entfernen"
+  },
+  "filters": {
+    "allVehicles": "Alle Fahrzeuge",
+    "allCategories": "Alle Kategorien",
+    "from": "Von",
+    "to": "Bis",
+    "search": "Notizen, Marken, Teilenummern durchsuchen"
+  },
+  "deleteTitle": "Wartungseintrag löschen",
+  "deleteBody": "Diesen Wartungseintrag löschen? Verknüpfte Erinnerungen werden neu berechnet.",
+  "warnings": {
+    "odometer": {
+      "inconsistent_with_history": "Der Kilometerstand passt nicht zur Reihenfolge der anderen Einträge. Trotzdem gespeichert; bitte Datum und km prüfen."
+    }
+  },
+  "categoryAdmin": {
+    "title": "Wartungskategorien",
+    "intro": "Integrierte Kategorien werden automatisch übersetzt. Lege eigene für alles an, was du sonst regelmäßig wartest.",
+    "builtin": "Integriert",
+    "custom": "Eigene",
+    "add": "Kategorie hinzufügen",
+    "name": "Name",
+    "isFluid": "Flüssigkeit / Verbrauchsmaterial (Standard-Kostenart)",
+    "defaultIntervalKm": "Standardintervall",
+    "defaultIntervalMonths": "Standardintervall (Monate)",
+    "archive": "Archivieren",
+    "unarchive": "Wiederherstellen",
+    "archived": "Archiviert",
+    "deleteTitle": "Kategorie löschen",
+    "deleteBody": "Kategorie „{{name}}“ löschen?",
+    "editTitle": "Kategorie bearbeiten"
+  },
+  "quick": { "newService": "Neuer Wartungseintrag" },
+  "count": "{{count}} Einträge"
+}

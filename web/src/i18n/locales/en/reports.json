@@ -1,0 +1,60 @@
+{
+  "title": "Reports",
+  "subtitle": "Maintenance and repair spending",
+  "filters": {
+    "vehicle": "Vehicle",
+    "allVehicles": "All vehicles",
+    "range": "Period",
+    "from": "From",
+    "to": "To",
+    "presets": {
+      "thisYear": "This year",
+      "lastYear": "Last year",
+      "last12": "Last 12 months",
+      "all": "All time",
+      "custom": "Custom"
+    }
+  },
+  "tiles": {
+    "total": "Total spent",
+    "costPerKm": "Cost per km",
+    "distance": "Distance driven",
+    "notEnoughData": "Not enough data",
+    "perKm": "{{value}}/km"
+  },
+  "breakdown": {
+    "bySource": "Routine service vs. self-repair",
+    "byType": "Parts vs. fluids",
+    "service": "Routine service",
+    "repairs": "Self-repair projects",
+    "parts": "Parts",
+    "fluids": "Fluids & consumables",
+    "other": "Other"
+  },
+  "byVehicle": "By vehicle",
+  "empty": "No spending in this period.",
+  "timeline": {
+    "title": "History",
+    "empty": "No service entries or completed repairs yet.",
+    "service": "Service",
+    "repair": "Repair",
+    "export": "Export & print"
+  },
+  "history": {
+    "title": "Vehicle history report",
+    "options": "Options",
+    "includeCosts": "Include costs",
+    "includeNotes": "Include notes",
+    "print": "Print",
+    "downloadJson": "Download JSON",
+    "downloadCsv": "Download CSV",
+    "generated": "Generated {{date}}",
+    "profile": "Vehicle",
+    "specs": "Specifications",
+    "services": "Service history",
+    "repairs": "Completed repairs",
+    "noServices": "No service entries.",
+    "noRepairs": "No completed repairs.",
+    "back": "Back to vehicle"
+  }
+}
