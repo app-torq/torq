@@ -27,7 +27,8 @@ Self-hosted · one small Docker container · your data stays on your server
 </p>
 
 > [!NOTE]
-> A public demo will runs at **[demo.torq-app.tech](https://demo.torq-app.tech)**
+> A public demo runs at **[demo.torq-app.tech](https://demo.torq-app.tech)**
+> The Login is Username: `demo`, Password: `password123`
 
 ## Features
 
