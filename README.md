@@ -15,9 +15,9 @@ Self-hosted · one small Docker container · your data stays on your server
 [![Go](https://img.shields.io/github/go-mod/go-version/marekbeckmann/torq?logo=go&logoColor=white)](go.mod)
 [![License: MIT](https://img.shields.io/github/license/marekbeckmann/torq)](LICENSE)
 [![Languages](https://img.shields.io/badge/i18n-English%20%7C%20Deutsch-informational)](#)
-[![Demo](https://img.shields.io/badge/demo-coming%20soon-lightgrey)](https://demo.torq-app.tech)
+[![Demo](https://img.shields.io/badge/Demo-Available-green)](https://demo.torq-app.tech)
 
-[Quick start](#quick-start) · [Features](#features) · [Configuration](#configuration) · [Wiki](https://github.com/marekbeckmann/torq/wiki) · [Demo](https://demo.torq-app.tech) *(coming soon)*
+[Quick start](#quick-start) · [Features](#features) · [Configuration](#configuration) · [Wiki](https://github.com/marekbeckmann/torq/wiki) · [Demo](https://demo.torq-app.tech)
 
 </div>
 
@@ -27,7 +27,7 @@ Self-hosted · one small Docker container · your data stays on your server
 </p>
 
 > [!NOTE]
-> A public demo will run at **[demo.torq-app.tech](https://demo.torq-app.tech)**. It is not live yet.
+> A public demo will runs at **[demo.torq-app.tech](https://demo.torq-app.tech)**
 
 ## Features
 

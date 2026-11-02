@@ -31,3 +31,5 @@ deploy/
 .specify
 specs/
 .bug-reporting/
+.agents/
+skills-lock.json
