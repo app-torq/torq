@@ -93,10 +93,10 @@ func (s *Server) routes() {
 	s.route("DELETE /repair-parts/{id}", member, s.deletePart)
 
 	// Attachments
-	s.route("POST /service-logs/{id}/attachments", member, s.uploadTo(func(id int64) attachments.Owner { return attachments.Owner{ServiceLogID: id} }))
-	s.route("POST /repairs/{id}/attachments", member, s.uploadTo(func(id int64) attachments.Owner { return attachments.Owner{RepairLogID: id} }))
-	s.route("POST /spec-entries/{id}/attachments", member, s.uploadTo(func(id int64) attachments.Owner { return attachments.Owner{SpecEntryID: id} }))
-	s.route("PUT /vehicles/{id}/avatar", member, s.putAvatar)
+	s.route("POST /service-logs/{id}/attachments", member, s.demoLocked(uploadsLocked, s.uploadTo(func(id int64) attachments.Owner { return attachments.Owner{ServiceLogID: id} })))
+	s.route("POST /repairs/{id}/attachments", member, s.demoLocked(uploadsLocked, s.uploadTo(func(id int64) attachments.Owner { return attachments.Owner{RepairLogID: id} })))
+	s.route("POST /spec-entries/{id}/attachments", member, s.demoLocked(uploadsLocked, s.uploadTo(func(id int64) attachments.Owner { return attachments.Owner{SpecEntryID: id} })))
+	s.route("PUT /vehicles/{id}/avatar", member, s.demoLocked(uploadsLocked, s.putAvatar))
 	s.route("DELETE /vehicles/{id}/avatar", member, s.deleteAvatar)
 	s.route("GET /attachments/{id}", member, s.getAttachment)
 	s.route("PATCH /attachments/{id}", member, s.patchAttachment)
@@ -123,11 +123,13 @@ func (s *Server) routes() {
 const (
 	accountsLocked = "demo.accounts_locked"
 	webhooksLocked = "demo.webhooks_locked"
+	uploadsLocked  = "demo.uploads_locked"
 )
 
 // demoLocked refuses fn with code in demo mode. Accounts are locked so nobody
 // can lock other visitors out of the shared demo login; webhooks so the
-// public demo cannot be used to send requests to arbitrary URLs.
+// public demo cannot be used to send requests to arbitrary URLs; uploads so
+// visitors cannot store files on the demo server.
 func (s *Server) demoLocked(code string, fn handlerFunc) handlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) error {
 		if s.Config.DemoMode {

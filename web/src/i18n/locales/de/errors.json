@@ -25,7 +25,8 @@
   },
   "demo": {
     "accounts_locked": "In der Demo können Konten nicht geändert werden.",
-    "webhooks_locked": "Webhooks sind in der Demo abgeschaltet."
+    "webhooks_locked": "Webhooks sind in der Demo abgeschaltet.",
+    "uploads_locked": "Uploads sind in der Demo abgeschaltet."
   },
   "user": {
     "last_admin": "Mindestens ein aktiver Administrator ist erforderlich.",

@@ -14,9 +14,13 @@ test('pages never scroll horizontally at 360 px and focus is visible', async ({ 
   }
 
   // Keyboard users see where focus is (focus-ring utility draws a box-shadow).
+  // Wait for the header to render first, otherwise Tab can land on <body>.
   await page.goto('/settings/preferences')
+  await page.waitForLoadState('networkidle')
+  await expect(page.getByRole('banner').getByRole('button').first()).toBeVisible()
   await page.keyboard.press('Tab')
   await page.keyboard.press('Tab')
+  await expect.poll(() => page.evaluate(() => document.activeElement?.tagName)).not.toBe('BODY')
   const shadow = await page.evaluate(() => getComputedStyle(document.activeElement ?? document.body).boxShadow)
   expect(shadow).not.toBe('none')
 })

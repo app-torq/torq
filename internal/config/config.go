@@ -42,7 +42,8 @@ type Config struct {
 	GeminiModel string
 	// DemoMode locks accounts (password changes, user management) and
 	// webhooks so a public demo login stays usable and cannot send requests
-	// to arbitrary URLs.
+	// to arbitrary URLs. It also sets MaxUploadMB to 0: the demo stores no
+	// uploads.
 	DemoMode bool
 }
 
@@ -129,6 +130,9 @@ func Load(getenv func(string) string) (Config, error) {
 	switch v := strings.ToLower(get("TORQ_DEMO_MODE", "false")); v {
 	case "true", "false":
 		cfg.DemoMode = v == "true"
+		if cfg.DemoMode {
+			cfg.MaxUploadMB = 0
+		}
 	default:
 		return Config{}, fmt.Errorf("TORQ_DEMO_MODE must be true or false, got %q", v)
 	}

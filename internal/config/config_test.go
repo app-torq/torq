@@ -61,3 +61,13 @@ func TestTrustedProxies(t *testing.T) {
 		t.Fatalf("got %v", cfg.TrustedProxies)
 	}
 }
+
+func TestLoadDemoModeDisablesUploads(t *testing.T) {
+	cfg, err := Load(env(map[string]string{"TORQ_DEMO_MODE": "true", "TORQ_MAX_UPLOAD_MB": "50"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.DemoMode || cfg.MaxUploadMB != 0 {
+		t.Fatalf("got %+v", cfg)
+	}
+}
