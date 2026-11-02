@@ -3,8 +3,8 @@ package httpapi
 import (
 	"net/http"
 
-	"github.com/marekbeckmann/torq/internal/apperr"
-	"github.com/marekbeckmann/torq/internal/attachments"
+	"github.com/app-torq/torq/internal/apperr"
+	"github.com/app-torq/torq/internal/attachments"
 )
 
 // routes registers every /api/v1 endpoint (contracts/rest-api.md).

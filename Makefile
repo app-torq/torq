@@ -1,4 +1,4 @@
-# torq — see the wiki: https://github.com/marekbeckmann/torq/wiki/Development
+# torq — see the wiki: https://github.com/app-torq/torq/wiki/Development
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 DATA_DIR ?= ./.data
 

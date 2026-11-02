@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/marekbeckmann/torq/internal/catalog"
-	"github.com/marekbeckmann/torq/internal/catalog/catalogtest"
-	"github.com/marekbeckmann/torq/internal/db"
-	"github.com/marekbeckmann/torq/internal/store"
-	"github.com/marekbeckmann/torq/internal/testutil"
+	"github.com/app-torq/torq/internal/catalog"
+	"github.com/app-torq/torq/internal/catalog/catalogtest"
+	"github.com/app-torq/torq/internal/db"
+	"github.com/app-torq/torq/internal/store"
+	"github.com/app-torq/torq/internal/testutil"
 )
 
 func fixtureDB(t *testing.T) (*db.DB, *store.Queries) {

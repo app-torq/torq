@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/marekbeckmann/torq/internal/catalog"
+	"github.com/app-torq/torq/internal/catalog"
 )
 
 // chassisTxt maps make + model (+ body) + production years to chassis codes.

@@ -4,8 +4,8 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/marekbeckmann/torq/internal/apperr"
-	"github.com/marekbeckmann/torq/internal/auth"
+	"github.com/app-torq/torq/internal/apperr"
+	"github.com/app-torq/torq/internal/auth"
 )
 
 const sessionCookie = "torq_session"

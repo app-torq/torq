@@ -9,15 +9,15 @@
 
 Self-hosted · one small Docker container · your data stays on your server
 
-[![CI](https://github.com/marekbeckmann/torq/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/marekbeckmann/torq/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/marekbeckmann/torq?sort=semver&display_name=tag)](https://github.com/marekbeckmann/torq/releases)
-[![Container](https://img.shields.io/badge/container-ghcr.io-2496ED?logo=docker&logoColor=white)](https://github.com/marekbeckmann/torq/pkgs/container/torq)
-[![Go](https://img.shields.io/github/go-mod/go-version/marekbeckmann/torq?logo=go&logoColor=white)](go.mod)
-[![License: MIT](https://img.shields.io/github/license/marekbeckmann/torq)](LICENSE)
+[![CI](https://github.com/app-torq/torq/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/app-torq/torq/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/app-torq/torq?sort=semver&display_name=tag)](https://github.com/app-torq/torq/releases)
+[![Container](https://img.shields.io/badge/container-ghcr.io-2496ED?logo=docker&logoColor=white)](https://github.com/app-torq/torq/pkgs/container/torq)
+[![Go](https://img.shields.io/github/go-mod/go-version/app-torq/torq?logo=go&logoColor=white)](go.mod)
+[![License: MIT](https://img.shields.io/github/license/app-torq/torq)](LICENSE)
 [![Languages](https://img.shields.io/badge/i18n-English%20%7C%20Deutsch-informational)](#)
 [![Demo](https://img.shields.io/badge/Demo-Available-green)](https://demo.torq-app.tech)
 
-[Quick start](#quick-start) · [Features](#features) · [Configuration](#configuration) · [Wiki](https://github.com/marekbeckmann/torq/wiki) · [Demo](https://demo.torq-app.tech)
+[Quick start](#quick-start) · [Features](#features) · [Configuration](#configuration) · [Wiki](https://github.com/app-torq/torq/wiki) · [Demo](https://demo.torq-app.tech)
 
 </div>
 
@@ -46,7 +46,7 @@ Self-hosted · one small Docker container · your data stays on your server
 
 ```bash
 docker run -d --name torq -p 8080:8080 -v torq-data:/data -e TZ=Europe/Berlin \
-  ghcr.io/marekbeckmann/torq:latest
+  ghcr.io/app-torq/torq:latest
 ```
 
 Open <http://localhost:8080> and create the administrator account.
@@ -73,23 +73,23 @@ All settings are optional environment variables. The most common ones:
 | `TORQ_MAX_UPLOAD_MB` | `25` | Per-file upload limit (JPEG, PNG, WebP, HEIC, PDF) |
 | `TAVILY_API_KEY`, `GEMINI_API_KEY` | *(empty)* | Both together enable the optional spec-sheet auto-fill |
 
-The full list, including logging, cookies, the Gemini model and catalog updates, is in the wiki under [Configuration](https://github.com/marekbeckmann/torq/wiki/Configuration).
+The full list, including logging, cookies, the Gemini model and catalog updates, is in the wiki under [Configuration](https://github.com/app-torq/torq/wiki/Configuration).
 
 > [!NOTE]
-> The spec-sheet auto-fill is the only feature that sends data to third parties: the vehicle's make, model, chassis code, year, engine and HSN/TSN go to [Tavily](https://tavily.com) and Google Gemini. It is off unless both keys are set. Both services have free tiers. See [Spec sheet auto-fill](https://github.com/marekbeckmann/torq/wiki/Spec-Sheet-Auto-Fill).
+> The spec-sheet auto-fill is the only feature that sends data to third parties: the vehicle's make, model, chassis code, year, engine and HSN/TSN go to [Tavily](https://tavily.com) and Google Gemini. It is off unless both keys are set. Both services have free tiers. See [Spec sheet auto-fill](https://github.com/app-torq/torq/wiki/Spec-Sheet-Auto-Fill).
 
 ## Data and backups
 
 Everything lives in the data directory (`/data` in the container): the SQLite database, uploaded photos and PDFs, and automatic copies taken before each schema upgrade.
 
 > [!WARNING]
-> Back up `/data` regularly. Copying it while torq is running can catch the database mid-write: stop the container first, or use the [online backup command](https://github.com/marekbeckmann/torq/wiki/Data-and-Backups#backups) from the wiki.
+> Back up `/data` regularly. Copying it while torq is running can catch the database mid-write: stop the container first, or use the [online backup command](https://github.com/app-torq/torq/wiki/Data-and-Backups#backups) from the wiki.
 
-Schema migrations only move forward and run automatically at startup. More in [Data and backups](https://github.com/marekbeckmann/torq/wiki/Data-and-Backups).
+Schema migrations only move forward and run automatically at startup. More in [Data and backups](https://github.com/app-torq/torq/wiki/Data-and-Backups).
 
 ## Documentation
 
-The [wiki](https://github.com/marekbeckmann/torq/wiki) covers installation, all settings, notifications and webhook payloads, the vehicle catalog, the spec-sheet auto-fill, backups, deployment and development.
+The [wiki](https://github.com/app-torq/torq/wiki) covers installation, all settings, notifications and webhook payloads, the vehicle catalog, the spec-sheet auto-fill, backups, deployment and development.
 
 ## Vehicle data & licenses
 
@@ -111,7 +111,7 @@ make test    # go test + vitest
 make e2e     # Playwright suite against bin/torq
 ```
 
-Requirements: Go 1.26+, Node.js 22, golangci-lint v2, and sqlc (only after editing `internal/store/queries`). More in [Development](https://github.com/marekbeckmann/torq/wiki/Development).
+Requirements: Go 1.26+, Node.js 22, golangci-lint v2, and sqlc (only after editing `internal/store/queries`). More in [Development](https://github.com/app-torq/torq/wiki/Development).
 
 Contributions are welcome, from bug reports to corrections of the chassis-code table (`internal/catalog/catalogsync/chassis.txt`).
 

@@ -9,10 +9,10 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/marekbeckmann/torq/internal/apperr"
-	"github.com/marekbeckmann/torq/internal/clock"
-	"github.com/marekbeckmann/torq/internal/notify/presets"
-	"github.com/marekbeckmann/torq/internal/store"
+	"github.com/app-torq/torq/internal/apperr"
+	"github.com/app-torq/torq/internal/clock"
+	"github.com/app-torq/torq/internal/notify/presets"
+	"github.com/app-torq/torq/internal/store"
 )
 
 // tokenRe matches an RFC 7230 header field name.

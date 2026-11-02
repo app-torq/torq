@@ -5,9 +5,9 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/marekbeckmann/torq/internal/apperr"
-	"github.com/marekbeckmann/torq/internal/notify/presets"
-	"github.com/marekbeckmann/torq/internal/store"
+	"github.com/app-torq/torq/internal/apperr"
+	"github.com/app-torq/torq/internal/notify/presets"
+	"github.com/app-torq/torq/internal/store"
 )
 
 // SendTest sends a sample notification synchronously and records it in the

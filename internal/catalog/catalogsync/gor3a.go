@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/marekbeckmann/torq/internal/catalog"
+	"github.com/app-torq/torq/internal/catalog"
 )
 
 // gor3a/vehicle-makes-models data/json/all.json (research C2).

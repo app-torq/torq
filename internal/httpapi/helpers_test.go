@@ -10,10 +10,10 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/marekbeckmann/torq/internal/clock"
-	"github.com/marekbeckmann/torq/internal/config"
-	"github.com/marekbeckmann/torq/internal/db"
-	"github.com/marekbeckmann/torq/internal/testutil"
+	"github.com/app-torq/torq/internal/clock"
+	"github.com/app-torq/torq/internal/config"
+	"github.com/app-torq/torq/internal/db"
+	"github.com/app-torq/torq/internal/testutil"
 )
 
 // env is one test server; clients created from it share the handler and DB.

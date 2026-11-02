@@ -6,9 +6,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/marekbeckmann/torq/internal/apperr"
-	"github.com/marekbeckmann/torq/internal/i18n"
-	"github.com/marekbeckmann/torq/internal/reports"
+	"github.com/app-torq/torq/internal/apperr"
+	"github.com/app-torq/torq/internal/i18n"
+	"github.com/app-torq/torq/internal/reports"
 )
 
 type costsJSON struct {

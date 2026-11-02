@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/marekbeckmann/torq/internal/catalog"
+	"github.com/app-torq/torq/internal/catalog"
 )
 
 // names is a display name in both catalog languages.

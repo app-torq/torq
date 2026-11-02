@@ -5,7 +5,7 @@ package auth
 import (
 	"context"
 
-	"github.com/marekbeckmann/torq/internal/store"
+	"github.com/app-torq/torq/internal/store"
 )
 
 // Role is a household member's permission level.

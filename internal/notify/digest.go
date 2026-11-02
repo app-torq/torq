@@ -5,10 +5,10 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/marekbeckmann/torq/internal/i18n"
-	"github.com/marekbeckmann/torq/internal/notify/presets"
-	"github.com/marekbeckmann/torq/internal/reminders/engine"
-	"github.com/marekbeckmann/torq/internal/store"
+	"github.com/app-torq/torq/internal/i18n"
+	"github.com/app-torq/torq/internal/notify/presets"
+	"github.com/app-torq/torq/internal/reminders/engine"
+	"github.com/app-torq/torq/internal/store"
 )
 
 // lastWeeklySlot is the most recent instant <= now at the configured weekday

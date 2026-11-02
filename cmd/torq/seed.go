@@ -9,14 +9,14 @@ import (
 	"os"
 	"time"
 
-	"github.com/marekbeckmann/torq/internal/auth"
-	"github.com/marekbeckmann/torq/internal/clock"
-	"github.com/marekbeckmann/torq/internal/config"
-	"github.com/marekbeckmann/torq/internal/db"
-	"github.com/marekbeckmann/torq/internal/reminders"
-	"github.com/marekbeckmann/torq/internal/repairs"
-	"github.com/marekbeckmann/torq/internal/servicelog"
-	"github.com/marekbeckmann/torq/internal/vehicles"
+	"github.com/app-torq/torq/internal/auth"
+	"github.com/app-torq/torq/internal/clock"
+	"github.com/app-torq/torq/internal/config"
+	"github.com/app-torq/torq/internal/db"
+	"github.com/app-torq/torq/internal/reminders"
+	"github.com/app-torq/torq/internal/repairs"
+	"github.com/app-torq/torq/internal/servicelog"
+	"github.com/app-torq/torq/internal/vehicles"
 )
 
 // Demo credentials created by seed-demo when the instance has no users yet.

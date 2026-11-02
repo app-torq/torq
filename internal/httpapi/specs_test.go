@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/marekbeckmann/torq/internal/specfill"
+	"github.com/app-torq/torq/internal/specfill"
 )
 
 func TestSpecMetaRoundTrip(t *testing.T) {

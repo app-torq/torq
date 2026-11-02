@@ -4,9 +4,9 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/marekbeckmann/torq/internal/apperr"
-	"github.com/marekbeckmann/torq/internal/repairs"
-	"github.com/marekbeckmann/torq/internal/store"
+	"github.com/app-torq/torq/internal/apperr"
+	"github.com/app-torq/torq/internal/repairs"
+	"github.com/app-torq/torq/internal/store"
 )
 
 type torqueSpecJSON struct {

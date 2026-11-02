@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/marekbeckmann/torq/internal/clock"
-	"github.com/marekbeckmann/torq/internal/db"
+	"github.com/app-torq/torq/internal/clock"
+	"github.com/app-torq/torq/internal/db"
 )
 
 // NewDB opens a fresh, fully migrated database in a temp directory.

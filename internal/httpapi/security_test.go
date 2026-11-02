@@ -9,8 +9,8 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/marekbeckmann/torq/internal/config"
-	"github.com/marekbeckmann/torq/internal/testutil"
+	"github.com/app-torq/torq/internal/config"
+	"github.com/app-torq/torq/internal/testutil"
 )
 
 // Every mutating route must reject requests without the CSRF header, even

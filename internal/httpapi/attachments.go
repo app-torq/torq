@@ -10,9 +10,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/marekbeckmann/torq/internal/apperr"
-	"github.com/marekbeckmann/torq/internal/attachments"
-	"github.com/marekbeckmann/torq/internal/store"
+	"github.com/app-torq/torq/internal/apperr"
+	"github.com/app-torq/torq/internal/attachments"
+	"github.com/app-torq/torq/internal/store"
 )
 
 type attachmentJSON struct {

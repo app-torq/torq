@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/marekbeckmann/torq/internal/apperr"
-	"github.com/marekbeckmann/torq/internal/testutil"
-	"github.com/marekbeckmann/torq/internal/vehicles"
+	"github.com/app-torq/torq/internal/apperr"
+	"github.com/app-torq/torq/internal/testutil"
+	"github.com/app-torq/torq/internal/vehicles"
 )
 
 func setup(t *testing.T) (*Service, *vehicles.Service, int64, context.Context) {

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/marekbeckmann/torq/internal/store"
+	"github.com/app-torq/torq/internal/store"
 )
 
 // KBA returns every catalog variant for an HSN/TSN key. TSN matching is

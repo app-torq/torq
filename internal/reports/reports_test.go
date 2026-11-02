@@ -8,11 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/marekbeckmann/torq/internal/i18n"
-	"github.com/marekbeckmann/torq/internal/repairs"
-	"github.com/marekbeckmann/torq/internal/servicelog"
-	"github.com/marekbeckmann/torq/internal/testutil"
-	"github.com/marekbeckmann/torq/internal/vehicles"
+	"github.com/app-torq/torq/internal/i18n"
+	"github.com/app-torq/torq/internal/repairs"
+	"github.com/app-torq/torq/internal/servicelog"
+	"github.com/app-torq/torq/internal/testutil"
+	"github.com/app-torq/torq/internal/vehicles"
 )
 
 type fx struct {

@@ -13,8 +13,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/marekbeckmann/torq/internal/catalog"
-	"github.com/marekbeckmann/torq/internal/catalog/catalogsync"
+	"github.com/app-torq/torq/internal/catalog"
+	"github.com/app-torq/torq/internal/catalog/catalogsync"
 )
 
 type options struct {

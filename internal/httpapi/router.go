@@ -10,21 +10,21 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/marekbeckmann/torq/internal/attachments"
-	"github.com/marekbeckmann/torq/internal/auth"
-	"github.com/marekbeckmann/torq/internal/auth/local"
-	"github.com/marekbeckmann/torq/internal/catalog"
-	"github.com/marekbeckmann/torq/internal/catalog/catalogsync"
-	"github.com/marekbeckmann/torq/internal/clock"
-	"github.com/marekbeckmann/torq/internal/config"
-	"github.com/marekbeckmann/torq/internal/db"
-	"github.com/marekbeckmann/torq/internal/notify"
-	"github.com/marekbeckmann/torq/internal/reminders"
-	"github.com/marekbeckmann/torq/internal/repairs"
-	"github.com/marekbeckmann/torq/internal/reports"
-	"github.com/marekbeckmann/torq/internal/servicelog"
-	"github.com/marekbeckmann/torq/internal/specfill"
-	"github.com/marekbeckmann/torq/internal/vehicles"
+	"github.com/app-torq/torq/internal/attachments"
+	"github.com/app-torq/torq/internal/auth"
+	"github.com/app-torq/torq/internal/auth/local"
+	"github.com/app-torq/torq/internal/catalog"
+	"github.com/app-torq/torq/internal/catalog/catalogsync"
+	"github.com/app-torq/torq/internal/clock"
+	"github.com/app-torq/torq/internal/config"
+	"github.com/app-torq/torq/internal/db"
+	"github.com/app-torq/torq/internal/notify"
+	"github.com/app-torq/torq/internal/reminders"
+	"github.com/app-torq/torq/internal/repairs"
+	"github.com/app-torq/torq/internal/reports"
+	"github.com/app-torq/torq/internal/servicelog"
+	"github.com/app-torq/torq/internal/specfill"
+	"github.com/app-torq/torq/internal/vehicles"
 )
 
 // Deps are the dependencies shared by all handlers.
@@ -99,7 +99,7 @@ func NewServer(d Deps) *Server {
 		CollectFiles: s.files.KeysForRepair, RemoveFiles: s.files.RemoveFiles,
 	}
 	s.reports = &reports.Service{DB: d.DB, Vehicles: s.vehicles, ServiceLog: s.servicelog, Repairs: s.repairs}
-	fetcher := catalogsync.NewFetcher("torq/" + d.Version + " (+https://github.com/marekbeckmann/torq)")
+	fetcher := catalogsync.NewFetcher("torq/" + d.Version + " (+https://github.com/app-torq/torq)")
 	if d.Config.GeminiAPIKey != "" && d.Config.TavilyAPIKey != "" {
 		s.specfill = specfill.New(d.Config.GeminiAPIKey, d.Config.TavilyAPIKey, d.Config.GeminiModel)
 	}

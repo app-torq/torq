@@ -16,9 +16,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/marekbeckmann/torq/internal/catalog"
-	"github.com/marekbeckmann/torq/internal/db"
-	"github.com/marekbeckmann/torq/internal/store"
+	"github.com/app-torq/torq/internal/catalog"
+	"github.com/app-torq/torq/internal/db"
+	"github.com/app-torq/torq/internal/store"
 )
 
 // Upstream locations of the openly licensed sources (Constitution VII). SV 4.2

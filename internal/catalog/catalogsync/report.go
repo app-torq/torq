@@ -8,7 +8,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/marekbeckmann/torq/internal/catalog"
+	"github.com/app-torq/torq/internal/catalog"
 )
 
 // Report collects what the maintainer must review before committing a seed.

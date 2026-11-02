@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/marekbeckmann/torq/internal/store"
-	"github.com/marekbeckmann/torq/internal/testutil"
+	"github.com/app-torq/torq/internal/store"
+	"github.com/app-torq/torq/internal/testutil"
 )
 
 func TestSessionLifecycle(t *testing.T) {

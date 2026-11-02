@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/marekbeckmann/torq/internal/catalog"
+	"github.com/app-torq/torq/internal/catalog"
 )
 
 // modelIndex maps make key → model key → display names from the taxonomy, so

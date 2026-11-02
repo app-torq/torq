@@ -9,9 +9,9 @@ import (
 	"errors"
 	"time"
 
-	"github.com/marekbeckmann/torq/internal/clock"
-	"github.com/marekbeckmann/torq/internal/db"
-	"github.com/marekbeckmann/torq/internal/store"
+	"github.com/app-torq/torq/internal/clock"
+	"github.com/app-torq/torq/internal/db"
+	"github.com/app-torq/torq/internal/store"
 )
 
 const (

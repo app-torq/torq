@@ -10,9 +10,9 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/marekbeckmann/torq/internal/apperr"
-	"github.com/marekbeckmann/torq/internal/clock"
-	"github.com/marekbeckmann/torq/internal/store"
+	"github.com/app-torq/torq/internal/apperr"
+	"github.com/app-torq/torq/internal/clock"
+	"github.com/app-torq/torq/internal/store"
 )
 
 // CategoryInput creates or updates a category. Built-in categories accept only

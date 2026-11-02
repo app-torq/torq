@@ -16,8 +16,8 @@ import (
 	"slices"
 	"time"
 
-	"github.com/marekbeckmann/torq/internal/db"
-	"github.com/marekbeckmann/torq/internal/store"
+	"github.com/app-torq/torq/internal/db"
+	"github.com/app-torq/torq/internal/store"
 )
 
 // SeedSchema identifies the seed document format (data-model §5). v2 added

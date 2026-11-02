@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/marekbeckmann/torq/internal/apperr"
-	"github.com/marekbeckmann/torq/internal/catalog"
+	"github.com/app-torq/torq/internal/apperr"
+	"github.com/app-torq/torq/internal/catalog"
 )
 
 // catalogUpdateTimeout bounds one online update (download, build, import).

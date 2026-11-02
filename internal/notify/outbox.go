@@ -5,11 +5,11 @@ import (
 	"database/sql"
 	"encoding/json"
 
-	"github.com/marekbeckmann/torq/internal/clock"
-	"github.com/marekbeckmann/torq/internal/notify/presets"
-	"github.com/marekbeckmann/torq/internal/reminders"
-	"github.com/marekbeckmann/torq/internal/reminders/engine"
-	"github.com/marekbeckmann/torq/internal/store"
+	"github.com/app-torq/torq/internal/clock"
+	"github.com/app-torq/torq/internal/notify/presets"
+	"github.com/app-torq/torq/internal/reminders"
+	"github.com/app-torq/torq/internal/reminders/engine"
+	"github.com/app-torq/torq/internal/store"
 )
 
 // EnqueueTransitions is installed as reminders.Service.OnTransitions. Inside

@@ -12,12 +12,12 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/marekbeckmann/torq/internal/clock"
-	"github.com/marekbeckmann/torq/internal/db"
-	"github.com/marekbeckmann/torq/internal/i18n"
-	"github.com/marekbeckmann/torq/internal/notify/presets"
-	"github.com/marekbeckmann/torq/internal/reminders/engine"
-	"github.com/marekbeckmann/torq/internal/store"
+	"github.com/app-torq/torq/internal/clock"
+	"github.com/app-torq/torq/internal/db"
+	"github.com/app-torq/torq/internal/i18n"
+	"github.com/app-torq/torq/internal/notify/presets"
+	"github.com/app-torq/torq/internal/reminders/engine"
+	"github.com/app-torq/torq/internal/store"
 )
 
 // Events (data-model §7).

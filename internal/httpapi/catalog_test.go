@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/marekbeckmann/torq/internal/catalog"
-	"github.com/marekbeckmann/torq/internal/catalog/catalogtest"
+	"github.com/app-torq/torq/internal/catalog"
+	"github.com/app-torq/torq/internal/catalog/catalogtest"
 )
 
 type catalogList[T any] struct {

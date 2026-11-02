@@ -3,9 +3,9 @@ package httpapi
 import (
 	"net/http"
 
-	"github.com/marekbeckmann/torq/internal/reminders"
-	"github.com/marekbeckmann/torq/internal/reminders/engine"
-	"github.com/marekbeckmann/torq/internal/vehicles"
+	"github.com/app-torq/torq/internal/reminders"
+	"github.com/app-torq/torq/internal/reminders/engine"
+	"github.com/app-torq/torq/internal/vehicles"
 )
 
 func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) error {

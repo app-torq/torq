@@ -22,10 +22,10 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/marekbeckmann/torq/internal/apperr"
-	"github.com/marekbeckmann/torq/internal/clock"
-	"github.com/marekbeckmann/torq/internal/db"
-	"github.com/marekbeckmann/torq/internal/store"
+	"github.com/app-torq/torq/internal/apperr"
+	"github.com/app-torq/torq/internal/clock"
+	"github.com/app-torq/torq/internal/db"
+	"github.com/app-torq/torq/internal/store"
 )
 
 // Purposes.

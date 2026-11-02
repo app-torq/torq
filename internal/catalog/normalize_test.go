@@ -3,7 +3,7 @@ package catalog_test
 import (
 	"testing"
 
-	"github.com/marekbeckmann/torq/internal/catalog"
+	"github.com/app-torq/torq/internal/catalog"
 )
 
 func TestKey(t *testing.T) {

@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/marekbeckmann/torq/internal/catalog"
-	"github.com/marekbeckmann/torq/internal/db"
+	"github.com/app-torq/torq/internal/catalog"
+	"github.com/app-torq/torq/internal/db"
 )
 
 func i64(v int64) *int64   { return &v }

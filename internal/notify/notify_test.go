@@ -11,11 +11,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/marekbeckmann/torq/internal/clock"
-	"github.com/marekbeckmann/torq/internal/reminders"
-	"github.com/marekbeckmann/torq/internal/store"
-	"github.com/marekbeckmann/torq/internal/testutil"
-	"github.com/marekbeckmann/torq/internal/vehicles"
+	"github.com/app-torq/torq/internal/clock"
+	"github.com/app-torq/torq/internal/reminders"
+	"github.com/app-torq/torq/internal/store"
+	"github.com/app-torq/torq/internal/testutil"
+	"github.com/app-torq/torq/internal/vehicles"
 )
 
 type sink struct {

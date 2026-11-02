@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/marekbeckmann/torq/internal/clock"
-	"github.com/marekbeckmann/torq/internal/servicelog"
-	"github.com/marekbeckmann/torq/internal/store"
-	"github.com/marekbeckmann/torq/internal/testutil"
-	"github.com/marekbeckmann/torq/internal/vehicles"
+	"github.com/app-torq/torq/internal/clock"
+	"github.com/app-torq/torq/internal/servicelog"
+	"github.com/app-torq/torq/internal/store"
+	"github.com/app-torq/torq/internal/testutil"
+	"github.com/app-torq/torq/internal/vehicles"
 )
 
 type fixture struct {

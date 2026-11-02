@@ -4,8 +4,8 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/marekbeckmann/torq/internal/reminders"
-	"github.com/marekbeckmann/torq/internal/reminders/engine"
+	"github.com/app-torq/torq/internal/reminders"
+	"github.com/app-torq/torq/internal/reminders/engine"
 )
 
 type baselineJSON struct {

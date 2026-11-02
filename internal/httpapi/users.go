@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/marekbeckmann/torq/internal/apperr"
-	"github.com/marekbeckmann/torq/internal/auth"
+	"github.com/app-torq/torq/internal/apperr"
+	"github.com/app-torq/torq/internal/auth"
 )
 
 // pathID parses the {name} path wildcard as a positive int64.

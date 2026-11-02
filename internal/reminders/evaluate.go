@@ -7,11 +7,11 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/marekbeckmann/torq/internal/clock"
-	"github.com/marekbeckmann/torq/internal/db"
-	"github.com/marekbeckmann/torq/internal/reminders/engine"
-	"github.com/marekbeckmann/torq/internal/store"
-	"github.com/marekbeckmann/torq/internal/vehicles"
+	"github.com/app-torq/torq/internal/clock"
+	"github.com/app-torq/torq/internal/db"
+	"github.com/app-torq/torq/internal/reminders/engine"
+	"github.com/app-torq/torq/internal/store"
+	"github.com/app-torq/torq/internal/vehicles"
 )
 
 // Transition is a reminder entering due_soon or overdue that should notify.

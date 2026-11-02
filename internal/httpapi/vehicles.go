@@ -4,9 +4,9 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/marekbeckmann/torq/internal/apperr"
-	"github.com/marekbeckmann/torq/internal/store"
-	"github.com/marekbeckmann/torq/internal/vehicles"
+	"github.com/app-torq/torq/internal/apperr"
+	"github.com/app-torq/torq/internal/store"
+	"github.com/app-torq/torq/internal/vehicles"
 )
 
 type reminderCounts struct {

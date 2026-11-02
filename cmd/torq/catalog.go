@@ -6,8 +6,8 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/marekbeckmann/torq/internal/catalog"
-	"github.com/marekbeckmann/torq/internal/db"
+	"github.com/app-torq/torq/internal/catalog"
+	"github.com/app-torq/torq/internal/db"
 )
 
 // importCatalog loads the embedded vehicle catalog when it changed. A failure

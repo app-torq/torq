@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"regexp"
 
-	"github.com/marekbeckmann/torq/internal/apperr"
-	"github.com/marekbeckmann/torq/internal/catalog"
-	"github.com/marekbeckmann/torq/internal/store"
+	"github.com/app-torq/torq/internal/apperr"
+	"github.com/app-torq/torq/internal/catalog"
+	"github.com/app-torq/torq/internal/store"
 )
 
 // Catalog endpoints (specs/002-vehicle-catalog-lookup/contracts/rest-api.md).

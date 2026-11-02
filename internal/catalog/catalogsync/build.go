@@ -14,7 +14,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/marekbeckmann/torq/internal/catalog"
+	"github.com/app-torq/torq/internal/catalog"
 )
 
 // Inputs are the source files of one catalog build.

@@ -7,9 +7,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/marekbeckmann/torq/internal/clock"
-	"github.com/marekbeckmann/torq/internal/db"
-	"github.com/marekbeckmann/torq/internal/store"
+	"github.com/app-torq/torq/internal/clock"
+	"github.com/app-torq/torq/internal/db"
+	"github.com/app-torq/torq/internal/store"
 )
 
 // ErrInvalidCredentials is returned for unknown users and wrong passwords alike.

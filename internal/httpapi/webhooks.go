@@ -3,9 +3,9 @@ package httpapi
 import (
 	"net/http"
 
-	"github.com/marekbeckmann/torq/internal/apperr"
-	"github.com/marekbeckmann/torq/internal/notify"
-	"github.com/marekbeckmann/torq/internal/store"
+	"github.com/app-torq/torq/internal/apperr"
+	"github.com/app-torq/torq/internal/notify"
+	"github.com/app-torq/torq/internal/store"
 )
 
 type webhookEventsJSON struct {

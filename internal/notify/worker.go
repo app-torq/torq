@@ -15,8 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/marekbeckmann/torq/internal/clock"
-	"github.com/marekbeckmann/torq/internal/store"
+	"github.com/app-torq/torq/internal/clock"
+	"github.com/app-torq/torq/internal/store"
 )
 
 const (

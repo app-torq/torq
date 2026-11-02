@@ -7,12 +7,12 @@ import (
 	"context"
 	"sort"
 
-	"github.com/marekbeckmann/torq/internal/apperr"
-	"github.com/marekbeckmann/torq/internal/db"
-	"github.com/marekbeckmann/torq/internal/repairs"
-	"github.com/marekbeckmann/torq/internal/servicelog"
-	"github.com/marekbeckmann/torq/internal/store"
-	"github.com/marekbeckmann/torq/internal/vehicles"
+	"github.com/app-torq/torq/internal/apperr"
+	"github.com/app-torq/torq/internal/db"
+	"github.com/app-torq/torq/internal/repairs"
+	"github.com/app-torq/torq/internal/servicelog"
+	"github.com/app-torq/torq/internal/store"
+	"github.com/app-torq/torq/internal/vehicles"
 )
 
 // Service computes reports.

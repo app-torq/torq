@@ -1,4 +1,4 @@
-module github.com/marekbeckmann/torq
+module github.com/app-torq/torq
 
 go 1.26.0
 

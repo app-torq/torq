@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/marekbeckmann/torq/internal/apperr"
-	"github.com/marekbeckmann/torq/internal/auth"
-	"github.com/marekbeckmann/torq/internal/auth/local"
+	"github.com/app-torq/torq/internal/apperr"
+	"github.com/app-torq/torq/internal/auth"
+	"github.com/app-torq/torq/internal/auth/local"
 )
 
 type userJSON struct {

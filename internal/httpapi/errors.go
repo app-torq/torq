@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/marekbeckmann/torq/internal/apperr"
+	"github.com/app-torq/torq/internal/apperr"
 )
 
 const maxJSONBody = 1 << 20

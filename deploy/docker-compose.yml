@@ -12,7 +12,7 @@ name: torq
 services:
   torq:
     # The deploy workflow pins the commit it built; "latest" is the fallback.
-    image: ${TORQ_IMAGE:-ghcr.io/marekbeckmann/torq:latest}
+    image: ${TORQ_IMAGE:-ghcr.io/app-torq/torq:latest}
     restart: unless-stopped
     env_file: torq.env
     environment:

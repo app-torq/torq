@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/marekbeckmann/torq/internal/catalog"
-	"github.com/marekbeckmann/torq/internal/store"
-	"github.com/marekbeckmann/torq/internal/testutil"
+	"github.com/app-torq/torq/internal/catalog"
+	"github.com/app-torq/torq/internal/store"
+	"github.com/app-torq/torq/internal/testutil"
 )
 
 // upstream fakes the KBA page and GitHub with the synthetic fixtures.

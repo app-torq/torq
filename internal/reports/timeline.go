@@ -3,7 +3,7 @@ package reports
 import (
 	"context"
 
-	"github.com/marekbeckmann/torq/internal/store"
+	"github.com/app-torq/torq/internal/store"
 )
 
 // Timeline kinds.

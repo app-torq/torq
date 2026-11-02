@@ -9,10 +9,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/marekbeckmann/torq/internal/i18n"
-	"github.com/marekbeckmann/torq/internal/repairs"
-	"github.com/marekbeckmann/torq/internal/servicelog"
-	"github.com/marekbeckmann/torq/internal/store"
+	"github.com/app-torq/torq/internal/i18n"
+	"github.com/app-torq/torq/internal/repairs"
+	"github.com/app-torq/torq/internal/servicelog"
+	"github.com/app-torq/torq/internal/store"
 )
 
 func sqlStr(s string) sql.NullString { return sql.NullString{String: s, Valid: true} }

@@ -14,12 +14,12 @@ import (
 	"time"
 	_ "time/tzdata" // lets TZ work on distroless images without zoneinfo
 
-	"github.com/marekbeckmann/torq/internal/clock"
-	"github.com/marekbeckmann/torq/internal/config"
-	"github.com/marekbeckmann/torq/internal/db"
-	"github.com/marekbeckmann/torq/internal/httpapi"
-	"github.com/marekbeckmann/torq/internal/scheduler"
-	"github.com/marekbeckmann/torq/web"
+	"github.com/app-torq/torq/internal/clock"
+	"github.com/app-torq/torq/internal/config"
+	"github.com/app-torq/torq/internal/db"
+	"github.com/app-torq/torq/internal/httpapi"
+	"github.com/app-torq/torq/internal/scheduler"
+	"github.com/app-torq/torq/web"
 )
 
 // version is set at build time via -ldflags "-X main.version=...".

@@ -4,9 +4,9 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/marekbeckmann/torq/internal/apperr"
-	"github.com/marekbeckmann/torq/internal/clock"
-	"github.com/marekbeckmann/torq/internal/store"
+	"github.com/app-torq/torq/internal/apperr"
+	"github.com/app-torq/torq/internal/clock"
+	"github.com/app-torq/torq/internal/store"
 )
 
 // Odometer reading sources (data-model §2).
