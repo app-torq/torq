@@ -41,6 +41,7 @@ func TestLoadErrors(t *testing.T) {
 		"bad cookie":      {"TORQ_COOKIE_SECURE": "maybe"},
 		"bad log format":  {"TORQ_LOG_FORMAT": "xml"},
 		"bad log level":   {"TORQ_LOG_LEVEL": "loud"},
+		"bad demo mode":   {"TORQ_DEMO_MODE": "yes"},
 	}
 	for name, m := range cases {
 		t.Run(name, func(t *testing.T) {

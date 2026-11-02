@@ -22,7 +22,7 @@ import (
 // Demo credentials created by seed-demo when the instance has no users yet.
 const (
 	demoUser     = "demo"
-	demoPassword = "torq-demo-password" //nolint:gosec // documented demo credential for the TORQ_ENABLE_SEED dev command only
+	demoPassword = "password123" //nolint:gosec // documented demo credential for the TORQ_ENABLE_SEED dev command only
 )
 
 // seedDemo fills the database with sample data (development and validation

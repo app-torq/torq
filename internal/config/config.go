@@ -40,6 +40,10 @@ type Config struct {
 	// GeminiModel overrides the Gemini model of the auto-fill; empty uses
 	// specfill.DefaultModel.
 	GeminiModel string
+	// DemoMode locks accounts (password changes, user management) and
+	// webhooks so a public demo login stays usable and cannot send requests
+	// to arbitrary URLs.
+	DemoMode bool
 }
 
 // MaxUploadBytes returns the per-file upload limit in bytes.
@@ -120,6 +124,13 @@ func Load(getenv func(string) string) (Config, error) {
 		cfg.CatalogOnlineUpdates = v == "true"
 	default:
 		return Config{}, fmt.Errorf("TORQ_CATALOG_ONLINE_UPDATES must be true or false, got %q", v)
+	}
+
+	switch v := strings.ToLower(get("TORQ_DEMO_MODE", "false")); v {
+	case "true", "false":
+		cfg.DemoMode = v == "true"
+	default:
+		return Config{}, fmt.Errorf("TORQ_DEMO_MODE must be true or false, got %q", v)
 	}
 
 	switch cfg.LogLevel {

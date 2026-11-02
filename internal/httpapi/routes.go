@@ -1,6 +1,11 @@
 package httpapi
 
-import "github.com/marekbeckmann/torq/internal/attachments"
+import (
+	"net/http"
+
+	"github.com/marekbeckmann/torq/internal/apperr"
+	"github.com/marekbeckmann/torq/internal/attachments"
+)
 
 // routes registers every /api/v1 endpoint (contracts/rest-api.md).
 func (s *Server) routes() {
@@ -10,15 +15,15 @@ func (s *Server) routes() {
 	s.route("POST /auth/login", public, s.login)
 	s.route("POST /auth/logout", member, s.logout)
 	s.route("GET /auth/me", member, s.me)
-	s.route("POST /auth/password", member, s.changePassword)
+	s.route("POST /auth/password", member, s.demoLocked(accountsLocked, s.changePassword))
 	s.route("PATCH /me/preferences", member, s.updatePreferences)
 
 	// Users (admin)
 	s.route("GET /users", admin, s.listUsers)
-	s.route("POST /users", admin, s.createUser)
-	s.route("PATCH /users/{id}", admin, s.updateUser)
-	s.route("POST /users/{id}/password", admin, s.resetUserPassword)
-	s.route("DELETE /users/{id}", admin, s.deleteUser)
+	s.route("POST /users", admin, s.demoLocked(accountsLocked, s.createUser))
+	s.route("PATCH /users/{id}", admin, s.demoLocked(accountsLocked, s.updateUser))
+	s.route("POST /users/{id}/password", admin, s.demoLocked(accountsLocked, s.resetUserPassword))
+	s.route("DELETE /users/{id}", admin, s.demoLocked(accountsLocked, s.deleteUser))
 
 	// Offline vehicle catalog (specs/002-vehicle-catalog-lookup)
 	s.route("GET /catalog/kba", member, s.getCatalogKBA)
@@ -99,11 +104,11 @@ func (s *Server) routes() {
 
 	// Webhooks & instance settings (admin)
 	s.route("GET /webhooks", admin, s.listWebhooks)
-	s.route("POST /webhooks", admin, s.createWebhook)
+	s.route("POST /webhooks", admin, s.demoLocked(webhooksLocked, s.createWebhook))
 	s.route("GET /webhooks/{id}", admin, s.getWebhook)
-	s.route("PATCH /webhooks/{id}", admin, s.updateWebhook)
-	s.route("DELETE /webhooks/{id}", admin, s.deleteWebhook)
-	s.route("POST /webhooks/{id}/test", admin, s.testWebhook)
+	s.route("PATCH /webhooks/{id}", admin, s.demoLocked(webhooksLocked, s.updateWebhook))
+	s.route("DELETE /webhooks/{id}", admin, s.demoLocked(webhooksLocked, s.deleteWebhook))
+	s.route("POST /webhooks/{id}/test", admin, s.demoLocked(webhooksLocked, s.testWebhook))
 	s.route("GET /webhooks/{id}/deliveries", admin, s.listDeliveries)
 	s.route("GET /settings/instance", admin, s.getInstanceSettings)
 	s.route("PATCH /settings/instance", admin, s.patchInstanceSettings)
@@ -112,4 +117,22 @@ func (s *Server) routes() {
 	s.route("GET /reports/costs", member, s.costReport)
 	s.route("GET /vehicles/{id}/timeline", member, s.timeline)
 	s.route("GET /vehicles/{id}/history", member, s.history)
+}
+
+// Demo mode error codes (see demoLocked).
+const (
+	accountsLocked = "demo.accounts_locked"
+	webhooksLocked = "demo.webhooks_locked"
+)
+
+// demoLocked refuses fn with code in demo mode. Accounts are locked so nobody
+// can lock other visitors out of the shared demo login; webhooks so the
+// public demo cannot be used to send requests to arbitrary URLs.
+func (s *Server) demoLocked(code string, fn handlerFunc) handlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) error {
+		if s.Config.DemoMode {
+			return apperr.Forbidden(code)
+		}
+		return fn(w, r)
+	}
 }

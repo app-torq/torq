@@ -23,6 +23,10 @@
   "setup": {
     "already_completed": "Diese Instanz ist bereits eingerichtet."
   },
+  "demo": {
+    "accounts_locked": "In der Demo können Konten nicht geändert werden.",
+    "webhooks_locked": "Webhooks sind in der Demo abgeschaltet."
+  },
   "user": {
     "last_admin": "Mindestens ein aktiver Administrator ist erforderlich.",
     "cannot_delete_self": "Du kannst dein eigenes Konto nicht löschen.",

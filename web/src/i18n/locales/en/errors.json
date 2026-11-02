@@ -23,6 +23,10 @@
   "setup": {
     "already_completed": "This instance is already set up."
   },
+  "demo": {
+    "accounts_locked": "Accounts cannot be changed in the demo.",
+    "webhooks_locked": "Webhooks are turned off in the demo."
+  },
   "user": {
     "last_admin": "At least one active administrator is required.",
     "cannot_delete_self": "You cannot delete your own account.",
