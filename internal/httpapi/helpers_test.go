@@ -61,9 +61,13 @@ func newTestRouter(t *testing.T) http.Handler { return newEnv(t).h }
 type client struct {
 	e      *env
 	cookie *http.Cookie
+	ip     string
 }
 
 func (e *env) client() *client { return &client{e: e} }
+
+// clientFrom returns a client whose requests come from ip.
+func (e *env) clientFrom(ip string) *client { return &client{e: e, ip: ip} }
 
 func (c *client) do(method, path string, body any) *httptest.ResponseRecorder {
 	c.e.t.Helper()
@@ -77,6 +81,9 @@ func (c *client) do(method, path string, body any) *httptest.ResponseRecorder {
 	}
 	req := httptest.NewRequest(method, "/api/v1"+path, r)
 	req.Header.Set("Content-Type", "application/json")
+	if c.ip != "" {
+		req.RemoteAddr = c.ip + ":1234"
+	}
 	if method != http.MethodGet {
 		req.Header.Set("X-Torq-Request", "1")
 	}

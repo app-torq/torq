@@ -1,7 +1,9 @@
 package httpapi
 
 import (
+	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 )
@@ -99,6 +101,72 @@ func TestLoginThrottle(t *testing.T) {
 	}
 	e.clock.Advance(2 * time.Second)
 	e.login("marek", testPassword)
+}
+
+func TestLoginThrottleDoesNotLockOutOtherIPs(t *testing.T) {
+	e := newEnv(t)
+	e.admin()
+	attacker := e.clientFrom("198.51.100.10")
+	for i := 0; i < 5; i++ {
+		attacker.errorCode(http.MethodPost, "/auth/login", map[string]string{"username": "marek", "password": "wrong-password"}, http.StatusUnauthorized)
+	}
+	attacker.errorCode(http.MethodPost, "/auth/login", map[string]string{"username": "marek", "password": testPassword}, http.StatusTooManyRequests)
+	e.clientFrom("203.0.113.5").call(http.MethodPost, "/auth/login", map[string]string{"username": "marek", "password": testPassword}, http.StatusOK, nil)
+}
+
+func TestLoginSuccessKeepsIPFailures(t *testing.T) {
+	e := newEnv(t)
+	e.admin().call(http.MethodPost, "/users", map[string]string{
+		"username": "partner", "display_name": "Partner", "password": testPassword, "role": "member",
+	}, http.StatusCreated, nil)
+	c := e.clientFrom("198.51.100.20")
+	for i := 0; i < 4; i++ {
+		c.errorCode(http.MethodPost, "/auth/login", map[string]string{"username": "marek", "password": "wrong-password"}, http.StatusUnauthorized)
+	}
+	c.call(http.MethodPost, "/auth/login", map[string]string{"username": "partner", "password": testPassword}, http.StatusOK, nil)
+	// The fifth failure from this IP still blocks it.
+	c.errorCode(http.MethodPost, "/auth/login", map[string]string{"username": "ghost", "password": "wrong-password"}, http.StatusUnauthorized)
+	c.errorCode(http.MethodPost, "/auth/login", map[string]string{"username": "other", "password": "wrong-password"}, http.StatusTooManyRequests)
+}
+
+func TestLoginThrottlesDistributedGuessing(t *testing.T) {
+	e := newEnv(t)
+	e.admin()
+	for i := 0; i < 50; i++ {
+		e.clientFrom(fmt.Sprintf("198.51.100.%d", i)).errorCode(http.MethodPost, "/auth/login",
+			map[string]string{"username": "marek", "password": "wrong-password"}, http.StatusUnauthorized)
+	}
+	e.clientFrom("203.0.113.5").errorCode(http.MethodPost, "/auth/login", map[string]string{"username": "marek", "password": testPassword}, http.StatusTooManyRequests)
+}
+
+func TestLoginRejectsOverlongCredentials(t *testing.T) {
+	e := newEnv(t)
+	e.admin()
+	long := strings.Repeat("a", 64<<10)
+	c := e.clientFrom("198.51.100.30")
+	for _, in := range []map[string]string{
+		{"username": long, "password": testPassword},
+		{"username": "marek", "password": long},
+	} {
+		if code := c.errorCode(http.MethodPost, "/auth/login", in, http.StatusUnauthorized); code != "auth.invalid_credentials" {
+			t.Fatalf("code %q", code)
+		}
+	}
+	// They count against the IP but not the user.
+	if e.srv.throttle.RetryAfter("user:marek@ip:198.51.100.30") != 0 || e.srv.userThrottle.RetryAfter("user:marek") != 0 {
+		t.Fatal("user keys must not be throttled")
+	}
+	var out struct {
+		Error struct {
+			Fields map[string]string `json:"fields"`
+		} `json:"error"`
+	}
+	e.login("marek", testPassword).call(http.MethodPost, "/auth/password", map[string]string{
+		"current_password": testPassword, "new_password": long,
+	}, http.StatusUnprocessableEntity, &out)
+	if out.Error.Fields["new_password"] != "validation.password_too_long" {
+		t.Fatalf("fields %v", out.Error.Fields)
+	}
 }
 
 func TestLogoutAndPasswordChange(t *testing.T) {

@@ -18,6 +18,9 @@ import (
 // MinPasswordLength is the minimum password length (FR-005).
 const MinPasswordLength = 10
 
+// MaxUsernameLength is the longest username usernameRe accepts.
+const MaxUsernameLength = 32
+
 var (
 	usernameRe     = regexp.MustCompile(`^[a-zA-Z0-9._-]{3,32}$`)
 	currencyCodeRe = regexp.MustCompile(`^[A-Z]{3}$`)
@@ -43,10 +46,23 @@ func validateNewUser(in NewUser) error {
 	var v apperr.Validation
 	v.Check(!usernameRe.MatchString(in.Username), "username", "validation.username_format")
 	validateDisplayName(&v, in.DisplayName)
-	v.Check(utf8.RuneCountInString(in.Password) < MinPasswordLength, "password", "validation.password_too_short")
+	code := passwordError(in.Password)
+	v.Check(code != "", "password", code)
 	v.Check(in.Role != RoleAdmin && in.Role != RoleMember, "role", "validation.invalid_choice")
 	v.Check(in.Locale != "en" && in.Locale != "de", "locale", "validation.invalid_choice")
 	return v.Err()
+}
+
+// passwordError returns the validation code for an unacceptable new password,
+// or "" when it is fine.
+func passwordError(password string) string {
+	switch {
+	case utf8.RuneCountInString(password) < MinPasswordLength:
+		return "validation.password_too_short"
+	case len(password) > local.MaxPasswordBytes:
+		return "validation.password_too_long"
+	}
+	return ""
 }
 
 func validateDisplayName(v *apperr.Validation, name string) {
@@ -248,9 +264,9 @@ func ensureAdmin(ctx context.Context, q *store.Queries) error {
 
 // ResetPassword sets a new password (admin action) and ends all the user's sessions.
 func (u *Users) ResetPassword(ctx context.Context, id int64, password string) error {
-	if utf8.RuneCountInString(password) < MinPasswordLength {
+	if code := passwordError(password); code != "" {
 		var v apperr.Validation
-		v.Add("new_password", "validation.password_too_short")
+		v.Add("new_password", code)
 		return v.Err()
 	}
 	hash, err := local.Hash(password)
@@ -287,9 +303,9 @@ func (u *Users) ChangeOwnPassword(ctx context.Context, userID, keepSessionID int
 		v.Add("current_password", "auth.invalid_credentials")
 		return v.Err()
 	}
-	if utf8.RuneCountInString(next) < MinPasswordLength {
+	if code := passwordError(next); code != "" {
 		var v apperr.Validation
-		v.Add("new_password", "validation.password_too_short")
+		v.Add("new_password", code)
 		return v.Err()
 	}
 	hash, err := local.Hash(next)

@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"runtime"
 	"strings"
 
 	"golang.org/x/crypto/argon2"
@@ -22,7 +23,21 @@ const (
 	keyLen      = 32
 )
 
+// MaxPasswordBytes is the longest password accepted. Longer input is never
+// hashed, so it can't match any stored password.
+const MaxPasswordBytes = 1024
+
 var errMalformedHash = errors.New("malformed argon2id hash")
+
+// hashSlots bounds concurrent argon2id runs: each one allocates memoryKiB, so
+// a burst of logins would otherwise exhaust a small host's RAM.
+var hashSlots = make(chan struct{}, max(runtime.NumCPU(), 2))
+
+func idKey(password string, salt []byte, iterations, memory uint32, parallelism uint8, keyLen uint32) []byte {
+	hashSlots <- struct{}{}
+	defer func() { <-hashSlots }()
+	return argon2.IDKey([]byte(password), salt, iterations, memory, parallelism, keyLen)
+}
 
 type params struct {
 	memory      uint32
@@ -38,7 +53,7 @@ func Hash(password string) (string, error) {
 	if _, err := rand.Read(salt); err != nil {
 		return "", err
 	}
-	key := argon2.IDKey([]byte(password), salt, iterations, memoryKiB, parallelism, keyLen)
+	key := idKey(password, salt, iterations, memoryKiB, parallelism, keyLen)
 	return fmt.Sprintf("$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s",
 		argon2.Version, memoryKiB, iterations, parallelism,
 		base64.RawStdEncoding.EncodeToString(salt),
@@ -51,7 +66,10 @@ func Verify(hash, password string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	key := argon2.IDKey([]byte(password), p.salt, p.iterations, p.memory, p.parallelism, uint32(len(p.key))) //nolint:gosec // key length comes from our own 32-byte hashes
+	if len(password) > MaxPasswordBytes {
+		return false, nil
+	}
+	key := idKey(password, p.salt, p.iterations, p.memory, p.parallelism, uint32(len(p.key))) //nolint:gosec // key length comes from our own 32-byte hashes
 	return subtle.ConstantTimeCompare(key, p.key) == 1, nil
 }
 

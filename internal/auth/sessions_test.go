@@ -114,7 +114,7 @@ func expiry(t *testing.T, q store.DBTX, id int64) string {
 
 func TestThrottleBackoff(t *testing.T) {
 	now := time.Date(2026, 10, 30, 12, 0, 0, 0, time.UTC)
-	th := NewThrottle(func() time.Time { return now })
+	th := NewThrottle(func() time.Time { return now }, 5)
 	for i := 0; i < 4; i++ {
 		th.Fail("user:a")
 		if th.RetryAfter("user:a") != 0 {

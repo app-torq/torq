@@ -3,6 +3,7 @@ package local
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestHashVerifyRoundTrip(t *testing.T) {
@@ -37,4 +38,39 @@ func TestNeedsRehash(t *testing.T) {
 	if _, err := Verify("garbage", "x"); err == nil {
 		t.Fatal("malformed hash must error")
 	}
+}
+
+func TestVerifyRejectsOverlongPassword(t *testing.T) {
+	long := strings.Repeat("a", MaxPasswordBytes+1)
+	h, err := Hash(long)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ok, err := Verify(h, long); err != nil || ok {
+		t.Fatalf("over-long password verified: %v %v", ok, err)
+	}
+}
+
+func TestHashingIsBounded(t *testing.T) {
+	h, err := Hash("correct horse battery")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range cap(hashSlots) {
+		hashSlots <- struct{}{}
+	}
+	done := make(chan struct{})
+	go func() {
+		_, _ = Verify(h, "correct horse battery")
+		close(done)
+	}()
+	select {
+	case <-done:
+		t.Fatal("verify ran although every slot was taken")
+	case <-time.After(50 * time.Millisecond):
+	}
+	for range cap(hashSlots) {
+		<-hashSlots
+	}
+	<-done
 }

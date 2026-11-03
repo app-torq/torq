@@ -10,16 +10,16 @@ import (
 )
 
 const (
-	freeFailures = 5
-	maxLockout   = 15 * time.Minute
-	staleAfter   = time.Hour
+	maxLockout = 15 * time.Minute
+	staleAfter = time.Hour
 )
 
-// Throttle slows down repeated failed logins per username and per client IP
-// (FR-006, research R8). State is in memory and resets on restart.
+// Throttle slows down repeated failed logins per key, such as a username or a
+// client IP (FR-006, research R8). State is in memory and resets on restart.
 type Throttle struct {
 	mu      sync.Mutex
 	now     func() time.Time
+	free    int
 	entries map[string]*throttleEntry
 	checks  int
 }
@@ -30,9 +30,10 @@ type throttleEntry struct {
 	lastFailure  time.Time
 }
 
-// NewThrottle creates a throttle using now as its clock.
-func NewThrottle(now func() time.Time) *Throttle {
-	return &Throttle{now: now, entries: map[string]*throttleEntry{}}
+// NewThrottle creates a throttle using now as its clock that lets each key
+// fail free times before blocking it.
+func NewThrottle(now func() time.Time, free int) *Throttle {
+	return &Throttle{now: now, free: free, entries: map[string]*throttleEntry{}}
 }
 
 // RetryAfter returns how long the caller must wait before another attempt is
@@ -60,8 +61,8 @@ func (t *Throttle) RetryAfter(keys ...string) time.Duration {
 	return wait
 }
 
-// Fail records a failed attempt for each key. From the sixth consecutive
-// failure on, the key is blocked for 1s, 2s, 4s, ... up to 15 minutes.
+// Fail records a failed attempt for each key. Once a key has used up its free
+// failures, it is blocked for 1s, 2s, 4s, ... up to 15 minutes.
 func (t *Throttle) Fail(keys ...string) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -74,8 +75,8 @@ func (t *Throttle) Fail(keys ...string) {
 		}
 		e.failures++
 		e.lastFailure = now
-		if e.failures >= freeFailures {
-			delay := time.Second << min(e.failures-freeFailures, 20)
+		if e.failures >= t.free {
+			delay := time.Second << min(e.failures-t.free, 20)
 			if delay > maxLockout {
 				delay = maxLockout
 			}

@@ -105,19 +105,36 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) error {
 	if err := decodeJSON(w, r, &in); err != nil {
 		return err
 	}
-	keys := []string{"user:" + strings.ToLower(strings.TrimSpace(in.Username)), "ip:" + auth.ClientIP(r, s.Config.TrustedProxies)}
-	if wait := s.throttle.RetryAfter(keys...); wait > 0 {
+	username := strings.TrimSpace(in.Username)
+	ip := "ip:" + auth.ClientIP(r, s.Config.TrustedProxies)
+	ipKeys, userKeys := []string{ip}, []string(nil)
+	// Over-long credentials can't match an account. They count against the IP
+	// only, so they never reach argon2id or create big throttle entries.
+	tooLong := len(username) > auth.MaxUsernameLength || len(in.Password) > local.MaxPasswordBytes
+	if !tooLong {
+		user := "user:" + strings.ToLower(username)
+		ipKeys = append(ipKeys, user+"@"+ip)
+		userKeys = []string{user}
+	}
+	if wait := max(s.throttle.RetryAfter(ipKeys...), s.userThrottle.RetryAfter(userKeys...)); wait > 0 {
 		return apperr.Throttled(int(math.Ceil(wait.Seconds())))
 	}
-	userID, err := s.password.AuthenticatePassword(r.Context(), strings.TrimSpace(in.Username), in.Password)
+	userID, err := int64(0), local.ErrInvalidCredentials
+	if !tooLong {
+		userID, err = s.password.AuthenticatePassword(r.Context(), username, in.Password)
+	}
 	if errors.Is(err, local.ErrInvalidCredentials) {
-		s.throttle.Fail(keys...)
+		s.throttle.Fail(ipKeys...)
+		s.userThrottle.Fail(userKeys...)
 		return &apperr.Error{Status: http.StatusUnauthorized, Code: "auth.invalid_credentials"}
 	}
 	if err != nil {
 		return err
 	}
-	s.throttle.Succeed(keys...)
+	// The IP key stays: logging into one account must not wipe the failures
+	// collected against others.
+	s.throttle.Succeed(ipKeys[1:]...)
+	s.userThrottle.Succeed(userKeys...)
 	user, err := s.users.Get(r.Context(), userID)
 	if err != nil {
 		return err

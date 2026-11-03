@@ -49,18 +49,22 @@ const (
 // Server holds the handler dependencies, domain services and the route table.
 type Server struct {
 	Deps
-	mux        *http.ServeMux
-	sessions   *auth.Sessions
-	users      *auth.Users
-	password   auth.PasswordAuthenticator
-	throttle   *auth.Throttle
-	vehicles   *vehicles.Service
-	servicelog *servicelog.Service
-	reminders  *reminders.Service
-	repairs    *repairs.Service
-	files      *attachments.Store
-	notify     *notify.Service
-	reports    *reports.Service
+	mux      *http.ServeMux
+	sessions *auth.Sessions
+	users    *auth.Users
+	password auth.PasswordAuthenticator
+	// throttle blocks an IP, or a username from one IP, after a few failed
+	// logins; userThrottle blocks a username everywhere only after many, so
+	// a stranger can't easily lock someone out.
+	throttle     *auth.Throttle
+	userThrottle *auth.Throttle
+	vehicles     *vehicles.Service
+	servicelog   *servicelog.Service
+	reminders    *reminders.Service
+	repairs      *repairs.Service
+	files        *attachments.Store
+	notify       *notify.Service
+	reports      *reports.Service
 	// catalogUpdate runs admin-triggered online catalog updates.
 	catalogUpdate *catalogUpdater
 	// specfill looks up spec sheets on the web; nil unless GEMINI_API_KEY and
@@ -79,7 +83,8 @@ func NewServer(d Deps) *Server {
 	s.sessions = &auth.Sessions{DB: d.DB, Clock: d.Clock}
 	s.users = &auth.Users{DB: d.DB, Clock: d.Clock, Sessions: s.sessions}
 	s.password = &local.Provider{DB: d.DB, Clock: d.Clock}
-	s.throttle = auth.NewThrottle(d.Clock.Now)
+	s.throttle = auth.NewThrottle(d.Clock.Now, 5)
+	s.userThrottle = auth.NewThrottle(d.Clock.Now, 50)
 	s.vehicles = &vehicles.Service{DB: d.DB, Clock: d.Clock}
 	s.notify = notify.New(d.DB, d.Clock, d.Config.BaseURL, d.Version, d.Log)
 	s.reminders = &reminders.Service{DB: d.DB, Clock: d.Clock, Vehicles: s.vehicles, OnTransitions: s.notify.EnqueueTransitions}

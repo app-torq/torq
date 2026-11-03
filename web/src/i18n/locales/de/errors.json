@@ -39,6 +39,7 @@
     "required": "Pflichtfeld.",
     "username_format": "3–32 Zeichen: Buchstaben, Ziffern, Punkt, Bindestrich, Unterstrich.",
     "password_too_short": "Mindestens 10 Zeichen.",
+    "password_too_long": "Zu lang.",
     "length": "Zu kurz oder zu lang.",
     "invalid_choice": "Wähle eine der Optionen.",
     "currency_code": "Dreistelliger Code wie EUR.",

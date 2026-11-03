@@ -39,6 +39,7 @@
     "required": "Required.",
     "username_format": "3–32 characters: letters, digits, dot, dash, underscore.",
     "password_too_short": "At least 10 characters.",
+    "password_too_long": "Too long.",
     "length": "Too short or too long.",
     "invalid_choice": "Choose one of the options.",
     "currency_code": "Use a three-letter code such as EUR.",
