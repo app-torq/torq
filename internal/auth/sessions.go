@@ -11,6 +11,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/app-torq/torq/internal/apperr"
 	"github.com/app-torq/torq/internal/clock"
 	"github.com/app-torq/torq/internal/db"
 	"github.com/app-torq/torq/internal/store"
@@ -113,6 +114,49 @@ func (s *Sessions) Lookup(ctx context.Context, raw, ip string) (User, int64, err
 		}
 	}
 	return FromStore(row.User), row.Session.ID, nil
+}
+
+// SessionInfo is one of a user's sign-ins as shown in the Devices list.
+type SessionInfo struct {
+	ID         int64
+	DeviceName string
+	Browser    string
+	OS         string
+	CreatedAt  string
+	LastSeenAt string
+	IP         string
+}
+
+// List returns the user's unexpired sessions, most recently active first.
+func (s *Sessions) List(ctx context.Context, userID int64) ([]SessionInfo, error) {
+	rows, err := store.New(s.DB.Reader).ListUserSessions(ctx, store.ListUserSessionsParams{
+		UserID: userID, ExpiresAt: clock.Timestamp(s.Clock.Now()),
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]SessionInfo, len(rows))
+	for i, r := range rows {
+		browser, os := ParseUserAgent(r.UserAgent)
+		out[i] = SessionInfo{
+			ID: r.ID, DeviceName: r.DeviceName, Browser: browser, OS: os,
+			CreatedAt: r.CreatedAt, LastSeenAt: r.LastSeenAt, IP: r.Ip,
+		}
+	}
+	return out, nil
+}
+
+// RevokeOwn ends one of the user's sessions. Another user's session is
+// reported as not found, the same as an unknown ID.
+func (s *Sessions) RevokeOwn(ctx context.Context, userID, sessionID int64) error {
+	n, err := store.New(s.DB.Writer).DeleteUserSession(ctx, store.DeleteUserSessionParams{ID: sessionID, UserID: userID})
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return apperr.NotFound()
+	}
+	return nil
 }
 
 // Revoke ends one session.

@@ -18,6 +18,9 @@ func (s *Server) routes() {
 	s.route("GET /auth/me", member, s.me)
 	s.route("POST /auth/password", member, s.demoLocked(accountsLocked, s.changePassword))
 	s.route("PATCH /me/preferences", member, s.updatePreferences)
+	s.route("GET /me/sessions", member, s.demoLocked(accountsLocked, s.listSessions))
+	s.route("DELETE /me/sessions/{id}", member, s.demoLocked(accountsLocked, s.revokeSession))
+	s.route("DELETE /me/sessions", member, s.demoLocked(accountsLocked, s.revokeOtherSessions))
 
 	// Users (admin)
 	s.route("GET /users", admin, s.listUsers)
@@ -128,7 +131,9 @@ const (
 )
 
 // demoLocked refuses fn with code in demo mode. Accounts are locked so nobody
-// can lock other visitors out of the shared demo login; webhooks so the
+// can lock other visitors out of the shared demo login, which also covers the
+// Devices list: it would show visitors each other's IP addresses and let them
+// sign each other out; webhooks so the
 // public demo cannot be used to send requests to arbitrary URLs; uploads so
 // visitors cannot store files on the demo server.
 func (s *Server) demoLocked(code string, fn handlerFunc) handlerFunc {

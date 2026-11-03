@@ -27,6 +27,7 @@ export interface SettingsNavItem {
 export const settingsNav: SettingsNavItem[] = [
   { to: '/settings/preferences', labelKey: 'nav.preferences' },
   { to: '/settings/password', labelKey: 'actions.changePassword' },
+  { to: '/settings/devices', labelKey: 'nav.devices' },
   { to: '/settings/categories', labelKey: 'nav.categories' },
   { to: '/settings/users', labelKey: 'nav.users', adminOnly: true },
   { to: '/settings/webhooks', labelKey: 'nav.webhooks', adminOnly: true },

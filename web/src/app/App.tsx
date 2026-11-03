@@ -8,6 +8,7 @@ import { NotFoundPage } from './NotFoundPage'
 import { SettingsLayout } from '../features/settings/SettingsLayout'
 import { PreferencesPage } from '../features/settings/PreferencesPage'
 import { UsersPage } from '../features/settings/UsersPage'
+import { DevicesPage } from '../features/settings/DevicesPage'
 import { WebhooksPage } from '../features/settings/WebhooksPage'
 import { InstanceSettingsPage } from '../features/settings/InstanceSettingsPage'
 import { AboutPage } from '../features/settings/AboutPage'
@@ -62,6 +63,7 @@ const router = createBrowserRouter([
           { index: true, element: <Navigate to="preferences" replace /> },
           { path: 'preferences', element: <PreferencesPage /> },
           { path: 'password', element: <ChangePasswordPage /> },
+          { path: 'devices', element: <DevicesPage /> },
           { path: 'categories', element: <CategoriesPage /> },
           { path: 'users', element: <RequireAdmin><UsersPage /></RequireAdmin> },
           { path: 'webhooks', element: <RequireAdmin><WebhooksPage /></RequireAdmin> },

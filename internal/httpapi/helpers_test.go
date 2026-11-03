@@ -63,7 +63,8 @@ type client struct {
 	cookie *http.Cookie
 	ip     string
 	// token, when set, is sent as a bearer token instead of the cookie.
-	token string
+	token     string
+	userAgent string
 }
 
 func (e *env) client() *client { return &client{e: e} }
@@ -85,6 +86,9 @@ func (c *client) do(method, path string, body any) *httptest.ResponseRecorder {
 	req.Header.Set("Content-Type", "application/json")
 	if c.ip != "" {
 		req.RemoteAddr = c.ip + ":1234"
+	}
+	if c.userAgent != "" {
+		req.Header.Set("User-Agent", c.userAgent)
 	}
 	if method != http.MethodGet {
 		req.Header.Set("X-Torq-Request", "1")

@@ -32,6 +32,20 @@ export interface InstanceInfo {
   spec_autofill: boolean
 }
 
+/** One of the signed-in user's sessions in the Devices list. */
+export interface Session {
+  id: number
+  /** Set by apps at sign-in; empty for browsers. */
+  device_name: string
+  /** Product names parsed from the user agent, empty when unknown. */
+  browser: string
+  os: string
+  created_at: string
+  last_seen_at: string
+  ip: string
+  current: boolean
+}
+
 export interface MeResponse {
   user: User
   instance: InstanceInfo

@@ -4,6 +4,7 @@ export const queryKeys = {
   setupStatus: ['setup-status'] as const,
   me: ['me'] as const,
   users: ['users'] as const,
+  sessions: ['sessions'] as const,
   instance: ['instance-settings'] as const,
   vehicles: ['vehicles'] as const,
   vehicleList: (archived: string) => ['vehicles', 'list', archived] as const,

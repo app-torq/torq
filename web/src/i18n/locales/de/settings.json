@@ -49,6 +49,26 @@
     "deleteBody": "{{name}} löschen? Von ihnen angelegte Einträge bleiben in der Garage erhalten.",
     "you": "du"
   },
+  "devices": {
+    "title": "Geräte",
+    "intro": "Überall, wo dein Konto angemeldet ist: Browser und die torq-App. Melde ein Gerät ab, das du nicht mehr nutzt oder verloren hast.",
+    "browserOn": "{{browser}} unter {{os}}",
+    "unknown": "Unbekanntes Gerät",
+    "device": "Gerät",
+    "signedIn": "Angemeldet",
+    "lastActive": "Zuletzt aktiv",
+    "ip": "IP-Adresse",
+    "thisDevice": "Dieses Gerät",
+    "revoke": "Abmelden",
+    "revokeOthers": "Alle anderen Geräte abmelden",
+    "revokeTitle": "Gerät abmelden",
+    "revokeBody": "{{name}} abmelden? Es muss sich danach neu anmelden.",
+    "revokeCurrentBody": "Das ist das Gerät, das du gerade benutzt. Du wirst abgemeldet.",
+    "revokeOthersTitle": "Alle anderen Geräte abmelden",
+    "revokeOthersBody": "Alle Geräte außer diesem werden abgemeldet.",
+    "none": "Keine anderen Geräte angemeldet.",
+    "demo": "Die Geräteliste ist in der Demo nicht verfügbar, weil alle Besucher das Demo-Konto teilen."
+  },
   "instance": {
     "title": "Instanz",
     "intro": "Einstellungen, die für die gesamte torq-Instanz gelten.",

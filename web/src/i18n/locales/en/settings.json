@@ -49,6 +49,26 @@
     "deleteBody": "Delete {{name}}? Records they created stay in the garage.",
     "you": "you"
   },
+  "devices": {
+    "title": "Devices",
+    "intro": "Everywhere your account is signed in: browsers and the torq app. Sign out a device you no longer use or have lost.",
+    "browserOn": "{{browser}} on {{os}}",
+    "unknown": "Unknown device",
+    "device": "Device",
+    "signedIn": "Signed in",
+    "lastActive": "Last active",
+    "ip": "IP address",
+    "thisDevice": "This device",
+    "revoke": "Sign out",
+    "revokeOthers": "Sign out all other devices",
+    "revokeTitle": "Sign out device",
+    "revokeBody": "Sign out {{name}}? It will need to sign in again.",
+    "revokeCurrentBody": "This is the device you are using. You will be signed out.",
+    "revokeOthersTitle": "Sign out all other devices",
+    "revokeOthersBody": "Every device except this one will be signed out.",
+    "none": "No other devices are signed in.",
+    "demo": "The device list is not available in the demo, because every visitor shares the demo account."
+  },
   "instance": {
     "title": "Instance",
     "intro": "Settings that apply to the whole torq instance.",
