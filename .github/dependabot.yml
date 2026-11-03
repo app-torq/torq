@@ -1,5 +1,6 @@
 # Weekly version updates. The workflow actions are pinned to commit SHAs,
 # so this is what keeps them current. Security updates are on separately.
+# Major npm and Docker upgrades are done by hand.
 version: 2
 updates:
   - package-ecosystem: github-actions
@@ -22,6 +23,9 @@ updates:
     directory: /web
     schedule:
       interval: weekly
+    ignore:
+      - dependency-name: "*"
+        update-types: [version-update:semver-major]
     groups:
       npm:
         update-types: [minor, patch]
@@ -30,3 +34,6 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      - dependency-name: "*"
+        update-types: [version-update:semver-major]
