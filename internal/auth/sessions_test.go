@@ -159,3 +159,31 @@ func TestClientIP(t *testing.T) {
 		}
 	}
 }
+
+func TestIsHTTPS(t *testing.T) {
+	trusted := []netip.Prefix{netip.MustParsePrefix("10.0.0.0/8")}
+	req := func(remote, proto string) *http.Request {
+		r := httptest.NewRequest(http.MethodGet, "/", nil)
+		r.RemoteAddr = remote
+		if proto != "" {
+			r.Header.Set("X-Forwarded-Proto", proto)
+		}
+		return r
+	}
+	cases := []struct {
+		r    *http.Request
+		want bool
+	}{
+		{req("10.0.0.2:1234", "https"), true},
+		{req("10.0.0.2:1234", "HTTPS, http"), true},
+		{req("10.0.0.2:1234", "http"), false},
+		{req("10.0.0.2:1234", ""), false},
+		{req("203.0.113.5:1234", "https"), false}, // untrusted peer: header ignored
+		{httptest.NewRequest(http.MethodGet, "https://torq.example/", nil), true},
+	}
+	for i, c := range cases {
+		if got := IsHTTPS(c.r, trusted); got != c.want {
+			t.Errorf("case %d: IsHTTPS = %v, want %v", i, got, c.want)
+		}
+	}
+}

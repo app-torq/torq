@@ -6,6 +6,7 @@ import (
 
 	"github.com/app-torq/torq/internal/apperr"
 	"github.com/app-torq/torq/internal/auth"
+	"github.com/app-torq/torq/internal/config"
 )
 
 const sessionCookie = "torq_session"
@@ -30,27 +31,37 @@ func (s *Server) authorize(r *http.Request, level access) (*http.Request, error)
 	return r.WithContext(auth.WithUser(r.Context(), user, sessionID)), nil
 }
 
-func (s *Server) setSessionCookie(w http.ResponseWriter, token string) {
-	// Secure follows TORQ_COOKIE_SECURE / TORQ_BASE_URL: many self-hosters run plain HTTP on the LAN.
-	http.SetCookie(w, &http.Cookie{ //nolint:gosec // Secure is configuration-driven, see above
+// secureCookies reports whether the session cookie gets the Secure flag. It
+// follows TORQ_COOKIE_SECURE / TORQ_BASE_URL, since many self-hosters run plain
+// HTTP on the LAN. In auto mode a request that arrived over HTTPS also counts,
+// so a missing TORQ_BASE_URL behind a TLS proxy doesn't leave the flag off.
+func (s *Server) secureCookies(r *http.Request) bool {
+	if s.Config.SecureCookies() {
+		return true
+	}
+	return s.Config.CookieSecure == config.CookieSecureAuto && auth.IsHTTPS(r, s.Config.TrustedProxies)
+}
+
+func (s *Server) setSessionCookie(w http.ResponseWriter, r *http.Request, token string) {
+	http.SetCookie(w, &http.Cookie{ //nolint:gosec // Secure is configuration-driven, see secureCookies
 		Name:     sessionCookie,
 		Value:    token,
 		Path:     "/",
 		MaxAge:   int(auth.SessionTTL.Seconds()),
 		HttpOnly: true,
-		Secure:   s.Config.SecureCookies(),
+		Secure:   s.secureCookies(r),
 		SameSite: http.SameSiteLaxMode,
 	})
 }
 
-func (s *Server) clearSessionCookie(w http.ResponseWriter) {
-	http.SetCookie(w, &http.Cookie{ //nolint:gosec // Secure is configuration-driven, see setSessionCookie
+func (s *Server) clearSessionCookie(w http.ResponseWriter, r *http.Request) {
+	http.SetCookie(w, &http.Cookie{ //nolint:gosec // Secure is configuration-driven, see secureCookies
 		Name:     sessionCookie,
 		Value:    "",
 		Path:     "/",
 		MaxAge:   -1,
 		HttpOnly: true,
-		Secure:   s.Config.SecureCookies(),
+		Secure:   s.secureCookies(r),
 		SameSite: http.SameSiteLaxMode,
 	})
 }

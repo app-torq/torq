@@ -1,11 +1,17 @@
 package httpapi
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
+	"net/netip"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/app-torq/torq/internal/config"
 )
 
 func TestSetupFlow(t *testing.T) {
@@ -166,6 +172,39 @@ func TestLoginRejectsOverlongCredentials(t *testing.T) {
 	}, http.StatusUnprocessableEntity, &out)
 	if out.Error.Fields["new_password"] != "validation.password_too_long" {
 		t.Fatalf("fields %v", out.Error.Fields)
+	}
+}
+
+func TestSessionCookieSecureOverHTTPS(t *testing.T) {
+	secure := func(mode config.CookieSecure, remote, proto string) bool {
+		t.Helper()
+		cfg := newEnv(t).cfg
+		cfg.CookieSecure = mode
+		cfg.TrustedProxies = []netip.Prefix{netip.MustParsePrefix("10.0.0.0/8")}
+		e := newEnvWithConfig(t, cfg)
+		e.admin()
+		body, _ := json.Marshal(map[string]string{"username": "marek", "password": testPassword})
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-Torq-Request", "1")
+		req.Header.Set("X-Forwarded-Proto", proto)
+		req.RemoteAddr = remote
+		rec := httptest.NewRecorder()
+		e.h.ServeHTTP(rec, req)
+		cookies := rec.Result().Cookies()
+		if rec.Code != http.StatusOK || len(cookies) != 1 {
+			t.Fatalf("login: %d %v", rec.Code, cookies)
+		}
+		return cookies[0].Secure
+	}
+	if !secure(config.CookieSecureAuto, "10.0.0.2:1234", "https") {
+		t.Error("auto behind a trusted HTTPS proxy must be Secure")
+	}
+	if secure(config.CookieSecureAuto, "203.0.113.5:1234", "https") {
+		t.Error("an untrusted peer's X-Forwarded-Proto must be ignored")
+	}
+	if secure(config.CookieSecureFalse, "10.0.0.2:1234", "https") {
+		t.Error("TORQ_COOKIE_SECURE=false must win")
 	}
 }
 

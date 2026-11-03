@@ -68,8 +68,8 @@ All settings are optional environment variables. The most common ones:
 | Variable | Default | Purpose |
 |---|---|---|
 | `TZ` | `UTC` | Time zone for reminder dates and digests |
-| `TORQ_BASE_URL` | *(empty)* | Public URL, e.g. `https://torq.example.com`. Enables links in notifications and, with https, `Secure` cookies |
-| `TORQ_TRUSTED_PROXIES` | *(empty)* | CIDRs of your reverse proxy, so login throttling sees real client IPs |
+| `TORQ_BASE_URL` | *(empty)* | Public URL, e.g. `https://torq.example.com`. Enables links in notifications and, with https, `Secure` cookies (also set for any request that arrives over HTTPS) |
+| `TORQ_TRUSTED_PROXIES` | *(empty)* | CIDRs of your reverse proxy, so login throttling sees real client IPs and `X-Forwarded-Proto` is trusted |
 | `TORQ_MAX_UPLOAD_MB` | `25` | Per-file upload limit (JPEG, PNG, WebP, HEIC, PDF) |
 | `TAVILY_API_KEY`, `GEMINI_API_KEY` | *(empty)* | Both together enable the optional spec-sheet auto-fill |
 

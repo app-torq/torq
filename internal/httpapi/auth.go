@@ -93,7 +93,7 @@ func (s *Server) startSession(w http.ResponseWriter, r *http.Request, userID int
 	if err != nil {
 		return err
 	}
-	s.setSessionCookie(w, token)
+	s.setSessionCookie(w, r, token)
 	return nil
 }
 
@@ -152,7 +152,7 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 	}
-	s.clearSessionCookie(w)
+	s.clearSessionCookie(w, r)
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }

@@ -119,6 +119,24 @@ func ClientIP(r *http.Request, trusted []netip.Prefix) string {
 	return host
 }
 
+// IsHTTPS reports whether r arrived over HTTPS: directly via TLS, or through a
+// trusted proxy that says so in X-Forwarded-Proto.
+func IsHTTPS(r *http.Request, trusted []netip.Prefix) bool {
+	if r.TLS != nil {
+		return true
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		host = r.RemoteAddr
+	}
+	peer, err := netip.ParseAddr(host)
+	if err != nil || !isTrusted(peer, trusted) {
+		return false
+	}
+	proto, _, _ := strings.Cut(r.Header.Get("X-Forwarded-Proto"), ",")
+	return strings.EqualFold(strings.TrimSpace(proto), "https")
+}
+
 func isTrusted(a netip.Addr, trusted []netip.Prefix) bool {
 	a = a.Unmap()
 	for _, p := range trusted {
