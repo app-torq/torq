@@ -10,7 +10,7 @@ export const testSession: Session = {
     id: 1, username: 'marek', display_name: 'Marek', role: 'admin', locale: 'en', date_format: 'YYYY-MM-DD',
     number_format: 'point', currency_code: 'EUR', currency_symbol: null, power_unit: 'kw', disabled: false,
   },
-  instance: { max_upload_mb: 25, version: 'test', spec_autofill: false },
+  instance: { api_version: 1, max_upload_mb: 25, version: 'test', demo_mode: false, token_auth: true, spec_autofill: false },
 }
 
 /** Renders ui with a fresh query client, i18n (English) and a signed-in session. */

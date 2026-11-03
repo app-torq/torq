@@ -208,6 +208,188 @@ func TestSessionCookieSecureOverHTTPS(t *testing.T) {
 	}
 }
 
+func TestTokenLogin(t *testing.T) {
+	e := newEnv(t)
+	e.admin()
+	rec := e.client().do(http.MethodPost, "/auth/login", map[string]any{
+		"username": "marek", "password": testPassword, "token": true, "device_name": "Marek's iPhone",
+	})
+	var out struct {
+		Token    string         `json:"token"`
+		User     userJSON       `json:"user"`
+		Instance map[string]any `json:"instance"`
+	}
+	if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &out) != nil {
+		t.Fatalf("login: %d %s", rec.Code, rec.Body)
+	}
+	if out.Token == "" || out.User.Username != "marek" || out.Instance == nil {
+		t.Fatalf("response %s", rec.Body)
+	}
+	if len(rec.Result().Cookies()) != 0 {
+		t.Fatalf("token login must not set a cookie: %v", rec.Result().Cookies())
+	}
+
+	// Without "token" the response is unchanged: a cookie and no token field.
+	rec = e.client().do(http.MethodPost, "/auth/login", map[string]string{"username": "marek", "password": testPassword})
+	if len(rec.Result().Cookies()) != 1 || strings.Contains(rec.Body.String(), `"token"`) {
+		t.Fatalf("cookie login changed: %v %s", rec.Result().Cookies(), rec.Body)
+	}
+
+	// Bearer requests need no X-Torq-Request header.
+	app := &client{e: e, token: out.Token}
+	req := httptest.NewRequest(http.MethodPatch, "/api/v1/me/preferences", strings.NewReader(`{"locale":"de"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+out.Token)
+	rr := httptest.NewRecorder()
+	e.h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), `"locale":"de"`) {
+		t.Fatalf("bearer PATCH: %d %s", rr.Code, rr.Body)
+	}
+	app.call(http.MethodGet, "/auth/me", nil, http.StatusOK, nil)
+}
+
+func TestTokenSetup(t *testing.T) {
+	e := newEnv(t)
+	rec := e.client().do(http.MethodPost, "/setup", map[string]any{
+		"username": "marek", "display_name": "Marek", "password": testPassword, "token": true,
+	})
+	if rec.Code != http.StatusCreated || len(rec.Result().Cookies()) != 0 || !strings.Contains(rec.Body.String(), `"token":"`) {
+		t.Fatalf("setup: %d %v %s", rec.Code, rec.Result().Cookies(), rec.Body)
+	}
+}
+
+func TestBearerRejections(t *testing.T) {
+	e := newEnv(t)
+	browser := e.admin()
+	app := e.tokenLogin("marek", testPassword, "phone")
+	me := func(authz string, cookie bool) int {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
+		req.Header.Set("Authorization", authz)
+		if cookie {
+			req.AddCookie(browser.cookie)
+		}
+		rec := httptest.NewRecorder()
+		e.h.ServeHTTP(rec, req)
+		if rec.Code == http.StatusUnauthorized && !strings.Contains(rec.Body.String(), "auth.unauthenticated") {
+			t.Errorf("%q: body %s", authz, rec.Body)
+		}
+		return rec.Code
+	}
+	// An invalid bearer token is rejected even with a valid cookie (FR-004).
+	for _, h := range []string{"Bearer nonsense", "Bearer ", "Bearer", "bearer " + app.token + "x"} {
+		if code := me(h, true); code != http.StatusUnauthorized {
+			t.Errorf("%q with cookie: got %d", h, code)
+		}
+	}
+	// Other schemes belong to a reverse proxy (e.g. basic auth) and are ignored.
+	for _, h := range []string{"Basic bWFyZWs6eA==", "garbage"} {
+		if code := me(h, true); code != http.StatusOK {
+			t.Errorf("%q with cookie: got %d", h, code)
+		}
+		if code := me(h, false); code != http.StatusUnauthorized {
+			t.Errorf("%q without cookie: got %d", h, code)
+		}
+	}
+	// The scheme is case-insensitive.
+	if code := me("bearer "+app.token, false); code != http.StatusOK {
+		t.Errorf("lowercase scheme: got %d", code)
+	}
+}
+
+func TestTokenLogoutRevokesOnlyThatToken(t *testing.T) {
+	e := newEnv(t)
+	browser := e.admin()
+	first := e.tokenLogin("marek", testPassword, "phone")
+	second := e.tokenLogin("marek", testPassword, "tablet")
+	rec := first.do(http.MethodPost, "/auth/logout", nil)
+	if rec.Code != http.StatusNoContent || len(rec.Result().Cookies()) != 0 {
+		t.Fatalf("logout: %d %v", rec.Code, rec.Result().Cookies())
+	}
+	first.errorCode(http.MethodGet, "/auth/me", nil, http.StatusUnauthorized)
+	second.call(http.MethodGet, "/auth/me", nil, http.StatusOK, nil)
+	browser.call(http.MethodGet, "/auth/me", nil, http.StatusOK, nil)
+
+	// A password change revokes every other sign-in, tokens included.
+	browser.call(http.MethodPost, "/auth/password", map[string]string{
+		"current_password": testPassword, "new_password": "a-new-password-1",
+	}, http.StatusNoContent, nil)
+	second.errorCode(http.MethodGet, "/auth/me", nil, http.StatusUnauthorized)
+	browser.call(http.MethodGet, "/auth/me", nil, http.StatusOK, nil)
+}
+
+func TestTokenLoginErrorsMatchCookieLogin(t *testing.T) {
+	e := newEnv(t)
+	e.admin()
+	c := e.clientFrom("198.51.100.40")
+	cookie := c.do(http.MethodPost, "/auth/login", map[string]any{"username": "marek", "password": "wrong-password"})
+	token := c.do(http.MethodPost, "/auth/login", map[string]any{"username": "marek", "password": "wrong-password", "token": true})
+	if cookie.Code != http.StatusUnauthorized || token.Body.String() != cookie.Body.String() {
+		t.Fatalf("bodies differ: %s vs %s", cookie.Body, token.Body)
+	}
+	// Both count against the same throttle: three more failures block.
+	for i := 0; i < 3; i++ {
+		c.do(http.MethodPost, "/auth/login", map[string]any{"username": "marek", "password": "wrong-password", "token": true})
+	}
+	c.errorCode(http.MethodPost, "/auth/login", map[string]any{"username": "marek", "password": testPassword, "token": true}, http.StatusTooManyRequests)
+}
+
+func TestTokenExpirySlides(t *testing.T) {
+	e := newEnv(t)
+	e.admin()
+	app := e.tokenLogin("marek", testPassword, "phone")
+	e.clock.Advance(20 * 24 * time.Hour)
+	app.call(http.MethodGet, "/auth/me", nil, http.StatusOK, nil)
+	e.clock.Advance(20 * 24 * time.Hour)
+	app.call(http.MethodGet, "/auth/me", nil, http.StatusOK, nil)
+	e.clock.Advance(31 * 24 * time.Hour)
+	app.errorCode(http.MethodGet, "/auth/me", nil, http.StatusUnauthorized)
+}
+
+func TestInstance(t *testing.T) {
+	e := newEnv(t)
+	var info map[string]any
+	e.client().call(http.MethodGet, "/instance", nil, http.StatusOK, &info)
+	want := map[string]any{
+		"api_version": float64(APIVersion), "version": "test", "setup_required": true,
+		"demo_mode": false, "token_auth": true, "spec_autofill": false, "max_upload_mb": float64(25),
+	}
+	for k, v := range want {
+		if info[k] != v {
+			t.Errorf("%s = %v, want %v", k, info[k], v)
+		}
+	}
+	if len(info) != len(want) {
+		t.Errorf("unexpected fields: %v", info)
+	}
+
+	adm := e.admin()
+	e.client().call(http.MethodGet, "/instance", nil, http.StatusOK, &info)
+	if info["setup_required"] != false {
+		t.Fatal("setup_required after setup")
+	}
+	// /auth/me reports the same values (FR-017).
+	var me struct {
+		Instance map[string]any `json:"instance"`
+	}
+	adm.call(http.MethodGet, "/auth/me", nil, http.StatusOK, &me)
+	for k, v := range info {
+		if k != "setup_required" && me.Instance[k] != v {
+			t.Errorf("me.instance.%s = %v, /instance has %v", k, me.Instance[k], v)
+		}
+	}
+}
+
+func TestInstanceInDemoMode(t *testing.T) {
+	cfg := newEnv(t).cfg
+	cfg.DemoMode, cfg.MaxUploadMB = true, 0
+	e := newEnvWithConfig(t, cfg)
+	var info map[string]any
+	e.client().call(http.MethodGet, "/instance", nil, http.StatusOK, &info)
+	if info["demo_mode"] != true || info["max_upload_mb"] != float64(0) {
+		t.Fatalf("instance %v", info)
+	}
+}
+
 func TestLogoutAndPasswordChange(t *testing.T) {
 	e := newEnv(t)
 	first := e.admin()

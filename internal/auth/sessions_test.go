@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
+	"strings"
 	"testing"
 	"time"
 
@@ -26,7 +27,7 @@ func TestSessionLifecycle(t *testing.T) {
 	}
 	s := &Sessions{DB: d, Clock: clk}
 
-	raw, err := s.Create(ctx, u.ID, "test-agent", "127.0.0.1")
+	raw, err := s.Create(ctx, u.ID, "test-agent", "127.0.0.1", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +46,7 @@ func TestSessionLifecycle(t *testing.T) {
 		t.Fatal("stored value must be sha256(token)")
 	}
 
-	got, id, err := s.Lookup(ctx, raw)
+	got, id, err := s.Lookup(ctx, raw, "127.0.0.1")
 	if err != nil || got.ID != u.ID {
 		t.Fatalf("lookup: %v %v", got, err)
 	}
@@ -53,27 +54,49 @@ func TestSessionLifecycle(t *testing.T) {
 	// Lookups within an hour do not touch; after an hour the expiry slides.
 	expiresBefore := expiry(t, d.Reader, id)
 	clk.Advance(30 * time.Minute)
-	if _, _, err := s.Lookup(ctx, raw); err != nil {
+	if _, _, err := s.Lookup(ctx, raw, "127.0.0.1"); err != nil {
 		t.Fatal(err)
 	}
 	if expiry(t, d.Reader, id) != expiresBefore {
 		t.Fatal("session touched within the hour")
 	}
 	clk.Advance(31 * time.Minute)
-	if _, _, err := s.Lookup(ctx, raw); err != nil {
+	if _, _, err := s.Lookup(ctx, raw, "198.51.100.7"); err != nil {
 		t.Fatal(err)
 	}
 	if expiry(t, d.Reader, id) == expiresBefore {
 		t.Fatal("session expiry did not slide")
 	}
+	var ip string
+	if err := d.Reader.QueryRowContext(ctx, "SELECT ip FROM sessions WHERE id = ?", id).Scan(&ip); err != nil || ip != "198.51.100.7" {
+		t.Fatalf("touch must record the last ip, got %q (%v)", ip, err)
+	}
 
 	// Expiry after 30 days of inactivity.
 	clk.Advance(SessionTTL + time.Minute)
-	if _, _, err := s.Lookup(ctx, raw); err != ErrNoSession {
+	if _, _, err := s.Lookup(ctx, raw, "127.0.0.1"); err != ErrNoSession {
 		t.Fatalf("expected ErrNoSession, got %v", err)
 	}
 	if n, err := s.PruneExpired(ctx); err != nil || n != 1 {
 		t.Fatalf("prune: %d %v", n, err)
+	}
+}
+
+func TestCleanDeviceName(t *testing.T) {
+	cases := []struct{ in, want string }{
+		{"Marek's iPhone", "Marek's iPhone"},
+		{"  padded\t ", "padded"},
+		{"line\nbreak\x00", "linebreak"},
+		{"", ""},
+		{"\x1b\x07", ""},
+		{strings.Repeat("a", 64), strings.Repeat("a", 64)},
+		{strings.Repeat("a", 65), strings.Repeat("a", 64)},
+		{strings.Repeat("ö", 70), strings.Repeat("ö", 64)},
+	}
+	for _, c := range cases {
+		if got := CleanDeviceName(c.in); got != c.want {
+			t.Errorf("CleanDeviceName(%q) = %q, want %q", c.in, got, c.want)
+		}
 	}
 }
 
@@ -86,19 +109,19 @@ func TestRevokeAllExcept(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := &Sessions{DB: d, Clock: clk}
-	keep, _ := s.Create(ctx, u.ID, "", "")
-	other, _ := s.Create(ctx, u.ID, "", "")
-	_, keepID, err := s.Lookup(ctx, keep)
+	keep, _ := s.Create(ctx, u.ID, "", "", "")
+	other, _ := s.Create(ctx, u.ID, "", "", "")
+	_, keepID, err := s.Lookup(ctx, keep, "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := s.RevokeAllExcept(ctx, u.ID, keepID); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := s.Lookup(ctx, other); err != ErrNoSession {
+	if _, _, err := s.Lookup(ctx, other, ""); err != ErrNoSession {
 		t.Fatal("other session must be revoked")
 	}
-	if _, _, err := s.Lookup(ctx, keep); err != nil {
+	if _, _, err := s.Lookup(ctx, keep, ""); err != nil {
 		t.Fatal("kept session must survive")
 	}
 }

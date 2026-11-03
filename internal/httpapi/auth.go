@@ -38,22 +38,52 @@ func toUserJSON(u auth.User) userJSON {
 	return out
 }
 
-// meResponse adds instance facts every signed-in user needs (upload limit, version).
+// meResponse adds instance facts every signed-in user needs (upload limit,
+// version). Token is set only for a sign-in that asked for a bearer token.
 type meResponse struct {
 	User     userJSON     `json:"user"`
 	Instance instanceInfo `json:"instance"`
+	Token    string       `json:"token,omitempty"`
 }
 
+// signIn holds the optional fields of login and setup for app clients
+// (research M1): Token asks for a bearer token instead of the session cookie.
+type signIn struct {
+	Token      bool   `json:"token"`
+	DeviceName string `json:"device_name"`
+}
+
+// instanceInfo describes the server to clients, in GET /instance and in every
+// sign-in response, so both always agree (FR-017).
 type instanceInfo struct {
+	APIVersion  int    `json:"api_version"`
 	MaxUploadMB int    `json:"max_upload_mb"`
 	Version     string `json:"version"`
+	DemoMode    bool   `json:"demo_mode"`
+	TokenAuth   bool   `json:"token_auth"`
 	// SpecAutofill tells the UI whether the web spec lookup is configured
 	// (GEMINI_API_KEY and TAVILY_API_KEY).
 	SpecAutofill bool `json:"spec_autofill"`
 }
 
 func (s *Server) instanceInfo() instanceInfo {
-	return instanceInfo{MaxUploadMB: s.Config.MaxUploadMB, Version: s.Version, SpecAutofill: s.specfill != nil}
+	return instanceInfo{
+		APIVersion: APIVersion, MaxUploadMB: s.Config.MaxUploadMB, Version: s.Version,
+		DemoMode: s.Config.DemoMode, TokenAuth: true, SpecAutofill: s.specfill != nil,
+	}
+}
+
+// instance lets a client check a server before signing in (research M6).
+func (s *Server) instance(w http.ResponseWriter, r *http.Request) error {
+	required, err := s.users.SetupRequired(r.Context())
+	if err != nil {
+		return err
+	}
+	writeJSON(w, http.StatusOK, struct {
+		instanceInfo
+		SetupRequired bool `json:"setup_required"`
+	}{s.instanceInfo(), required})
+	return nil
 }
 
 func (s *Server) setupStatus(w http.ResponseWriter, r *http.Request) error {
@@ -71,6 +101,7 @@ func (s *Server) setup(w http.ResponseWriter, r *http.Request) error {
 		DisplayName string `json:"display_name"`
 		Password    string `json:"password"`
 		Locale      string `json:"locale"`
+		signIn
 	}
 	if err := decodeJSON(w, r, &in); err != nil {
 		return err
@@ -81,26 +112,33 @@ func (s *Server) setup(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if err := s.startSession(w, r, user.ID); err != nil {
-		return err
-	}
-	writeJSON(w, http.StatusCreated, meResponse{User: toUserJSON(user), Instance: s.instanceInfo()})
-	return nil
-}
-
-func (s *Server) startSession(w http.ResponseWriter, r *http.Request, userID int64) error {
-	token, err := s.sessions.Create(r.Context(), userID, r.UserAgent(), auth.ClientIP(r, s.Config.TrustedProxies))
+	token, err := s.startSession(w, r, user.ID, in.signIn)
 	if err != nil {
 		return err
 	}
-	s.setSessionCookie(w, r, token)
+	writeJSON(w, http.StatusCreated, meResponse{User: toUserJSON(user), Instance: s.instanceInfo(), Token: token})
 	return nil
+}
+
+// startSession creates a session for userID. It sets the session cookie, or,
+// when the client asked for a token, returns the token instead.
+func (s *Server) startSession(w http.ResponseWriter, r *http.Request, userID int64, in signIn) (string, error) {
+	token, err := s.sessions.Create(r.Context(), userID, r.UserAgent(), auth.ClientIP(r, s.Config.TrustedProxies), in.DeviceName)
+	if err != nil {
+		return "", err
+	}
+	if in.Token {
+		return token, nil
+	}
+	s.setSessionCookie(w, r, token)
+	return "", nil
 }
 
 func (s *Server) login(w http.ResponseWriter, r *http.Request) error {
 	var in struct {
 		Username string `json:"username"`
 		Password string `json:"password"`
+		signIn
 	}
 	if err := decodeJSON(w, r, &in); err != nil {
 		return err
@@ -139,10 +177,11 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if err := s.startSession(w, r, userID); err != nil {
+	token, err := s.startSession(w, r, userID, in.signIn)
+	if err != nil {
 		return err
 	}
-	writeJSON(w, http.StatusOK, meResponse{User: toUserJSON(user), Instance: s.instanceInfo()})
+	writeJSON(w, http.StatusOK, meResponse{User: toUserJSON(user), Instance: s.instanceInfo(), Token: token})
 	return nil
 }
 
@@ -152,7 +191,9 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 	}
-	s.clearSessionCookie(w, r)
+	if !viaBearer(r) {
+		s.clearSessionCookie(w, r)
+	}
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }

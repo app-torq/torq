@@ -52,6 +52,36 @@ func TestCSRFOnAllMutatingRoutes(t *testing.T) {
 	}
 }
 
+// Bearer requests are exempt from the CSRF checks: no route answers a csrf.*
+// code, even with a cross-site Origin (research M3). The token is invalid, so
+// protected handlers never run (POST /catalog/update would start a download)
+// and the request ends as auth.unauthenticated instead.
+func TestBearerSkipsCSRF(t *testing.T) {
+	e := newEnv(t)
+	e.admin()
+	checked := 0
+	for _, p := range e.srv.patterns {
+		method, path, _ := strings.Cut(p, " ")
+		if method == http.MethodGet || method == http.MethodHead || strings.HasSuffix(path, "/auth/logout") {
+			continue
+		}
+		path = strings.NewReplacer("{id}", "1").Replace(path)
+		req := httptest.NewRequest(method, path, strings.NewReader("{}"))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer not-a-token")
+		req.Header.Set("Origin", "https://evil.example")
+		rec := httptest.NewRecorder()
+		e.h.ServeHTTP(rec, req)
+		if strings.Contains(rec.Body.String(), `"csrf.`) {
+			t.Errorf("%s: got %d %s", p, rec.Code, rec.Body)
+		}
+		checked++
+	}
+	if checked < 50 {
+		t.Fatalf("only %d mutating routes checked", checked)
+	}
+}
+
 func TestSessionCookieFlags(t *testing.T) {
 	cfg, _ := config.Load(func(k string) string {
 		switch k {

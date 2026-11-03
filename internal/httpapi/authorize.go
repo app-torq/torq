@@ -1,8 +1,10 @@
 package httpapi
 
 import (
+	"context"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/app-torq/torq/internal/apperr"
 	"github.com/app-torq/torq/internal/auth"
@@ -11,14 +13,18 @@ import (
 
 const sessionCookie = "torq_session"
 
-// authorize resolves the session cookie and enforces the route's access level.
-// It returns the request with the authenticated user in its context.
+// viaBearerKey marks a request whose session came from a bearer token.
+type viaBearerKey struct{}
+
+// authorize resolves the session from a bearer token or the session cookie and
+// enforces the route's access level. It returns the request with the
+// authenticated user in its context.
 func (s *Server) authorize(r *http.Request, level access) (*http.Request, error) {
-	c, err := r.Cookie(sessionCookie)
-	if err != nil {
+	raw, viaBearer, ok := sessionToken(r)
+	if !ok {
 		return r, apperr.Unauthenticated()
 	}
-	user, sessionID, err := s.sessions.Lookup(r.Context(), c.Value)
+	user, sessionID, err := s.sessions.Lookup(r.Context(), raw, auth.ClientIP(r, s.Config.TrustedProxies))
 	if errors.Is(err, auth.ErrNoSession) {
 		return r, apperr.Unauthenticated()
 	}
@@ -28,7 +34,42 @@ func (s *Server) authorize(r *http.Request, level access) (*http.Request, error)
 	if level == admin && !user.IsAdmin() {
 		return r, apperr.Forbidden("auth.forbidden")
 	}
-	return r.WithContext(auth.WithUser(r.Context(), user, sessionID)), nil
+	ctx := auth.WithUser(r.Context(), user, sessionID)
+	if viaBearer {
+		ctx = context.WithValue(ctx, viaBearerKey{}, true)
+	}
+	return r.WithContext(ctx), nil
+}
+
+// sessionToken returns the raw session token and whether it came as a bearer
+// token. A bearer token always wins: when one is sent, the cookie is never a
+// fallback (research M2). Other Authorization schemes belong to a reverse
+// proxy, such as basic auth in front of torq, and are ignored.
+func sessionToken(r *http.Request) (raw string, viaBearer, ok bool) {
+	if token, isBearer := bearerToken(r); isBearer {
+		return token, true, token != ""
+	}
+	c, err := r.Cookie(sessionCookie)
+	if err != nil {
+		return "", false, false
+	}
+	return c.Value, false, true
+}
+
+// bearerToken returns the token of an "Authorization: Bearer <token>" header
+// and whether the header uses the Bearer scheme at all.
+func bearerToken(r *http.Request) (string, bool) {
+	scheme, token, _ := strings.Cut(strings.TrimSpace(r.Header.Get("Authorization")), " ")
+	if !strings.EqualFold(scheme, "Bearer") {
+		return "", false
+	}
+	return strings.TrimSpace(token), true
+}
+
+// viaBearer reports whether the request's session came from a bearer token.
+func viaBearer(r *http.Request) bool {
+	v, _ := r.Context().Value(viaBearerKey{}).(bool)
+	return v
 }
 
 // secureCookies reports whether the session cookie gets the Secure flag. It

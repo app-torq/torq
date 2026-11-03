@@ -21,8 +21,13 @@ export interface User {
 }
 
 export interface InstanceInfo {
+  /** API level; raised with every release that adds to the API. */
+  api_version: number
   max_upload_mb: number
   version: string
+  demo_mode: boolean
+  /** Sign-in can return a bearer token for apps. */
+  token_auth: boolean
   /** The web spec lookup is configured (GEMINI_API_KEY). */
   spec_autofill: boolean
 }

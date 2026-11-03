@@ -215,6 +215,7 @@ type Session struct {
 	ExpiresAt  string
 	UserAgent  string
 	Ip         string
+	DeviceName string
 }
 
 type User struct {

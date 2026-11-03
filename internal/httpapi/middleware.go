@@ -62,14 +62,18 @@ func RequestLog(log *slog.Logger, next http.Handler) http.Handler {
 }
 
 // CSRF requires X-Torq-Request: 1 on mutating API requests and rejects
-// cross-origin Origin headers (research R6).
+// cross-origin Origin headers (research R6). Requests with a bearer token are
+// exempt (research M3): browsers attach cookies to cross-site requests on
+// their own, but never an Authorization header, since torq sends no CORS
+// headers and the preflight that header needs therefore fails.
 func CSRF(baseURL string, next http.Handler) http.Handler {
 	var baseHost string
 	if u, err := url.Parse(baseURL); err == nil {
 		baseHost = u.Host
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasPrefix(r.URL.Path, "/api/") && r.Method != http.MethodGet && r.Method != http.MethodHead {
+		token, _ := bearerToken(r)
+		if strings.HasPrefix(r.URL.Path, "/api/") && r.Method != http.MethodGet && r.Method != http.MethodHead && token == "" {
 			if r.Header.Get("X-Torq-Request") != "1" {
 				writeJSON(w, http.StatusForbidden, errorBody{errorPayload{Code: "csrf.missing_header"}})
 				return

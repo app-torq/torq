@@ -10,6 +10,7 @@ import (
 // routes registers every /api/v1 endpoint (contracts/rest-api.md).
 func (s *Server) routes() {
 	// Setup & auth
+	s.route("GET /instance", public, s.instance)
 	s.route("GET /setup/status", public, s.setupStatus)
 	s.route("POST /setup", public, s.setup)
 	s.route("POST /auth/login", public, s.login)

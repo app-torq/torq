@@ -62,6 +62,8 @@ type client struct {
 	e      *env
 	cookie *http.Cookie
 	ip     string
+	// token, when set, is sent as a bearer token instead of the cookie.
+	token string
 }
 
 func (e *env) client() *client { return &client{e: e} }
@@ -87,7 +89,9 @@ func (c *client) do(method, path string, body any) *httptest.ResponseRecorder {
 	if method != http.MethodGet {
 		req.Header.Set("X-Torq-Request", "1")
 	}
-	if c.cookie != nil {
+	if c.token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.token)
+	} else if c.cookie != nil {
 		req.AddCookie(c.cookie)
 	}
 	rec := httptest.NewRecorder()
@@ -140,6 +144,21 @@ func (e *env) admin() *client {
 		"username": "marek", "display_name": "Marek", "password": testPassword,
 	}, http.StatusCreated, nil)
 	return c
+}
+
+// tokenLogin returns a new client signed in as username with a bearer token.
+func (e *env) tokenLogin(username, password, device string) *client {
+	e.t.Helper()
+	var out struct {
+		Token string `json:"token"`
+	}
+	e.client().call(http.MethodPost, "/auth/login", map[string]any{
+		"username": username, "password": password, "token": true, "device_name": device,
+	}, http.StatusOK, &out)
+	if out.Token == "" {
+		e.t.Fatal("login with token: no token in response")
+	}
+	return &client{e: e, token: out.Token}
 }
 
 // login returns a new client signed in as username.

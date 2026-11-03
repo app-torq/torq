@@ -7,7 +7,9 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"errors"
+	"strings"
 	"time"
+	"unicode"
 
 	"github.com/app-torq/torq/internal/clock"
 	"github.com/app-torq/torq/internal/db"
@@ -20,6 +22,8 @@ const (
 	// touchInterval limits last_seen_at writes to once per hour per session.
 	touchInterval = time.Hour
 	tokenBytes    = 32
+	// maxDeviceName is the longest device name kept, in runes (FR-008).
+	maxDeviceName = 64
 )
 
 // ErrNoSession is returned when a token is unknown, expired or its user disabled.
@@ -37,8 +41,24 @@ func hashToken(raw string) []byte {
 	return sum[:]
 }
 
-// Create starts a session for userID and returns the raw token for the cookie.
-func (s *Sessions) Create(ctx context.Context, userID int64, userAgent, ip string) (string, error) {
+// CleanDeviceName turns a client-supplied device name into a safe label:
+// control characters removed, spaces trimmed, at most 64 runes.
+func CleanDeviceName(name string) string {
+	name = strings.TrimSpace(strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) {
+			return -1
+		}
+		return r
+	}, name))
+	if r := []rune(name); len(r) > maxDeviceName {
+		name = strings.TrimSpace(string(r[:maxDeviceName]))
+	}
+	return name
+}
+
+// Create starts a session for userID and returns the raw token, which the
+// client keeps as a cookie or a bearer token. deviceName is an optional label.
+func (s *Sessions) Create(ctx context.Context, userID int64, userAgent, ip, deviceName string) (string, error) {
 	b := make([]byte, tokenBytes)
 	if _, err := rand.Read(b); err != nil {
 		return "", err
@@ -56,6 +76,7 @@ func (s *Sessions) Create(ctx context.Context, userID int64, userAgent, ip strin
 		ExpiresAt:  clock.Timestamp(now.Add(SessionTTL)),
 		UserAgent:  userAgent,
 		Ip:         ip,
+		DeviceName: CleanDeviceName(deviceName),
 	})
 	if err != nil {
 		return "", err
@@ -64,8 +85,8 @@ func (s *Sessions) Create(ctx context.Context, userID int64, userAgent, ip strin
 }
 
 // Lookup validates raw and returns the session's user and ID, extending the
-// sliding expiry at most once per hour.
-func (s *Sessions) Lookup(ctx context.Context, raw string) (User, int64, error) {
+// sliding expiry and recording the client's ip at most once per hour.
+func (s *Sessions) Lookup(ctx context.Context, raw, ip string) (User, int64, error) {
 	if raw == "" {
 		return User{}, 0, ErrNoSession
 	}
@@ -85,6 +106,7 @@ func (s *Sessions) Lookup(ctx context.Context, raw string) (User, int64, error) 
 		if err := store.New(s.DB.Writer).TouchSession(ctx, store.TouchSessionParams{
 			LastSeenAt: clock.Timestamp(now),
 			ExpiresAt:  clock.Timestamp(now.Add(SessionTTL)),
+			Ip:         ip,
 			ID:         row.Session.ID,
 		}); err != nil {
 			return User{}, 0, err
