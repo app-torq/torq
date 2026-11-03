@@ -100,6 +100,10 @@ func (c *client) do(method, path string, body any) *httptest.ResponseRecorder {
 	}
 	rec := httptest.NewRecorder()
 	c.e.h.ServeHTTP(rec, req)
+	// Every response must match openapi.yaml (research M10).
+	if err := contract(c.e.t).checkResponse(method, req.URL.Path, rec.Code, rec.Header().Get("Content-Type"), rec.Body.Bytes()); err != nil {
+		c.e.t.Errorf("%s %s → %d does not match openapi.yaml: %v\nbody: %s", method, path, rec.Code, err, rec.Body)
+	}
 	for _, ck := range rec.Result().Cookies() {
 		if ck.Name == sessionCookie {
 			if ck.MaxAge < 0 {

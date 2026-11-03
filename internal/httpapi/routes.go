@@ -7,7 +7,8 @@ import (
 	"github.com/app-torq/torq/internal/attachments"
 )
 
-// routes registers every /api/v1 endpoint (contracts/rest-api.md).
+// routes registers every /api/v1 endpoint. openapi.yaml describes each one;
+// the contract tests fail when the two disagree.
 func (s *Server) routes() {
 	// Setup & auth
 	s.route("GET /instance", public, s.instance)

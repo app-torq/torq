@@ -76,8 +76,10 @@ type Server struct {
 	// specfill looks up spec sheets on the web; nil unless GEMINI_API_KEY and
 	// TAVILY_API_KEY are set.
 	specfill specLookup
-	// patterns records every registered API route (used by the CSRF route-walk test).
-	patterns []string
+	// patterns records every registered API route and routeAccess its access
+	// level (used by the CSRF route-walk and the contract tests).
+	patterns    []string
+	routeAccess map[string]access
 }
 
 // NewRouter builds the full HTTP handler including middleware.
@@ -156,6 +158,10 @@ func (s *Server) route(pattern string, level access, fn handlerFunc) {
 		panic("route pattern must be \"METHOD /path\": " + pattern)
 	}
 	s.patterns = append(s.patterns, method+" /api/v1"+p)
+	if s.routeAccess == nil {
+		s.routeAccess = map[string]access{}
+	}
+	s.routeAccess[method+" /api/v1"+p] = level
 	s.mux.Handle(method+" /api/v1"+p, s.wrap(level, fn))
 }
 
