@@ -322,8 +322,25 @@ func qty(ml *int64, unit *string) (string, string) {
 	return strconv.FormatInt(*ml, 10), "mL"
 }
 
+// neutralize prefixes text cells a spreadsheet would run as a formula
+// ("=", "+", "-", "@", tab, CR) with a quote. Numbers stay as they are, so
+// negative amounts remain numeric.
+func neutralize(rec []string) []string {
+	for i, v := range rec {
+		if v == "" || !strings.ContainsRune("=+-@\t\r", rune(v[0])) {
+			continue
+		}
+		if _, err := strconv.ParseFloat(v, 64); err == nil {
+			continue
+		}
+		rec[i] = "'" + v
+	}
+	return rec
+}
+
 // WriteCSV writes the history as one flat RFC 4180 file, UTF-8 with BOM so
-// spreadsheets open umlauts correctly (research R19).
+// spreadsheets open umlauts correctly (research R19). Text that looks like a
+// formula is neutralized.
 func WriteCSV(w io.Writer, h History) error {
 	if _, err := io.WriteString(w, "\uFEFF"); err != nil {
 		return err
@@ -337,11 +354,11 @@ func WriteCSV(w io.Writer, h History) error {
 	vehicleRow[0], vehicleRow[2], vehicleRow[3], vehicleRow[4], vehicleRow[6] =
 		"vehicle", strconv.FormatInt(v.CurrentOdometerKm, 10), strings.TrimSpace(v.Make+" "+v.Model), v.ChassisCode, v.EngineCode
 	copy(vehicleRow[len(CSVHeader)-vehicleCols:], []string{strOr(v.HSN), strOr(v.TSN), intOr(v.DisplacementCC), intOr(v.PowerKW), strOr(v.FuelType)})
-	if err := cw.Write(vehicleRow); err != nil {
+	if err := cw.Write(neutralize(vehicleRow)); err != nil {
 		return err
 	}
 	// Line-item rows leave the trailing vehicle columns empty.
-	write := func(rec []string) error { return cw.Write(append(rec, make([]string, vehicleCols)...)) }
+	write := func(rec []string) error { return cw.Write(neutralize(append(rec, make([]string, vehicleCols)...))) }
 	for _, s := range h.Services {
 		for _, it := range s.Items {
 			q, unit := qty(it.QuantityMl, it.QuantityUnit)

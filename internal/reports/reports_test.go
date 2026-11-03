@@ -235,3 +235,27 @@ func TestExportPerformance(t *testing.T) {
 		t.Fatalf("500-record export took %v (%d services)", d, len(h.Services))
 	}
 }
+
+func TestCSVNeutralizesFormulas(t *testing.T) {
+	h := History{
+		Vehicle: HistoryVehicle{Make: "=HYPERLINK(\"http://x\")", Model: "C 220"},
+		Repairs: []HistoryRepair{{CompletedOn: "2026-10-30", Title: "@SUM(A1)", Procedure: "-2+3"}},
+	}
+	var buf bytes.Buffer
+	if err := WriteCSV(&buf, h); err != nil {
+		t.Fatal(err)
+	}
+	rows, err := csv.NewReader(bytes.NewReader(buf.Bytes()[3:])).ReadAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v := rows[1][3]; v != `'=HYPERLINK("http://x") C 220` {
+		t.Fatalf("vehicle %q", v)
+	}
+	if r := rows[2]; r[3] != "'@SUM(A1)" || r[14] != "'-2+3" || r[2] != "0" {
+		t.Fatalf("repair %v", r)
+	}
+	if got := neutralize([]string{"-12.50", "+5", "a=b"}); strings.Join(got, "|") != "-12.50|+5|a=b" {
+		t.Fatalf("numbers and inner signs must stay: %v", got)
+	}
+}
