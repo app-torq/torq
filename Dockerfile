@@ -3,7 +3,7 @@
 
 # Build stages run on the build machine's architecture and cross-compile, so
 # multi-arch images build without slow emulation.
-FROM --platform=$BUILDPLATFORM node:22-alpine AS web
+FROM --platform=$BUILDPLATFORM node:26-alpine AS web
 WORKDIR /src/web
 COPY web/package.json web/package-lock.json ./
 RUN npm ci
