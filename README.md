@@ -75,6 +75,8 @@ All settings are optional environment variables. The most common ones:
 
 The full list, including logging, cookies, the Gemini model and catalog updates, is in the wiki under [Configuration](https://github.com/app-torq/torq/wiki/Configuration).
 
+Apps and scripts use the same REST API as the web app. A mobile app is in development. [docs/api.md](docs/api.md) explains sign-in with tokens and the compatibility promise; the contract is [`openapi.yaml`](openapi.yaml).
+
 > [!NOTE]
 > The spec-sheet auto-fill is the only feature that sends data to third parties: the vehicle's make, model, chassis code, year, engine and HSN/TSN go to [Tavily](https://tavily.com) and Google Gemini. It is off unless both keys are set. Both services have free tiers. See [Spec sheet auto-fill](https://github.com/app-torq/torq/wiki/Spec-Sheet-Auto-Fill).
 
