@@ -95,5 +95,10 @@
   "update": {
     "available": "Eine neue Version von torq ist verfügbar.",
     "reloadNow": "Jetzt neu laden"
+  },
+  "offline": {
+    "title": "Dein torq-Server ist nicht erreichbar",
+    "body": "torq unter {{host}} antwortet nicht. Prüfe deine Verbindung oder ob der Server läuft.",
+    "retry": "Erneut versuchen"
   }
 }

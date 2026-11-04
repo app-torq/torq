@@ -9,6 +9,7 @@ import { ErrorBanner, Loading } from '../components/ui'
 import { SessionContext } from './session'
 import { SetupPage } from '../features/auth/SetupPage'
 import { LoginPage } from '../features/auth/LoginPage'
+import { OfflineScreen } from './pwa/OfflineScreen'
 
 /** Shows first-boot setup or login until a session exists, then renders the app. */
 export function AuthGate({ children }: { children: ReactNode }) {
@@ -54,10 +55,16 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const session = useMemo(() => (me.data ? { user: me.data.user, instance: me.data.instance } : null), [me.data])
 
   if (setup.isPending) return <Centered><Loading /></Centered>
-  if (setup.isError) return <Centered><ErrorBanner message={errorText(setup.error)} onRetry={() => void setup.refetch()} /></Centered>
+  if (setup.isError) {
+    if (isApiError(setup.error, 'network.unreachable')) return <OfflineScreen onRetry={() => void setup.refetch()} />
+    return <Centered><ErrorBanner message={errorText(setup.error)} onRetry={() => void setup.refetch()} /></Centered>
+  }
   if (setup.data.setup_required) return <SetupPage />
   if (me.isPending) return <Centered><Loading /></Centered>
-  if (me.isError) return <Centered><ErrorBanner message={errorText(me.error)} onRetry={() => void me.refetch()} /></Centered>
+  if (me.isError) {
+    if (isApiError(me.error, 'network.unreachable')) return <OfflineScreen onRetry={() => void me.refetch()} />
+    return <Centered><ErrorBanner message={errorText(me.error)} onRetry={() => void me.refetch()} /></Centered>
+  }
   if (!session) return <LoginPage />
   return <SessionContext.Provider value={session}>{children}</SessionContext.Provider>
 }
