@@ -91,5 +91,9 @@
     "changePhoto": "Change photo",
     "removePhoto": "Remove photo",
     "preview": "Preview"
+  },
+  "update": {
+    "available": "A new version of torq is available.",
+    "reloadNow": "Reload now"
   }
 }

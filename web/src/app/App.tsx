@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { MutationCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router'
 import '../i18n'
 import { AuthGate } from './AuthGate'
@@ -27,8 +27,11 @@ import { RepairBoardPage } from '../features/repairs/RepairBoardPage'
 import { RepairDetailPage } from '../features/repairs/RepairDetailPage'
 import { ReportsPage } from '../features/reports/ReportsPage'
 import { HistoryPrintPage } from '../features/reports/HistoryPrintPage'
+import { markClean } from './pwa/dirty'
 
 const queryClient = new QueryClient({
+  // A successful save leaves nothing unsaved, so updates may apply again.
+  mutationCache: new MutationCache({ onSuccess: () => { markClean() } }),
   defaultOptions: { queries: { retry: 1, staleTime: 15_000, refetchOnWindowFocus: true } },
 })
 

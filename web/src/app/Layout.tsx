@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -12,6 +12,9 @@ import { mainNav } from './nav'
 import { QuickActions, useQuickActionsHotkey } from './QuickActions'
 import { VehicleSwitcher } from './VehicleSwitcher'
 import { useSession } from './session'
+import { markClean } from './pwa/dirty'
+import { getUpdater } from './pwa/register'
+import { UpdateBanner } from './pwa/UpdateBanner'
 
 export function Layout() {
   const { t } = useTranslation()
@@ -22,6 +25,13 @@ export function Layout() {
   const openQuick = useCallback(() => { setQuickOpen(true) }, [])
   useQuickActionsHotkey(openQuick)
   const location = useLocation()
+  // Leaving a page leaves its input behind, so a pending update can load now.
+  useEffect(() => {
+    markClean()
+    const u = getUpdater()
+    void u?.checkNow()
+    u?.onNavigate()
+  }, [location.pathname])
 
   const logout = useMutation({
     mutationFn: () => api.post('/auth/logout'),
@@ -125,6 +135,7 @@ export function Layout() {
       </div>
 
       <QuickActions open={quickOpen} onClose={() => { setQuickOpen(false) }} />
+      <UpdateBanner />
     </div>
   )
 }

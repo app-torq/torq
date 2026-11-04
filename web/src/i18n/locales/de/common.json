@@ -91,5 +91,9 @@
     "changePhoto": "Foto ändern",
     "removePhoto": "Foto entfernen",
     "preview": "Vorschau"
+  },
+  "update": {
+    "available": "Eine neue Version von torq ist verfügbar.",
+    "reloadNow": "Jetzt neu laden"
   }
 }
