@@ -53,7 +53,7 @@ export function AttachmentGallery({ items, onChanged }: { items: Attachment[]; o
                 <div className="truncate text-xs text-zinc-200">{a.caption || a.original_name}</div>
                 <div className="text-[11px] text-zinc-400">{sizeLabel(a.size_bytes, fmt)}</div>
               </div>
-              <a href={`${a.url}?download=1`} className="focus-ring inline-flex h-7 w-7 items-center justify-center rounded text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100" aria-label={t('attachments.download')} title={t('attachments.download')}>
+              <a href={`${a.url}?download=1`} download className="focus-ring inline-flex h-7 w-7 items-center justify-center rounded text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100" aria-label={t('attachments.download')} title={t('attachments.download')}>
                 <Download size={14} />
               </a>
               <IconButton aria-label={t('attachments.caption')} onClick={() => { setEditing(a) }} className="h-7 w-7">

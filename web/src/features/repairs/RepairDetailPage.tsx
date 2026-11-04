@@ -22,6 +22,7 @@ import { StatusMenu } from './RepairBoardPage'
 import { CompleteRepairDialog } from './CompleteRepairDialog'
 import { FaultCodeInput } from './FaultCodeInput'
 import { PartsTable } from './PartsTable'
+import { BackLink } from '../../components/BackLink'
 
 export function RepairDetailPage() {
   const { id } = useParams()
@@ -54,6 +55,7 @@ export function RepairDetailPage() {
 
   return (
     <div className="space-y-6">
+      <BackLink fallback="/repairs" />
       <PageHeader
         title={r.title}
         subtitle={vehicle.data ? <Link className="text-sky-300 hover:underline" to={`/vehicles/${vehicle.data.id}/repairs`}>{vehicleName(vehicle.data)}</Link> : undefined}

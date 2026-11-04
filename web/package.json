@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "test": "vitest",
     "e2e": "playwright test",
-    "i18n:check": "node --experimental-strip-types scripts/check-i18n.ts"
+    "i18n:check": "node --experimental-strip-types scripts/check-i18n.ts",
+    "icons": "node --experimental-strip-types scripts/render-icons.ts"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.105.0",

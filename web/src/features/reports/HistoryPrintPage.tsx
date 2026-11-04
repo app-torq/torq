@@ -49,11 +49,11 @@ export function HistoryPrintPage() {
           <Printer size={15} />
           {t('history.print')}
         </Button>
-        <a href={exportUrl('json')} className="focus-ring inline-flex h-10 items-center gap-2 rounded-md border border-zinc-700 px-3 text-sm hover:bg-zinc-800">
+        <a href={exportUrl('json')} download className="focus-ring inline-flex h-10 items-center gap-2 rounded-md border border-zinc-700 px-3 text-sm hover:bg-zinc-800">
           <Download size={15} />
           {t('history.downloadJson')}
         </a>
-        <a href={exportUrl('csv')} className="focus-ring inline-flex h-10 items-center gap-2 rounded-md border border-zinc-700 px-3 text-sm hover:bg-zinc-800">
+        <a href={exportUrl('csv')} download className="focus-ring inline-flex h-10 items-center gap-2 rounded-md border border-zinc-700 px-3 text-sm hover:bg-zinc-800">
           <Download size={15} />
           {t('history.downloadCsv')}
         </a>

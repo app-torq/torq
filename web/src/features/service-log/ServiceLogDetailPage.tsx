@@ -14,6 +14,7 @@ import { Card, DefinitionList, ErrorBanner, Loading, Notice, PageHeader, Table }
 import { invalidateOdometerDependents, useVehicle } from '../vehicles/hooks'
 import { categoryLabel, useCategories } from './hooks'
 import { ServiceLogAttachments } from './ServiceLogAttachments'
+import { BackLink } from '../../components/BackLink'
 
 export function ServiceLogDetailPage() {
   const { id } = useParams()
@@ -50,6 +51,7 @@ export function ServiceLogDetailPage() {
 
   return (
     <div className="space-y-6">
+      <BackLink fallback="/service" />
       <PageHeader
         title={t('detail')}
         subtitle={vehicle.data ? <Link className="text-sky-300 hover:underline" to={`/vehicles/${vehicle.data.id}`}>{vehicleName(vehicle.data)}</Link> : undefined}
