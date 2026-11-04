@@ -32,6 +32,21 @@ export function AboutPage() {
         <DefinitionList items={[{ label: t('about.version'), value: <span className="font-mono">{instance.version}</span> }]} />
       </Card>
 
+      <Card title={t('about.installTitle')}>
+        <div className="space-y-3 text-sm text-zinc-300">
+          <p>{t('common:install.hint')}</p>
+          <DefinitionList
+            items={[
+              { label: t('about.installIOS'), value: t('common:install.ios') },
+              { label: t('about.installAndroid'), value: t('common:install.android') },
+              { label: t('about.installDesktop'), value: t('common:install.desktop') },
+            ]}
+          />
+          <p className="text-zinc-400">{t('common:install.iosNote')}</p>
+          <p className="text-zinc-400">{t('common:install.httpsNote')}</p>
+        </div>
+      </Card>
+
       <section aria-labelledby="about-datasets" className="space-y-3">
         <h2 id="about-datasets" className="text-base font-semibold text-zinc-100">{t('about.datasets')}</h2>
         <p className="text-sm text-zinc-400">{t('about.offline')}</p>

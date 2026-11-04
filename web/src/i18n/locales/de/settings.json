@@ -126,6 +126,10 @@
       "succeeded": "Katalog aktualisiert am {{time}}.",
       "unchanged": "Quellen seit der letzten Aktualisierung unverändert ({{time}}).",
       "failed": "Aktualisierung am {{time}} fehlgeschlagen; der bisherige Katalog wird weiter verwendet."
-    }
+    },
+    "installTitle": "Als App installieren",
+    "installIOS": "iPhone und iPad",
+    "installAndroid": "Android",
+    "installDesktop": "Desktop"
   }
 }

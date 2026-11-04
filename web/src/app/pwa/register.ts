@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import { api } from '../../lib/api'
 import { installDirtyTracking, isDirty } from './dirty'
+import { captureInstallPrompt } from './install'
 import { createUpdater, type Updater } from './updates'
 
 // Wires the service worker and the update watch into the running app
@@ -12,6 +13,7 @@ const notify = () => { for (const fn of listeners) fn() }
 
 export function startPWA(): void {
   installDirtyTracking()
+  captureInstallPrompt()
   const start = (registration?: ServiceWorkerRegistration) => {
     const u = createUpdater({
       fetchVersion: () => api.get<{ version: string }>('/instance').then((i) => i.version),

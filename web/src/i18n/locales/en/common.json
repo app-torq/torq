@@ -100,5 +100,16 @@
     "title": "Can't reach your torq server",
     "body": "torq at {{host}} doesn't answer. Check your connection or whether the server is running.",
     "retry": "Try again"
+  },
+  "install": {
+    "title": "Use torq like an app",
+    "hint": "Put torq on your home screen: it opens in its own window and starts instantly.",
+    "ios": "In Safari, tap Share, then “Add to Home Screen”.",
+    "android": "Open the browser menu ⋮, then “Install app” or “Add to Home screen”.",
+    "desktop": "In Chrome or Edge, click the install icon in the address bar, or choose “Install torq” in the browser menu.",
+    "iosNote": "On iPhone and iPad, the home-screen app has its own sign-in: sign in once more after adding it.",
+    "httpsNote": "Installing and the offline start need torq to be reached over HTTPS. On plain HTTP, adding it to the home screen still works as a shortcut.",
+    "install": "Install",
+    "dismiss": "Dismiss"
   }
 }

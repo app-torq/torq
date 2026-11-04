@@ -126,6 +126,10 @@
       "succeeded": "Catalog updated {{time}}.",
       "unchanged": "Sources unchanged since the last update ({{time}}).",
       "failed": "Update failed {{time}}; the previous catalog is still in use."
-    }
+    },
+    "installTitle": "Install as an app",
+    "installIOS": "iPhone and iPad",
+    "installAndroid": "Android",
+    "installDesktop": "Desktop"
   }
 }

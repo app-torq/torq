@@ -100,5 +100,16 @@
     "title": "Dein torq-Server ist nicht erreichbar",
     "body": "torq unter {{host}} antwortet nicht. Prüfe deine Verbindung oder ob der Server läuft.",
     "retry": "Erneut versuchen"
+  },
+  "install": {
+    "title": "torq wie eine App nutzen",
+    "hint": "Leg torq auf deinen Home-Bildschirm: Es öffnet sich in einem eigenen Fenster und startet sofort.",
+    "ios": "Tippe in Safari auf „Teilen“ und dann auf „Zum Home-Bildschirm“.",
+    "android": "Öffne das Browsermenü ⋮ und wähle „App installieren“ oder „Zum Startbildschirm hinzufügen“.",
+    "desktop": "Klicke in Chrome oder Edge auf das Installieren-Symbol in der Adressleiste oder wähle im Browsermenü „torq installieren“.",
+    "iosNote": "Auf iPhone und iPad hat die App auf dem Home-Bildschirm eine eigene Anmeldung: Melde dich nach dem Hinzufügen einmal neu an.",
+    "httpsNote": "Installieren und der Offline-Start brauchen eine Verbindung zu torq über HTTPS. Über einfaches HTTP funktioniert das Hinzufügen zum Home-Bildschirm weiterhin als Verknüpfung.",
+    "install": "Installieren",
+    "dismiss": "Ausblenden"
   }
 }

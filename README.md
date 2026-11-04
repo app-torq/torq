@@ -17,7 +17,7 @@ Self-hosted · one small Docker container · your data stays on your server
 [![Languages](https://img.shields.io/badge/i18n-English%20%7C%20Deutsch-informational)](#)
 [![Demo](https://img.shields.io/badge/Demo-Available-green)](https://demo.torq-app.tech)
 
-[Quick start](#quick-start) · [Features](#features) · [Configuration](#configuration) · [Wiki](https://github.com/app-torq/torq/wiki) · [Demo](https://demo.torq-app.tech)
+[Quick start](#quick-start) · [Features](#features) · [On your phone](#use-torq-on-your-phone) · [Configuration](#configuration) · [Wiki](https://github.com/app-torq/torq/wiki) · [Demo](https://demo.torq-app.tech)
 
 </div>
 
@@ -40,6 +40,7 @@ Self-hosted · one small Docker container · your data stays on your server
 - 📋 **Spec sheet** with oil and fluid specs, capacities, lug torque and tyre pressure, filled in from the web on request, with a source link for every value.
 - 🔔 **Notifications** via webhooks to Discord, ntfy, Gotify, Home Assistant or any JSON endpoint.
 - 📊 **Reports**: costs per vehicle, service vs. repair, cost per km, a timeline and a printable history with JSON/CSV export.
+- 📱 **On your phone like an app**: add torq to the home screen, no app store and no extra install.
 - 🌍 English and German, metric units, multiple users per garage.
 
 ## Quick start
@@ -60,6 +61,10 @@ Prefer Compose or building it yourself? `docker compose up -d` builds the image 
 > To run torq on a small VPS with automatic deployments on every push, HTTPS and your own domain via Cloudflare Tunnel, follow [`docs/deployment.md`](docs/deployment.md).
 
 The image is a ~29 MB static binary on a distroless base. It runs as non-root, needs only the `/data` volume and typically uses well under 100 MB of RAM.
+
+## Use torq on your phone
+
+torq installs as an app from the browser, no app store needed: in Safari tap **Share → Add to Home Screen**, in Chrome **⋮ → Install app**. It then opens in its own window and starts instantly. Your data stays on your server; the phone keeps only the app itself. Details, including what needs HTTPS, are in [`docs/install-on-phone.md`](docs/install-on-phone.md).
 
 ## Configuration
 

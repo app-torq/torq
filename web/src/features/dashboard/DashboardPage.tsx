@@ -8,6 +8,7 @@ import { useVehicles } from '../vehicles/hooks'
 import { VehicleAvatar } from '../vehicles/VehicleAvatar'
 import { OdometerQuickUpdate } from '../vehicles/OdometerQuickUpdate'
 import { dashboardPanels } from './panels'
+import { InstallHint } from '../../app/pwa/InstallHint'
 
 export function DashboardPage() {
   const { t } = useTranslation('vehicles')
@@ -18,6 +19,7 @@ export function DashboardPage() {
   return (
     <div className="space-y-6">
       <PageHeader title={t('dashboard.title')} />
+      <InstallHint />
       {dashboardPanels.map((Panel, i) => <Panel key={i} />)}
       <section>
         <h2 className="mb-3 text-sm font-semibold text-zinc-300">{t('dashboard.garage')}</h2>
