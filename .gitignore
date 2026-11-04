@@ -33,3 +33,5 @@ specs/
 .bug-reporting/
 .agents/
 skills-lock.json
+claude*
+CLAUDE*
