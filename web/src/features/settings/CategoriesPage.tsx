@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Archive, ArchiveRestore, Pencil, Plus, Trash2 } from 'lucide-react'
 import { api } from '../../lib/api'
 import { queryKeys } from '../../lib/queryKeys'
-import { parseNumber } from '../../lib/format'
+import { distanceField, parseNumber, readDistance } from '../../lib/format'
 import { fieldErrors, useErrorText } from '../../lib/errors'
 import type { ServiceCategory } from '../../lib/types'
 import { useFormat } from '../../lib/useFormat'
@@ -18,6 +18,7 @@ import { categoryLabel, useCategories } from '../service-log/hooks'
 
 export function CategoriesPage() {
   const { t } = useTranslation('service')
+  const { user } = useSession()
   const fmt = useFormat()
   const qc = useQueryClient()
   const errorText = useErrorText()
@@ -69,7 +70,7 @@ export function CategoriesPage() {
                 </td>
                 <td className="text-zinc-400">{t(c.is_fluid ? 'costTypes.fluids' : 'costTypes.parts')}</td>
                 <td className="tabular-nums text-zinc-300">
-                  {[c.default_interval_km !== null ? fmt.km(c.default_interval_km) : null, c.default_interval_months !== null ? t('reminders:due.intervalMonths', { count: c.default_interval_months }) : null]
+                  {[c.default_interval_km !== null ? fmt.distance(c.default_interval_km, user.distance_unit) : null, c.default_interval_months !== null ? t('reminders:due.intervalMonths', { count: c.default_interval_months }) : null]
                     .filter(Boolean)
                     .join(' / ') || none}
                 </td>
@@ -119,7 +120,9 @@ function CategoryDialog({ category, onClose }: { category: ServiceCategory | nul
   const builtin = category?.builtin_key !== null && category !== null
   const [name, setName] = useState(category?.custom_name ?? '')
   const [fluid, setFluid] = useState(category?.is_fluid ?? false)
-  const [km, setKm] = useState(category?.default_interval_km?.toString() ?? '')
+  const unit = user.distance_unit
+  const [initialKm] = useState(() => distanceField(category?.default_interval_km, unit, user.number_format))
+  const [km, setKm] = useState(initialKm.text)
   const [months, setMonths] = useState(category?.default_interval_months?.toString() ?? '')
   const [local, setLocal] = useState<Record<string, string>>({})
   const save = useMutation({
@@ -138,7 +141,12 @@ function CategoryDialog({ category, onClose }: { category: ServiceCategory | nul
       if (n === null || !Number.isInteger(n)) errs[field] = 'validation.number'
       return n
     }
-    const body: Record<string, unknown> = { default_interval_km: int('default_interval_km', km), default_interval_months: int('default_interval_months', months) }
+    let intervalKm: number | null = null
+    if (km.trim() !== '') {
+      intervalKm = readDistance(km, initialKm, unit, user.number_format)
+      if (intervalKm === null) errs.default_interval_km = 'validation.number'
+    }
+    const body: Record<string, unknown> = { default_interval_km: intervalKm, default_interval_months: int('default_interval_months', months) }
     if (!builtin) {
       body.custom_name = name
       body.is_fluid = fluid
@@ -171,7 +179,7 @@ function CategoryDialog({ category, onClose }: { category: ServiceCategory | nul
           </>
         )}
         <div className="form-grid grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <NumberField label={t('categoryAdmin.defaultIntervalKm')} unit={t('common:units.km')} decimal={false} value={km} onChange={setKm} error={fe.default_interval_km} optional />
+          <NumberField label={t('categoryAdmin.defaultIntervalKm')} unit={t(`common:units.${unit}`)} decimal={false} value={km} onChange={setKm} error={fe.default_interval_km} optional />
           <NumberField label={t('categoryAdmin.defaultIntervalMonths')} decimal={false} value={months} onChange={setMonths} error={fe.default_interval_months} optional />
         </div>
       </div>

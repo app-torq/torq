@@ -6,8 +6,9 @@ import { queryKeys } from '../../lib/queryKeys'
 import type { MeResponse } from '../../lib/types'
 import { fieldErrors, useErrorText } from '../../lib/errors'
 import { Button } from '../../components/Button'
-import { TextField } from '../../components/Field'
+import { SelectField, TextField } from '../../components/Field'
 import { ErrorBanner } from '../../components/ui'
+import { UNIT_PRESETS, type UnitPreset } from '../../lib/units'
 import { AuthCard } from './AuthCard'
 
 export function SetupPage() {
@@ -17,10 +18,15 @@ export function SetupPage() {
   const [username, setUsername] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [password, setPassword] = useState('')
+  const [preset, setPreset] = useState<UnitPreset>('metric')
 
   const setup = useMutation({
     mutationFn: () =>
-      api.post<MeResponse>('/setup', { username, display_name: displayName, password, locale: i18n.language.startsWith('de') ? 'de' : 'en' }),
+      api.post<MeResponse>('/setup', {
+        username, display_name: displayName, password, locale: i18n.language.startsWith('de') ? 'de' : 'en',
+        // The chosen units become the defaults for everyone added later.
+        ...UNIT_PRESETS[preset],
+      }),
     onSuccess: (me) => {
       qc.setQueryData(queryKeys.setupStatus, { setup_required: false })
       qc.setQueryData(queryKeys.me, me)
@@ -47,6 +53,13 @@ export function SetupPage() {
         hint={t('fields.passwordHint')}
         autoComplete="new-password"
         required
+      />
+      <SelectField
+        label={t('setup.units')}
+        value={preset}
+        onChange={(v) => { setPreset(v as UnitPreset) }}
+        options={(Object.keys(UNIT_PRESETS) as UnitPreset[]).map((p) => ({ value: p, label: t(`setup.presets.${p}`) }))}
+        hint={t('setup.unitsHint')}
       />
       <Button type="submit" variant="primary" className="w-full" disabled={setup.isPending}>
         {t('setup.submit')}

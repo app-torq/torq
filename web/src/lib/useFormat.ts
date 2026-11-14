@@ -15,10 +15,16 @@ export function useFormat(): Formatter {
           numberFormat: user.number_format,
           currencyCode: user.currency_code,
           currencySymbol: user.currency_symbol,
+          timeFormat: user.time_format,
           powerUnit: user.power_unit,
+          distanceUnit: user.distance_unit,
+          volumeUnit: user.volume_unit,
+          torqueUnit: user.torque_unit,
+          pressureUnit: user.pressure_unit,
+          displacementUnit: user.displacement_unit,
         },
         (u: UnitKey) => t(`units.${u}`),
       ),
-    [user.date_format, user.number_format, user.currency_code, user.currency_symbol, user.power_unit, t],
+    [user, t],
   )
 }

@@ -54,7 +54,7 @@ function Palette({ onClose }: { onClose: () => void }) {
     }
     if (step.kind === 'vehicle') {
       return (vehicles.data?.items ?? [])
-        .map((v) => ({ key: String(v.id), label: `${vehicleName(v)} · ${fmt.km(v.current_odometer_km)}`, icon: undefined, run: () => { pickVehicle(step.action, v) } }))
+        .map((v) => ({ key: String(v.id), label: `${vehicleName(v)} · ${fmt.distance(v.current_odometer_km, v.odometer_unit)}`, icon: undefined, run: () => { pickVehicle(step.action, v) } }))
         .filter((i) => i.label.toLowerCase().includes(q))
     }
     return []

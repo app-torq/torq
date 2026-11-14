@@ -116,3 +116,26 @@ describe('spec auto-fill draft', () => {
     expect(body).toMatchObject({ tire_pressure_front_bar: 2.2, tire_pressure_front_max_bar: 2.5, tire_pressure_rear_max_bar: 2.9 })
   })
 })
+
+describe('specs draft in US units', () => {
+  const us = { volume: 'qt', torque: 'lbft', pressure: 'psi' } as const
+  it('shows, keeps and converts values', () => {
+    const saved = { ...empty, engine_oil_capacity_ml: 6500, wheel_lug_torque_nm: 120, tire_pressure_front_bar: 2.3 }
+    const d = initialDraft(saved, 'point', us)
+    expect(d.values.engine_oil_capacity_ml).toBe('6.87')
+    expect(d.values.wheel_lug_torque_nm).toBe('88.5')
+    expect(d.values.tire_pressure_front_bar).toBe('33.4')
+    // Untouched fields are saved exactly as stored.
+    let { body } = toRequestBody(d, 'point', us)
+    expect(body.engine_oil_capacity_ml).toBe(6500)
+    expect(body.wheel_lug_torque_nm).toBe(120)
+    expect(body.tire_pressure_front_bar).toBe(2.3)
+    ;({ body } = toRequestBody(editField(d, 'tire_pressure_front_bar', '35'), 'point', us))
+    expect(body.tire_pressure_front_bar).toBe(2.4132)
+  })
+
+  it('converts auto-filled litres', () => {
+    const { draft } = applyAutofill(initialDraft(empty, 'point', us), { engine_oil_capacity_l: found(6.5) }, true, 'point', us)
+    expect(draft.values.engine_oil_capacity_ml).toBe('6.87')
+  })
+})

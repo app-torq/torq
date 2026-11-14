@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { createFormatter, kwToPs, parseMoneyToCents, parseNumber, toInputValue, type FormatPrefs } from './format'
 
-const units = (u: string) => ({ km: 'km', l: 'L', ml: 'mL', nm: 'Nm', bar: 'bar', cc: 'cm³', kw: 'kW', ps: 'PS' })[u] ?? u
+const units = (u: string) =>
+  ({ km: 'km', mi: 'mi', l: 'L', ml: 'mL', qt: 'qt', gal: 'gal', fl_oz: 'fl oz', nm: 'Nm', lbft: 'lb-ft', bar: 'bar', psi: 'psi', kpa: 'kPa', cc: 'cm³', ci: 'ci', kw: 'kW', ps: 'PS', hp: 'hp' })[u] ?? u
 const nbsp = (s: string) => s.replace(/[\u00a0\u202f]/g, ' ')
 
 const comma: FormatPrefs = { dateFormat: 'DD.MM.YYYY', numberFormat: 'comma', currencyCode: 'EUR', currencySymbol: null }
@@ -10,22 +11,22 @@ const point: FormatPrefs = { dateFormat: 'YYYY-MM-DD', numberFormat: 'point', cu
 describe('createFormatter', () => {
   it('formats with comma decimals', () => {
     const f = createFormatter(comma, units)
-    expect(nbsp(f.km(215000))).toBe('215.000 km')
+    expect(nbsp(f.distance(215000, 'km'))).toBe('215.000 km')
     expect(nbsp(f.money(8950))).toBe('89,50 €')
     expect(f.date('2026-10-15')).toBe('15.10.2026')
-    expect(nbsp(f.liters(6500))).toBe('6,5 L')
-    expect(nbsp(f.bar(2.3))).toBe('2,3 bar')
-    expect(nbsp(f.barRange(2.2, 2.4))).toBe('2,2–2,4 bar')
-    expect(nbsp(f.barRange(2.5, null))).toBe('2,5 bar')
+    expect(nbsp(f.volume(6500))).toBe('6,5 L')
+    expect(nbsp(f.pressure(2.3))).toBe('2,3 bar')
+    expect(nbsp(f.pressureRange(2.2, 2.4))).toBe('2,2–2,4 bar')
+    expect(nbsp(f.pressureRange(2.5, null))).toBe('2,5 bar')
   })
 
   it('formats with point decimals', () => {
     const f = createFormatter(point, units)
-    expect(nbsp(f.km(215000))).toBe('215,000 km')
+    expect(nbsp(f.distance(215000, 'km'))).toBe('215,000 km')
     expect(nbsp(f.money(8950))).toBe('$89.50')
     expect(f.date('2026-10-15')).toBe('2026-10-15')
-    expect(nbsp(f.liters(6500))).toBe('6.5 L')
-    expect(nbsp(f.nm(7.5))).toBe('7.5 Nm')
+    expect(nbsp(f.volume(6500))).toBe('6.5 L')
+    expect(nbsp(f.torque(7.5))).toBe('7.5 Nm')
   })
 
   it('replaces the currency part with a custom symbol', () => {
@@ -36,27 +37,46 @@ describe('createFormatter', () => {
   it('formats power with derived PS and displacement in cm³', () => {
     const en = createFormatter(point, units)
     const de = createFormatter(comma, units)
-    expect(nbsp(en.power(110))).toBe('110 kW (150 PS)')
-    expect(nbsp(en.power(1))).toBe('1 kW (1 PS)')
-    expect(nbsp(de.power(1500))).toBe('1.500 kW (2.039 PS)')
+    expect(nbsp(en.power(110000))).toBe('110 kW (150 PS)')
+    expect(nbsp(en.power(1000))).toBe('1 kW (1 PS)')
+    expect(nbsp(de.power(1500000))).toBe('1.500 kW (2.039 PS)')
     expect(nbsp(de.displacement(2148))).toBe('2.148 cm³')
     expect(nbsp(en.displacement(2148))).toBe('2,148 cm³')
     expect(kwToPs(105)).toBe(143)
-    expect(nbsp(en.powerShort(110))).toBe('110 kW')
+    expect(nbsp(en.powerShort(110000))).toBe('110 kW')
   })
 
   it('shows PS first when preferred', () => {
     const en = createFormatter({ ...point, powerUnit: 'ps' }, units)
     const de = createFormatter({ ...comma, powerUnit: 'ps' }, units)
-    expect(nbsp(en.power(110))).toBe('150 PS (110 kW)')
-    expect(nbsp(de.power(1500))).toBe('2.039 PS (1.500 kW)')
-    expect(nbsp(en.powerShort(105))).toBe('143 PS')
+    expect(nbsp(en.power(110000))).toBe('150 PS (110 kW)')
+    expect(nbsp(de.power(1500000))).toBe('2.039 PS (1.500 kW)')
+    expect(nbsp(en.powerShort(105000))).toBe('143 PS')
   })
 
   it('keeps the entered quantity unit', () => {
     const f = createFormatter(point, units)
     expect(nbsp(f.quantity(500, 'mL'))).toBe('500 mL')
     expect(nbsp(f.quantity(6500, 'L'))).toBe('6.5 L')
+    expect(nbsp(f.quantity(4732, 'qt'))).toBe('5 qt')
+    expect(nbsp(f.quantity(946, 'fl_oz'))).toBe('32 fl oz')
+  })
+
+  it('converts to US units for display', () => {
+    const us = createFormatter(
+      { ...point, dateFormat: 'MM/DD/YYYY', timeFormat: '12h', powerUnit: 'hp', volumeUnit: 'qt', torqueUnit: 'lbft', pressureUnit: 'psi', displacementUnit: 'ci' },
+      units,
+    )
+    expect(nbsp(us.distance(215000, 'mi'))).toBe('133,595 mi')
+    expect(us.date('2026-10-15')).toBe('10/15/2026')
+    expect(nbsp(us.dateTime('2026-10-31T21:05:00'))).toBe('10/31/2026 9:05 PM')
+    expect(nbsp(us.volume(6500))).toBe('6.87 qt')
+    expect(nbsp(us.torque(120))).toBe('88.5 lb-ft')
+    expect(nbsp(us.pressureRange(2.2, 2.4))).toBe('31.9–34.8 psi')
+    expect(nbsp(us.displacement(5735))).toBe('350 ci')
+    expect(nbsp(us.power(224456))).toBe('301 hp (224 kW)')
+    expect(nbsp(createFormatter({ ...point, displacementUnit: 'l', pressureUnit: 'kpa' }, units).displacement(1998))).toBe('2 L')
+    expect(nbsp(createFormatter({ ...point, pressureUnit: 'kpa' }, units).pressure(2.3))).toBe('230 kPa')
   })
 })
 

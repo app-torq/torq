@@ -29,7 +29,9 @@
     "notSet": "Nicht angegeben",
     "engineTrim": "Motor / Ausstattung",
     "engineTrimHint": "Motor wählen, um Motorcode, Leistung, Hubraum und Kraftstoff zu übernehmen.",
-    "hsnTsn": "HSN / TSN"
+    "hsnTsn": "HSN / TSN",
+    "odometerUnit": "Tachoeinheit",
+    "odometerUnitHint": "Was der Tacho anzeigt. Strecken dieses Fahrzeugs werden in dieser Einheit angezeigt und eingegeben."
   },
   "tabs": {
     "overview": "Übersicht",
@@ -132,5 +134,9 @@
   "vinWarning": {
     "nonStandard": "Keine Standard-FIN mit 17 Zeichen. Bei Fahrgestellnummern älterer oder japanischer Fahrzeuge in Ordnung, sonst auf Tippfehler prüfen.",
     "checkDigit": "Die Prüfziffer (9. Zeichen) stimmt nicht. Auf Tippfehler prüfen."
+  },
+  "odometerUnits": {
+    "km": "Kilometer (km)",
+    "mi": "Meilen (mi)"
   }
 }

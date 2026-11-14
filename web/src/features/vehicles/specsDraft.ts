@@ -2,7 +2,16 @@
 // field, where the value came from (web auto-fill or a manual adjustment).
 // Pure functions so the rules are easy to test; nothing is saved until the
 // user saves the dialog.
-import { parseNumber, toInputValue } from "../../lib/format";
+import { metricField, readMetricField, type MetricField } from "../../lib/format";
+import {
+  PRESSURE,
+  TORQUE,
+  VOLUME,
+  type PressureUnit,
+  type TorqueUnit,
+  type UnitSpec,
+  type VolumeUnit,
+} from "../../lib/units";
 import {
   SPEC_FIELD_KEYS,
   type AutofillValue,
@@ -17,7 +26,22 @@ export interface SpecsDraft {
   meta: Partial<Record<SpecFieldKey, SpecMeta>>;
   /** The text an auto-filled field had when it was filled; typing it back restores the source. */
   auto: Partial<Record<SpecFieldKey, { value: string; meta: SpecMeta }>>;
+  /** Saved numbers and their texts: an untouched field is saved unchanged. */
+  stored: Partial<Record<SpecFieldKey, MetricField>>;
 }
+
+/** The units the dialog shows capacities, torque and pressure in. */
+export interface SpecUnits {
+  volume: VolumeUnit;
+  torque: TorqueUnit;
+  pressure: PressureUnit;
+}
+
+export const METRIC_SPEC_UNITS: SpecUnits = {
+  volume: "l",
+  torque: "nm",
+  pressure: "bar",
+};
 
 export interface AutofillSummary {
   filled: SpecFieldKey[];
@@ -30,34 +54,43 @@ export interface AutofillSummary {
 const isCapacity = (k: SpecFieldKey) => k.endsWith("_capacity_ml");
 const isText = (k: SpecFieldKey) =>
   k === "engine_oil_viscosity" || k.endsWith("_spec");
-const decimals = (k: SpecFieldKey) =>
-  k === "wheel_lug_torque_nm" ? 1 : k.startsWith("tire_pressure") ? 2 : 3;
+/** Capacities are stored in mL, torque in Nm and pressure in bar. */
+function unitSpec(k: SpecFieldKey, units: SpecUnits): UnitSpec {
+  if (isCapacity(k)) return VOLUME[units.volume];
+  if (k === "wheel_lug_torque_nm") return TORQUE[units.torque];
+  return PRESSURE[units.pressure];
+}
 
-/** Capacities are stored in mL but entered in litres. */
+/** Input text for a stored (metric) number. */
 function inputText(
   k: SpecFieldKey,
   n: number | null,
   nf: NumberFormat,
+  units: SpecUnits,
 ): string {
-  return toInputValue(n, nf, decimals(k));
+  return metricField(n, unitSpec(k, units), nf).text;
 }
 
 export function initialDraft(
   specs: VehicleSpecs,
   nf: NumberFormat,
+  units: SpecUnits = METRIC_SPEC_UNITS,
 ): SpecsDraft {
   const values = {} as Record<SpecFieldKey, string>;
   const auto: SpecsDraft["auto"] = {};
+  const stored: SpecsDraft["stored"] = {};
   for (const k of SPEC_FIELD_KEYS) {
     const v = specs[k];
-    values[k] =
-      typeof v === "string"
-        ? v
-        : inputText(k, v === null ? null : isCapacity(k) ? v / 1000 : v, nf);
+    if (typeof v === "string") {
+      values[k] = v;
+    } else {
+      stored[k] = metricField(v, unitSpec(k, units), nf);
+      values[k] = stored[k].text;
+    }
     const m = specs.meta[k];
     if (m?.is_auto && values[k] !== "") auto[k] = { value: values[k], meta: m };
   }
-  return { values, meta: { ...specs.meta }, auto };
+  return { values, meta: { ...specs.meta }, auto, stored };
 }
 
 /**
@@ -108,12 +141,16 @@ export function applyAutofill(
   fields: Record<string, AutofillValue | undefined>,
   overwrite: boolean,
   nf: NumberFormat,
+  units: SpecUnits = METRIC_SPEC_UNITS,
 ): { draft: SpecsDraft; summary: AutofillSummary } {
   const draft: SpecsDraft = {
     values: { ...d.values },
     meta: { ...d.meta },
     auto: { ...d.auto },
+    stored: d.stored,
   };
+  // Capacities arrive in litres, torque in Nm and pressure in bar.
+  const metric = (k: SpecFieldKey, n: number) => (isCapacity(k) ? n * 1000 : n);
   const summary: AutofillSummary = { filled: [], kept: [], missing: [] };
   for (const k of SPEC_FIELD_KEYS) {
     // Range maxima arrive with their lower value as value_max.
@@ -128,7 +165,9 @@ export function applyAutofill(
       continue;
     }
     const text =
-      typeof f.value === "number" ? inputText(k, f.value, nf) : f.value;
+      typeof f.value === "number"
+        ? inputText(k, metric(k, f.value), nf, units)
+        : f.value;
     const meta: SpecMeta = {
       is_auto: true,
       source_url: f.source_url,
@@ -141,7 +180,8 @@ export function applyAutofill(
     if (maxKey) {
       // A single value replaces a former range; a range sets both ends.
       const hi = f.value_max ?? null;
-      const hiText = hi === null ? "" : inputText(maxKey, hi, nf);
+      const hiText =
+        hi === null ? "" : inputText(maxKey, metric(maxKey, hi), nf, units);
       draft.values[maxKey] = hiText;
       if (hi === null) {
         draft.meta = Object.fromEntries(
@@ -161,6 +201,7 @@ export function applyAutofill(
 export function toRequestBody(
   d: SpecsDraft,
   nf: NumberFormat,
+  units: SpecUnits = METRIC_SPEC_UNITS,
 ): { body: Record<string, unknown>; errors: Record<string, string> } {
   const body: Record<string, unknown> = {};
   const errors: Record<string, string> = {};
@@ -172,9 +213,15 @@ export function toRequestBody(
     } else if (raw === "") {
       body[k] = null;
     } else {
-      const n = parseNumber(raw, nf);
-      if (n === null) errors[k] = "validation.number";
-      body[k] = n === null ? null : isCapacity(k) ? Math.round(n * 1000) : n;
+      const n = readMetricField(
+        raw,
+        d.stored[k] ?? { text: "", value: null },
+        unitSpec(k, units),
+        nf,
+        isCapacity(k),
+      );
+      if (n === undefined) errors[k] = "validation.number";
+      body[k] = n ?? null;
     }
     const m = d.meta[k];
     if (m && raw !== "") meta[k] = m;

@@ -3,7 +3,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Gauge } from 'lucide-react'
 import { api, isApiError } from '../../lib/api'
-import { parseNumber } from '../../lib/format'
+import { parseDistance } from '../../lib/format'
+import { kmIn } from '../../lib/units'
 import { useFormat } from '../../lib/useFormat'
 import { useErrorText, fieldErrors } from '../../lib/errors'
 import type { Vehicle } from '../../lib/types'
@@ -32,6 +33,7 @@ export function OdometerQuickUpdate({ vehicle, onDone, compact, autoFocus }: Pro
   const [value, setValue] = useState('')
   const [localError, setLocalError] = useState<string | undefined>()
   const [pending, setPending] = useState<Pending | null>(null)
+  const unit = vehicle.odometer_unit
 
   const update = useMutation({
     mutationFn: (p: { km: number; confirmDecrease: boolean; confirmJump: boolean }) =>
@@ -57,8 +59,8 @@ export function OdometerQuickUpdate({ vehicle, onDone, compact, autoFocus }: Pro
 
   const submit = (e: SubmitEvent) => {
     e.preventDefault()
-    const km = parseNumber(value, user.number_format)
-    if (km === null || km < 0 || !Number.isInteger(km)) {
+    const km = parseDistance(value, unit, user.number_format)
+    if (km === null) {
       setLocalError('validation.number')
       return
     }
@@ -69,7 +71,7 @@ export function OdometerQuickUpdate({ vehicle, onDone, compact, autoFocus }: Pro
   const needsConfirm = update.error && (isApiError(update.error, 'odometer.decrease_requires_confirmation') || isApiError(update.error, 'odometer.large_jump_requires_confirmation'))
   const fe = fieldErrors(update.error)
   const serverError = update.isError && !needsConfirm ? (fe.odometer_km ?? errorText(update.error)) : undefined
-  const vars = { current: fmt.km(vehicle.current_odometer_km), next: pending ? fmt.km(pending.km) : '' }
+  const vars = { current: fmt.distance(vehicle.current_odometer_km, unit), next: pending ? fmt.distance(pending.km, unit) : '' }
 
   return (
     <form onSubmit={submit} className={`flex items-end gap-2 ${compact ? '' : 'flex-wrap'}`} noValidate>
@@ -77,9 +79,9 @@ export function OdometerQuickUpdate({ vehicle, onDone, compact, autoFocus }: Pro
         label={t('odometer.newValue')}
         value={value}
         onChange={setValue}
-        unit={t('common:units.km')}
+        unit={t(`common:units.${unit}`)}
         decimal={false}
-        placeholder={fmt.number(vehicle.current_odometer_km)}
+        placeholder={fmt.number(kmIn(vehicle.current_odometer_km, unit))}
         error={localError ?? serverError}
         className="min-w-0 flex-1"
         autoFocus={autoFocus}

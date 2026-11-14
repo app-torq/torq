@@ -4,7 +4,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Pencil, Plus, Trash2, Wrench } from 'lucide-react'
 import { api } from '../../lib/api'
-import { parseNumber, toInputValue } from '../../lib/format'
+import { distanceField, metricField, readDistance, readMetricField, type MetricField } from '../../lib/format'
+import { TORQUE, type DistanceUnit } from '../../lib/units'
 import { useFormat } from '../../lib/useFormat'
 import { fieldErrors, useErrorText } from '../../lib/errors'
 import { vehicleName, type Repair, type TorqueSpec } from '../../lib/types'
@@ -16,7 +17,7 @@ import { ConfirmDialog, Dialog } from '../../components/Dialog'
 import { AttachmentGallery } from '../../components/AttachmentGallery'
 import { FileDrop } from '../../components/FileDrop'
 import { Badge, Card, DefinitionList, ErrorBanner, Loading, Notice, PageHeader, Table } from '../../components/ui'
-import { invalidateOdometerDependents, useVehicle } from '../vehicles/hooks'
+import { invalidateOdometerDependents, useOdometerUnit, useVehicle } from '../vehicles/hooks'
 import { invalidateRepairs, statusTone, useRepair } from './hooks'
 import { StatusMenu } from './RepairBoardPage'
 import { CompleteRepairDialog } from './CompleteRepairDialog'
@@ -29,6 +30,7 @@ export function RepairDetailPage() {
   const repairId = Number(id)
   const { t } = useTranslation('repairs')
   const fmt = useFormat()
+  const odometerUnit = useOdometerUnit()
   const qc = useQueryClient()
   const navigate = useNavigate()
   const errorText = useErrorText()
@@ -83,7 +85,7 @@ export function RepairDetailPage() {
               items={[
                 { label: t('fields.startedOn'), value: r.started_on ? fmt.date(r.started_on) : none },
                 { label: t('fields.completedOn'), value: r.status === 'completed' && r.completed_on ? fmt.date(r.completed_on) : none },
-                { label: t('fields.completionOdometer'), value: r.status === 'completed' && r.completion_odometer_km !== null ? fmt.km(r.completion_odometer_km) : none },
+                { label: t('fields.completionOdometer'), value: r.status === 'completed' && r.completion_odometer_km !== null ? fmt.distance(r.completion_odometer_km, odometerUnit(r.vehicle_id)) : none },
                 { label: t('parts.total'), value: <span className="tabular-nums">{fmt.money(r.parts_total_cents)}</span> },
               ]}
             />
@@ -121,7 +123,7 @@ export function RepairDetailPage() {
                   {r.torque_specs.map((ts, i) => (
                     <tr key={i}>
                       <td className="text-zinc-100">{ts.label}</td>
-                      <td className="text-right tabular-nums text-sky-200">{fmt.nm(ts.value_nm)}</td>
+                      <td className="text-right tabular-nums text-sky-200">{fmt.torque(ts.value_nm)}</td>
                       <td className="text-zinc-400">{ts.note}</td>
                     </tr>
                   ))}
@@ -159,7 +161,7 @@ export function RepairDetailPage() {
         </div>
       </Card>
 
-      {editing && <EditRepairDialog repair={r} onClose={() => { setEditing(false) }} />}
+      {editing && <EditRepairDialog repair={r} unit={odometerUnit(r.vehicle_id)} onClose={() => { setEditing(false) }} />}
       {completing && <CompleteRepairDialog repair={r} onClose={() => { setCompleting(false) }} />}
       <ConfirmDialog
         open={deleting}
@@ -186,10 +188,10 @@ function Section({ label, text }: { label: string; text: string }) {
   )
 }
 
-interface TorqueDraft { key: number; label: string; value: string; note: string }
+interface TorqueDraft { key: number; label: string; value: string; note: string; initial: MetricField }
 let torqueKey = 1
 
-function EditRepairDialog({ repair, onClose }: { repair: Repair; onClose: () => void }) {
+function EditRepairDialog({ repair, unit, onClose }: { repair: Repair; unit: DistanceUnit; onClose: () => void }) {
   const { t } = useTranslation('repairs')
   const { user } = useSession()
   const nf = user.number_format
@@ -203,8 +205,15 @@ function EditRepairDialog({ repair, onClose }: { repair: Repair; onClose: () => 
   const [procedure, setProcedure] = useState(repair.procedure_notes)
   const [tools, setTools] = useState(repair.special_tools)
   const [completedOn, setCompletedOn] = useState(repair.completed_on ?? '')
-  const [completionKm, setCompletionKm] = useState(repair.completion_odometer_km !== null ? String(repair.completion_odometer_km) : '')
-  const [torques, setTorques] = useState<TorqueDraft[]>(repair.torque_specs.map((ts) => ({ key: torqueKey++, label: ts.label, value: toInputValue(ts.value_nm, nf, 1), note: ts.note })))
+  const torqueSpec = TORQUE[user.torque_unit]
+  const [initialKm] = useState(() => distanceField(repair.completion_odometer_km, unit, nf))
+  const [completionKm, setCompletionKm] = useState(initialKm.text)
+  const [torques, setTorques] = useState<TorqueDraft[]>(() =>
+    repair.torque_specs.map((ts) => {
+      const initial = metricField(ts.value_nm, torqueSpec, nf)
+      return { key: torqueKey++, label: ts.label, value: initial.text, note: ts.note, initial }
+    }),
+  )
   const [local, setLocal] = useState<Record<string, string>>({})
   const save = useMutation({
     mutationFn: (body: Record<string, unknown>) => api.patch(`/repairs/${repair.id}`, body),
@@ -219,8 +228,8 @@ function EditRepairDialog({ repair, onClose }: { repair: Repair; onClose: () => 
     const specs: TorqueSpec[] = []
     for (const d of torques) {
       if (!d.label.trim() && !d.value.trim()) continue
-      const v = parseNumber(d.value, nf)
-      if (!d.label.trim() || v === null || v <= 0) {
+      const v = readMetricField(d.value, d.initial, torqueSpec, nf, false)
+      if (!d.label.trim() || v === null || v === undefined || v <= 0) {
         errs.torque_specs = 'repair.torque_spec_invalid'
         continue
       }
@@ -232,8 +241,8 @@ function EditRepairDialog({ repair, onClose }: { repair: Repair; onClose: () => 
     }
     if (repair.status === 'completed') {
       body.completed_on = completedOn
-      const km = parseNumber(completionKm, nf)
-      if (km === null || !Number.isInteger(km) || km < 0) errs.completion_odometer_km = 'validation.number'
+      const km = readDistance(completionKm, initialKm, unit, nf)
+      if (km === null) errs.completion_odometer_km = 'validation.number'
       body.completion_odometer_km = km
     }
     setLocal(errs)
@@ -263,7 +272,7 @@ function EditRepairDialog({ repair, onClose }: { repair: Repair; onClose: () => 
           {repair.status === 'completed' && (
             <>
               <TextField label={t('fields.completedOn')} type="date" value={completedOn} onChange={setCompletedOn} error={fe.completed_on} />
-              <NumberField label={t('fields.completionOdometer')} unit={t('common:units.km')} decimal={false} value={completionKm} onChange={setCompletionKm} error={fe.completion_odometer_km} />
+              <NumberField label={t('fields.completionOdometer')} unit={t(`common:units.${unit}`)} decimal={false} value={completionKm} onChange={setCompletionKm} error={fe.completion_odometer_km} />
             </>
           )}
         </div>
@@ -278,14 +287,14 @@ function EditRepairDialog({ repair, onClose }: { repair: Repair; onClose: () => 
           {torques.map((d) => (
             <div key={d.key} className="grid grid-cols-[1fr_7rem_1fr_auto] items-end gap-2">
               <TextField label={t('fields.torqueLabel')} value={d.label} onChange={(v) => { updateTorque(d.key, { label: v }) }} />
-              <NumberField label={t('fields.torqueValue')} unit={t('common:units.nm')} value={d.value} onChange={(v) => { updateTorque(d.key, { value: v }) }} />
+              <NumberField label={t('fields.torqueValue')} unit={t(`common:units.${torqueSpec.label}`)} value={d.value} onChange={(v) => { updateTorque(d.key, { value: v }) }} />
               <TextField label={t('fields.torqueNote')} value={d.note} onChange={(v) => { updateTorque(d.key, { note: v }) }} placeholder="+ 90°" />
               <IconButton aria-label={t('common:actions.remove')} className="mb-1" onClick={() => { setTorques((prev) => prev.filter((x) => x.key !== d.key)) }}>
                 <Trash2 size={15} />
               </IconButton>
             </div>
           ))}
-          <Button size="sm" onClick={() => { setTorques((prev) => [...prev, { key: torqueKey++, label: '', value: '', note: '' }]) }}>
+          <Button size="sm" onClick={() => { setTorques((prev) => [...prev, { key: torqueKey++, label: '', value: '', note: '', initial: { text: '', value: null } }]) }}>
             <Plus size={15} />
             {t('fields.addTorque')}
           </Button>

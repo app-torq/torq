@@ -5,6 +5,7 @@ import { useFormat } from '../../lib/useFormat'
 import { vehicleName, type Reminder, type ServiceCategory, type Vehicle } from '../../lib/types'
 import { Badge } from '../../components/ui'
 import { categoryLabel } from '../service-log/hooks'
+import { useOdometerUnit } from '../vehicles/hooks'
 import { dueText, remainingText, stateTone } from './dueText'
 
 export function reminderName(r: Reminder, cat: ServiceCategory | undefined, t: Parameters<typeof categoryLabel>[1]): string {
@@ -15,6 +16,7 @@ export function reminderName(r: Reminder, cat: ServiceCategory | undefined, t: P
 export function ReminderSummary({ reminder: r, category, vehicle, actions }: { reminder: Reminder; category?: ServiceCategory | undefined; vehicle?: Vehicle | undefined; actions?: ReactNode }) {
   const { t } = useTranslation('reminders')
   const fmt = useFormat()
+  const unit = useOdometerUnit()(r.vehicle_id)
   return (
     <div className="flex flex-wrap items-start gap-3 py-3">
       <div className="min-w-0 flex-1">
@@ -29,8 +31,8 @@ export function ReminderSummary({ reminder: r, category, vehicle, actions }: { r
             {vehicleName(vehicle)}
           </Link>
         )}
-        <div className="mt-0.5 text-sm tabular-nums text-zinc-300">{remainingText(r, t, fmt)}</div>
-        <div className="text-xs text-zinc-400">{dueText(r, t, fmt)}</div>
+        <div className="mt-0.5 text-sm tabular-nums text-zinc-300">{remainingText(r, t, fmt, unit)}</div>
+        <div className="text-xs text-zinc-400">{dueText(r, t, fmt, unit)}</div>
       </div>
       {actions && <div className="flex flex-wrap gap-1">{actions}</div>}
     </div>

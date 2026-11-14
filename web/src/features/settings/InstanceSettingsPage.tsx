@@ -4,10 +4,11 @@ import { useTranslation } from 'react-i18next'
 import { api } from '../../lib/api'
 import { queryKeys } from '../../lib/queryKeys'
 import { fieldErrors, useErrorText } from '../../lib/errors'
-import type { InstanceSettings } from '../../lib/types'
+import type { Formats, InstanceSettings } from '../../lib/types'
 import { Button } from '../../components/Button'
 import { SelectField } from '../../components/Field'
 import { Card, DefinitionList, ErrorBanner, Loading, Notice, PageHeader } from '../../components/ui'
+import { FormatFields, UnitFields, unitChoices } from './FormatFields'
 
 export function InstanceSettingsPage() {
   const errorText = useErrorText()
@@ -33,6 +34,13 @@ function InstanceForm({ settings }: { settings: InstanceSettings }) {
     onSuccess: (data) => { qc.setQueryData(queryKeys.instance, data) },
   })
   const fe = fieldErrors(save.error)
+  const [defaults, setDefaults] = useState<Formats>(settings.defaults)
+  const patchDefaults = (p: Partial<Formats>) => { setDefaults((prev) => ({ ...prev, ...p })) }
+  const saveDefaults = useMutation({
+    mutationFn: () => api.patch<InstanceSettings>('/settings/instance', { defaults }),
+    onSuccess: (data) => { qc.setQueryData(queryKeys.instance, data) },
+  })
+  const defaultsErrors = fieldErrors(saveDefaults.error)
   const hours = Array.from({ length: 24 }, (_, h) => ({ value: String(h), label: `${String(h).padStart(2, '0')}:00` }))
   const days = Array.from({ length: 28 }, (_, d) => ({ value: String(d + 1), label: String(d + 1) }))
   const weekdays = [1, 2, 3, 4, 5, 6, 7].map((d) => ({ value: String(d), label: t(`instance.weekdays.${d}`) }))
@@ -50,6 +58,18 @@ function InstanceForm({ settings }: { settings: InstanceSettings }) {
             <SelectField label={t('instance.monthlyHour')} value={monthlyHour} onChange={setMonthlyHour} options={hours} error={fe.monthly_digest_hour} />
           </div>
           <Button variant="primary" onClick={() => { save.mutate() }} disabled={save.isPending}>{t('common:actions.save')}</Button>
+        </div>
+      </Card>
+      <Card title={t('instance.defaults')}>
+        <div className="space-y-4">
+          <p className="text-sm text-zinc-400">{t('instance.defaultsIntro')}</p>
+          {saveDefaults.isSuccess && <Notice tone="emerald">{t('common:state.saved')}</Notice>}
+          {saveDefaults.isError && Object.keys(defaultsErrors).length === 0 && <ErrorBanner message={errorText(saveDefaults.error)} />}
+          <div className="form-grid grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <FormatFields value={defaults} onChange={patchDefaults} errors={defaultsErrors} errorPrefix="default_" />
+          </div>
+          <UnitFields value={unitChoices(defaults)} onChange={patchDefaults} errors={defaultsErrors} errorPrefix="default_" />
+          <Button variant="primary" onClick={() => { saveDefaults.mutate() }} disabled={saveDefaults.isPending}>{t('common:actions.save')}</Button>
         </div>
       </Card>
       <Card title={t('instance.about')}>

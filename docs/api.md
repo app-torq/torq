@@ -82,6 +82,22 @@ lists the possible values (`status`, `fuel_type`, …), since those lists can gr
 
 A change that breaks these rules needs a new `/api/v2`.
 
+## Units
+
+The API is metric, whatever the user's preferences: distances in km (`*_km`), volumes in mL (`*_ml`),
+torque in Nm, pressure in bar, displacement in cm³ and power in kW (`power_kw`, whole kW) and W
+(`power_w`, the precise value). Convert only for display and input:
+
+- A vehicle's distances (odometer, service and repair entries, reminder intervals) use its
+  `odometer_unit` (`km` or `mi`), since that is what its odometer shows.
+- Everything else uses the signed-in user's preferences from `GET /auth/me`: `distance_unit`, `volume_unit`,
+  `torque_unit`, `pressure_unit`, `displacement_unit` and `power_unit`, plus `date_format` and `time_format`.
+- A service item's `quantity_unit` is the unit the amount was typed in (`L`, `mL`, `qt`, `gal`, `fl_oz`);
+  `quantity_ml` is always the amount.
+
+Integer storage loses nothing for whole miles, cubic inches or horsepower (sent as `power_w`). Still, send
+an unchanged stored value back as it was rather than converting it twice.
+
 ## Errors
 
 Errors are JSON with a dotted code and never prose, so each client translates them:

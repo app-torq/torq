@@ -6,6 +6,7 @@ import { Archive, ArchiveRestore, Trash2 } from 'lucide-react'
 import { api } from '../../lib/api'
 import { queryKeys } from '../../lib/queryKeys'
 import { useFormat } from '../../lib/useFormat'
+import { powerW } from '../../lib/format'
 import { useErrorText } from '../../lib/errors'
 import { vehicleName, type ListResponse, type OdometerReading } from '../../lib/types'
 import { Button } from '../../components/Button'
@@ -53,13 +54,13 @@ export function VehicleOverview() {
             { label: t('fields.chassisCode'), value: v.chassis_code || none },
             { label: t('fields.engineCode'), value: v.engine_code || none },
             { label: t('fields.displacement'), value: v.displacement_cc != null ? <span className="tabular-nums">{fmt.displacement(v.displacement_cc)}</span> : none },
-            { label: t('fields.power'), value: v.power_kw != null ? <span className="tabular-nums">{fmt.power(v.power_kw)}</span> : none },
+            { label: t('fields.power'), value: v.power_kw != null ? <span className="tabular-nums">{fmt.power(powerW(v) ?? 0)}</span> : none },
             { label: t('fields.fuelType'), value: v.fuel_type ? t(`fuel.${v.fuel_type}`) : none },
             { label: t('fields.hsnTsn'), value: v.hsn || v.tsn ? <span className="font-mono">{`${v.hsn ?? '—'} / ${v.tsn ?? '—'}`}</span> : none },
             { label: t('fields.modelYear'), value: v.model_year ?? none },
             { label: t('fields.licensePlate'), value: v.license_plate ?? none },
             { label: t('fields.vin'), value: <span className="font-mono">{v.vin ?? none}</span> },
-            { label: t('fields.odometer'), value: <span className="tabular-nums">{fmt.km(v.current_odometer_km)}</span> },
+            { label: t('fields.odometer'), value: <span className="tabular-nums">{fmt.distance(v.current_odometer_km, v.odometer_unit)}</span> },
           ]}
         />
       </Card>
@@ -76,7 +77,7 @@ export function VehicleOverview() {
                     {readings.data.items.map((r) => (
                       <tr key={r.id}>
                         <td className="tabular-nums text-zinc-400">{fmt.date(r.reading_date)}</td>
-                        <td className="tabular-nums text-zinc-100">{fmt.km(r.odometer_km)}</td>
+                        <td className="tabular-nums text-zinc-100">{fmt.distance(r.odometer_km, v.odometer_unit)}</td>
                         <td className="text-zinc-400">{t(`odometer.sources.${r.source}`)}</td>
                       </tr>
                     ))}

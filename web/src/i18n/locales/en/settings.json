@@ -1,7 +1,7 @@
 {
   "preferences": {
     "title": "Preferences",
-    "intro": "Language and formats apply to you only. Units are always metric.",
+    "intro": "Language, formats and units apply to you only. torq stores values in metric units and converts them for display.",
     "language": "Language",
     "dateFormat": "Date format",
     "numberFormat": "Number format",
@@ -21,11 +21,64 @@
       "GBP": "Pound sterling (GBP)",
       "CHF": "Swiss franc (CHF)"
     },
-    "powerUnit": "Power unit",
-    "powerUnitHint": "Power is stored in kW; this only changes which unit is shown first.",
-    "powerUnits": {
-      "kw": "kW (kilowatt)",
-      "ps": "PS (metric horsepower)"
+    "timeFormat": "Time format",
+    "timeFormats": {
+      "24h": "24-hour (21:05)",
+      "12h": "12-hour (9:05 PM)"
+    },
+    "units": "Units",
+    "unitsHint": "How distances, fluids, torque, pressure, displacement and power are shown and entered.",
+    "unitPreset": "Preset",
+    "presets": {
+      "metric": "Metric",
+      "us": "US",
+      "uk": "UK"
+    },
+    "distance_unit": {
+      "label": "Distance",
+      "hint": "Used for new vehicles. Each vehicle has its own odometer unit.",
+      "options": {
+        "km": "Kilometres (km)",
+        "mi": "Miles (mi)"
+      }
+    },
+    "volume_unit": {
+      "label": "Fluids",
+      "options": {
+        "l": "Litres (L, mL)",
+        "qt": "US quarts (qt, gal, fl oz)"
+      }
+    },
+    "torque_unit": {
+      "label": "Torque",
+      "options": {
+        "nm": "Newton metres (Nm)",
+        "lbft": "Pound-feet (lb-ft)"
+      }
+    },
+    "pressure_unit": {
+      "label": "Tire pressure",
+      "options": {
+        "bar": "bar",
+        "psi": "psi",
+        "kpa": "kPa"
+      }
+    },
+    "displacement_unit": {
+      "label": "Displacement",
+      "options": {
+        "cc": "Cubic centimetres (cm³)",
+        "l": "Litres (L)",
+        "ci": "Cubic inches (ci)"
+      }
+    },
+    "power_unit": {
+      "label": "Power",
+      "options": {
+        "kw": "kW (kilowatt)",
+        "ps": "PS (metric horsepower)",
+        "hp": "hp (horsepower)"
+      }
     }
   },
   "users": {
@@ -93,7 +146,9 @@
       "5": "Friday",
       "6": "Saturday",
       "7": "Sunday"
-    }
+    },
+    "defaults": "Defaults for new users",
+    "defaultsIntro": "New accounts start with these formats and units. Existing users keep theirs."
   },
   "about": {
     "title": "About torq",

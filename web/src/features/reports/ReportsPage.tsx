@@ -5,7 +5,9 @@ import { api } from '../../lib/api'
 import { queryKeys } from '../../lib/queryKeys'
 import { useFormat } from '../../lib/useFormat'
 import { useErrorText } from '../../lib/errors'
-import { vehicleName, type CostReport } from '../../lib/types'
+import { vehicleName, type CostReport, type DistanceUnit } from '../../lib/types'
+import { DISTANCE } from '../../lib/units'
+import { useSession } from '../../app/session'
 import { inputClass } from '../../components/Field'
 import { Card, ErrorBanner, Loading, PageHeader, Table } from '../../components/ui'
 import { useVehicles } from '../vehicles/hooks'
@@ -35,6 +37,7 @@ function presetRange(p: Preset): { from: string; to: string } {
 
 export function ReportsPage() {
   const { t } = useTranslation('reports')
+  const { user } = useSession()
   const fmt = useFormat()
   const errorText = useErrorText()
   const vehicles = useVehicles('all')
@@ -46,6 +49,10 @@ export function ReportsPage() {
   const report = useQuery({ queryKey: queryKeys.costReport(params), queryFn: () => api.get<CostReport>('/reports/costs', params) })
   const vehicleById = new Map(vehicles.data?.items.map((v) => [v.id, v]))
   const r = report.data
+  const unit = vehicleById.get(Number(vehicle))?.odometer_unit ?? user.distance_unit
+  // Cost per km from the API, shown per km or per mile.
+  const perDistance = (centsPerKm: number, u: DistanceUnit, decimals: number) =>
+    t(u === 'mi' ? 'tiles.perMi' : 'tiles.perKm', { value: fmt.moneyPrecise(centsPerKm * DISTANCE[u].factor, decimals) })
 
   return (
     <div className="space-y-6">
@@ -71,8 +78,8 @@ export function ReportsPage() {
         <>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Tile label={t('tiles.total')} value={fmt.money(r.total_cents)} />
-            <Tile label={t('tiles.costPerKm')} value={r.cost_per_km_cents === null ? t('tiles.notEnoughData') : t('tiles.perKm', { value: fmt.moneyPrecise(r.cost_per_km_cents, r.cost_per_km_cents < 10 ? 3 : 2) })} muted={r.cost_per_km_cents === null} />
-            <Tile label={t('tiles.distance')} value={r.distance_km === null ? t('tiles.notEnoughData') : fmt.km(r.distance_km)} muted={r.distance_km === null} />
+            <Tile label={t(unit === 'mi' ? 'tiles.costPerMi' : 'tiles.costPerKm')} value={r.cost_per_km_cents === null ? t('tiles.notEnoughData') : perDistance(r.cost_per_km_cents, unit, r.cost_per_km_cents < 10 ? 3 : 2)} muted={r.cost_per_km_cents === null} />
+            <Tile label={t('tiles.distance')} value={r.distance_km === null ? t('tiles.notEnoughData') : fmt.distance(r.distance_km, unit)} muted={r.distance_km === null} />
           </div>
           {r.total_cents === 0 ? (
             <p className="text-sm text-zinc-400">{t('empty')}</p>
@@ -108,7 +115,7 @@ export function ReportsPage() {
                     <th className="text-right">{t('breakdown.service')}</th>
                     <th className="text-right">{t('breakdown.repairs')}</th>
                     <th className="text-right">{t('tiles.total')}</th>
-                    <th className="text-right">{t('tiles.costPerKm')}</th>
+                    <th className="text-right">{t('tiles.costPerDistance')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -120,7 +127,7 @@ export function ReportsPage() {
                         <td className="text-right tabular-nums">{fmt.money(v.by_source.routine_service_cents)}</td>
                         <td className="text-right tabular-nums">{fmt.money(v.by_source.self_repair_cents)}</td>
                         <td className="text-right tabular-nums text-zinc-100">{fmt.money(v.total_cents)}</td>
-                        <td className="text-right tabular-nums text-zinc-400">{v.cost_per_km_cents === null ? t('tiles.notEnoughData') : t('tiles.perKm', { value: fmt.moneyPrecise(v.cost_per_km_cents, 3) })}</td>
+                        <td className="text-right tabular-nums text-zinc-400">{v.cost_per_km_cents === null ? t('tiles.notEnoughData') : perDistance(v.cost_per_km_cents, veh?.odometer_unit ?? user.distance_unit, 3)}</td>
                       </tr>
                     )
                   })}

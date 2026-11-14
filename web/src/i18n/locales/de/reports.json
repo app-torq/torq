@@ -20,7 +20,10 @@
     "costPerKm": "Kosten pro km",
     "distance": "Gefahrene Strecke",
     "notEnoughData": "Nicht genug Daten",
-    "perKm": "{{value}}/km"
+    "perKm": "{{value}}/km",
+    "costPerMi": "Kosten pro Meile",
+    "perMi": "{{value}}/mi",
+    "costPerDistance": "Kosten pro Strecke"
   },
   "breakdown": {
     "bySource": "Wartung vs. Reparaturprojekte",

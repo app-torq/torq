@@ -1,19 +1,47 @@
 // Locale-aware formatting driven by the user's preferences (Constitution V).
-// Units are always metric. The only derived unit is PS from stored kW, for
-// display (Hard Non-Goals, "Metric only").
+// Values arrive in metric units and are converted to the preferred display
+// units here (Constitution 3.0.0, "Metric storage"); see units.ts.
 
-import type { DateFormat, NumberFormat, PowerUnit } from './types'
+import type { DateFormat, NumberFormat, TimeFormat } from './types'
+import {
+  DISPLACEMENT,
+  DISTANCE,
+  POWER,
+  PRESSURE,
+  QUANTITY,
+  TORQUE,
+  VOLUME,
+  fromMetric,
+  toMetric,
+  type DisplacementUnit,
+  type DistanceUnit,
+  type PowerUnit,
+  type PressureUnit,
+  type QuantityUnit,
+  type TorqueUnit,
+  type UnitKey,
+  type UnitSpec,
+  type VolumeUnit,
+} from './units'
 
 export interface FormatPrefs {
   dateFormat: DateFormat
   numberFormat: NumberFormat
   currencyCode: string
   currencySymbol: string | null
-  /** Primary power unit; the other one is shown as secondary info. Defaults to kW. */
+  /** Display units; each defaults to the metric unit. */
+  timeFormat?: TimeFormat
+  /** Primary power unit; kW or PS is shown as secondary info. */
   powerUnit?: PowerUnit
+  /** For distances not tied to a vehicle (vehicle distances use its odometer unit). */
+  distanceUnit?: DistanceUnit
+  volumeUnit?: VolumeUnit
+  torqueUnit?: TorqueUnit
+  pressureUnit?: PressureUnit
+  displacementUnit?: DisplacementUnit
 }
 
-export type UnitKey = 'km' | 'l' | 'ml' | 'nm' | 'bar' | 'cc' | 'kw' | 'ps'
+export type { UnitKey }
 export type UnitLabel = (unit: UnitKey) => string
 
 export const defaultPrefs: FormatPrefs = {
@@ -34,28 +62,35 @@ export interface Formatter {
   /** Formats fractional cents per km, e.g. 8 → "€0.08/km" style money value without the /km suffix. */
   moneyPrecise: (cents: number, decimals: number) => string
   date: (iso: string) => string
-  /** Date per preferences plus local time, e.g. "31.10.2026 21:05". */
+  /** Date per preferences plus local time, e.g. "31.10.2026 21:05" or "10/31/2026 9:05 PM". */
   dateTime: (iso: string) => string
-  km: (n: number) => string
-  liters: (ml: number) => string
-  ml: (n: number) => string
-  nm: (n: number) => string
-  bar: (n: number) => string
-  /** A pressure or a pressure range, e.g. "2,2–2,4 bar". */
-  barRange: (lo: number, hi: number | null) => string
+  /** A distance in km shown in the given unit (a vehicle's odometer unit), e.g. "133,595 mi". */
+  distance: (km: number, unit: DistanceUnit) => string
+  /** A capacity in mL in the preferred volume unit, e.g. "6.5 L" or "6.87 qt". */
+  volume: (ml: number) => string
   /** Formats a fluid quantity the way the user entered it. */
-  quantity: (ml: number, unit: 'L' | 'mL') => string
-  /** Engine displacement, e.g. "2.148 cm³". */
+  quantity: (ml: number, unit: QuantityUnit) => string
+  torque: (nm: number) => string
+  pressure: (bar: number) => string
+  /** A pressure or a pressure range, e.g. "2,2–2,4 bar". */
+  pressureRange: (lo: number, hi: number | null) => string
+  /** Engine displacement, e.g. "2.148 cm³", "2.1 L" or "131 ci". */
   displacement: (cc: number) => string
-  /** Power in the preferred unit with the other as secondary info, e.g. "110 kW (150 PS)" or "150 PS (110 kW)". */
-  power: (kw: number) => string
-  /** Power in the preferred unit only, e.g. "150 PS". */
-  powerShort: (kw: number) => string
+  /** Power in watts in the preferred unit with kW or PS as secondary info, e.g. "110 kW (150 PS)" or "301 hp (224 kW)". */
+  power: (w: number) => string
+  /** Power in watts in the preferred unit only, e.g. "150 PS". */
+  powerShort: (w: number) => string
 }
 
-/** Metric horsepower (PS) for display only; PS is never stored or entered (FR-024). */
+/** Metric horsepower (PS) from kW. */
 export function kwToPs(kw: number): number {
-  return Math.round(kw * 1.35962)
+  return Math.round(fromMetric(kw * 1000, POWER.ps))
+}
+
+/** A vehicle's power in watts, falling back to whole kW. */
+export function powerW(v: { power_w?: number | null; power_kw: number | null }): number | null {
+  if (v.power_w !== undefined && v.power_w !== null) return v.power_w
+  return v.power_kw === null ? null : v.power_kw * 1000
 }
 
 export function createFormatter(prefs: FormatPrefs, unit: UnitLabel): Formatter {
@@ -102,7 +137,10 @@ export function createFormatter(prefs: FormatPrefs, unit: UnitLabel): Formatter 
     timeZone: 'UTC',
   })
 
-  const timeFormat = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+  const timeFormat =
+    prefs.timeFormat === '12h'
+      ? new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hourCycle: 'h12' })
+      : new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
 
   const number = (n: number, opts?: { decimals?: number; maxDecimals?: number }) => {
     const min = opts?.decimals ?? 0
@@ -115,10 +153,18 @@ export function createFormatter(prefs: FormatPrefs, unit: UnitLabel): Formatter 
     if (!m) return iso
     const parts = dateParts.formatToParts(new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]))))
     const get = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value ?? ''
-    return prefs.dateFormat === 'DD.MM.YYYY'
-      ? [get('day'), get('month'), get('year')].join('.')
-      : [get('year'), get('month'), get('day')].join('-')
+    switch (prefs.dateFormat) {
+      case 'DD.MM.YYYY':
+        return [get('day'), get('month'), get('year')].join('.')
+      case 'MM/DD/YYYY':
+        return [get('month'), get('day'), get('year')].join('/')
+      default:
+        return [get('year'), get('month'), get('day')].join('-')
+    }
   }
+
+  const inUnit = (metric: number, spec: UnitSpec) =>
+    `${number(fromMetric(metric, spec), { maxDecimals: spec.decimals })} ${unit(spec.label)}`
 
   return {
     number,
@@ -131,22 +177,23 @@ export function createFormatter(prefs: FormatPrefs, unit: UnitLabel): Formatter 
       const local = `${String(d.getFullYear())}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
       return `${formatDate(local)} ${timeFormat.format(d)}`
     },
-    km: (n) => `${number(n)} ${unit('km')}`,
-    liters: (ml) => `${number(ml / 1000, { maxDecimals: 2 })} ${unit('l')}`,
-    ml: (n) => `${number(n)} ${unit('ml')}`,
-    nm: (n) => `${number(n, { maxDecimals: 1 })} ${unit('nm')}`,
-    bar: (n) => `${number(n, { maxDecimals: 2 })} ${unit('bar')}`,
-    barRange: (lo, hi) =>
-      hi === null || hi === lo
-        ? `${number(lo, { maxDecimals: 2 })} ${unit('bar')}`
-        : `${number(lo, { maxDecimals: 2 })}–${number(hi, { maxDecimals: 2 })} ${unit('bar')}`,
-    quantity: (ml, u) => (u === 'L' ? `${number(ml / 1000, { maxDecimals: 3 })} ${unit('l')}` : `${number(ml)} ${unit('ml')}`),
-    displacement: (cc) => `${number(cc)} ${unit('cc')}`,
-    power: (kw) =>
-      prefs.powerUnit === 'ps'
-        ? `${number(kwToPs(kw))} ${unit('ps')} (${number(kw)} ${unit('kw')})`
-        : `${number(kw)} ${unit('kw')} (${number(kwToPs(kw))} ${unit('ps')})`,
-    powerShort: (kw) => (prefs.powerUnit === 'ps' ? `${number(kwToPs(kw))} ${unit('ps')}` : `${number(kw)} ${unit('kw')}`),
+    distance: (km, u) => inUnit(km, DISTANCE[u]),
+    volume: (ml) => inUnit(ml, VOLUME[prefs.volumeUnit ?? 'l']),
+    quantity: (ml, u) => inUnit(ml, QUANTITY[u]),
+    torque: (nm) => inUnit(nm, TORQUE[prefs.torqueUnit ?? 'nm']),
+    pressure: (bar) => inUnit(bar, PRESSURE[prefs.pressureUnit ?? 'bar']),
+    pressureRange: (lo, hi) => {
+      const spec = PRESSURE[prefs.pressureUnit ?? 'bar']
+      const v = (n: number) => number(fromMetric(n, spec), { maxDecimals: spec.decimals })
+      return hi === null || hi === lo ? `${v(lo)} ${unit(spec.label)}` : `${v(lo)}–${v(hi)} ${unit(spec.label)}`
+    },
+    displacement: (cc) => inUnit(cc, DISPLACEMENT[prefs.displacementUnit ?? 'cc']),
+    power: (w) => {
+      const primary = prefs.powerUnit ?? 'kw'
+      const secondary = primary === 'kw' ? 'ps' : 'kw'
+      return `${inUnit(w, POWER[primary])} (${inUnit(w, POWER[secondary])})`
+    },
+    powerShort: (w) => inUnit(w, POWER[prefs.powerUnit ?? 'kw']),
   }
 }
 
@@ -178,4 +225,66 @@ export function toInputValue(n: number | null | undefined, numberFormat: NumberF
   if (n === null || n === undefined) return ''
   const s = String(Number(n.toFixed(maxDecimals)))
   return numberFormat === 'comma' ? s.replace('.', ',') : s
+}
+
+/** Input text for a stored metric value in the display unit. */
+export function metricToInput(value: number | null | undefined, spec: UnitSpec, nf: NumberFormat): string {
+  if (value === null || value === undefined) return ''
+  return toInputValue(fromMetric(value, spec), nf, spec.decimals)
+}
+
+/**
+ * Parses input in the display unit into the stored metric value: null for
+ * empty input, undefined when it does not parse.
+ */
+export function inputToMetric(raw: string, spec: UnitSpec, nf: NumberFormat, integer: boolean): number | null | undefined {
+  if (raw.trim() === '') return null
+  const n = parseNumber(raw, nf)
+  return n === null ? undefined : toMetric(n, spec, integer)
+}
+
+/**
+ * Parses a whole, non-negative distance typed in unit (an odometer reading,
+ * an interval) into km; null when it is empty or invalid.
+ */
+export function parseDistance(raw: string, unit: DistanceUnit, nf: NumberFormat): number | null {
+  const n = parseNumber(raw, nf)
+  if (n === null || n < 0 || !Number.isInteger(n)) return null
+  return toMetric(n, DISTANCE[unit], true)
+}
+
+/** Input text for a distance in km, in unit. */
+export function distanceInput(km: number | null | undefined, unit: DistanceUnit, nf: NumberFormat): string {
+  return metricToInput(km, DISTANCE[unit], nf)
+}
+
+/**
+ * A converted input field: its initial text and the stored value it shows.
+ * Reading back an untouched field returns that stored value, so rounding to
+ * the display unit (1998 cm³ shown as 2.0 L) never changes data that was not
+ * edited.
+ */
+export interface MetricField {
+  text: string
+  value: number | null
+}
+
+export function metricField(value: number | null | undefined, spec: UnitSpec, nf: NumberFormat): MetricField {
+  return { text: metricToInput(value, spec, nf), value: value ?? null }
+}
+
+/** The stored value for raw input: unchanged text keeps the initial value; undefined when it does not parse. */
+export function readMetricField(raw: string, initial: MetricField, spec: UnitSpec, nf: NumberFormat, integer: boolean): number | null | undefined {
+  if (raw.trim() === initial.text.trim()) return initial.value
+  return inputToMetric(raw, spec, nf, integer)
+}
+
+/** Like parseDistance, but unchanged text keeps the initial km. */
+export function readDistance(raw: string, initial: MetricField, unit: DistanceUnit, nf: NumberFormat): number | null {
+  if (raw.trim() !== '' && raw.trim() === initial.text.trim()) return initial.value
+  return parseDistance(raw, unit, nf)
+}
+
+export function distanceField(km: number | null | undefined, unit: DistanceUnit, nf: NumberFormat): MetricField {
+  return metricField(km, DISTANCE[unit], nf)
 }

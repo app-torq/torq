@@ -5,6 +5,8 @@ import { ArrowDown, ArrowUp, ExternalLink, Loader2, Pencil, PencilLine, Plus, Sp
 import { api } from '../../lib/api'
 import { queryKeys } from '../../lib/queryKeys'
 import { useFormat } from '../../lib/useFormat'
+import { powerW } from '../../lib/format'
+import { PRESSURE, TORQUE, VOLUME } from '../../lib/units'
 import { fieldErrors, useErrorText } from '../../lib/errors'
 import type { AutofillValue, SpecEntry, SpecFieldKey, SpecMeta, VehicleSpecs } from '../../lib/types'
 import { useSession } from '../../app/session'
@@ -15,7 +17,7 @@ import { ConfirmDialog, Dialog } from '../../components/Dialog'
 import { Card, ErrorBanner, Loading, Notice } from '../../components/ui'
 import { useVehicleContext } from './VehicleDetailLayout'
 import { SpecEntryImages } from './SpecEntryImages'
-import { applyAutofill, editField, initialDraft, rangeMeta, toRequestBody, type AutofillSummary } from './specsDraft'
+import { applyAutofill, editField, initialDraft, rangeMeta, toRequestBody, type AutofillSummary, type SpecUnits } from './specsDraft'
 
 interface SpecsResponse {
   specs: VehicleSpecs
@@ -71,31 +73,31 @@ export function SpecSheetPage() {
         <Pin title={t('groups.powertrain')}>
           <div className="space-y-0.5">
             <div>{t('vehicles:fields.engineCode')}: {v.engine_code || none}</div>
-            <div>{t('vehicles:fields.power')}: {v.power_kw != null ? fmt.power(v.power_kw) : none}</div>
+            <div>{t('vehicles:fields.power')}: {v.power_kw != null ? fmt.power(powerW(v) ?? 0) : none}</div>
             <div>{t('vehicles:fields.displacement')}: {v.displacement_cc != null ? fmt.displacement(v.displacement_cc) : none}</div>
             <div>{t('vehicles:fields.fuelType')}: {v.fuel_type ? t(`vehicles:fuel.${v.fuel_type}`) : none}</div>
             <div>{t('vehicles:fields.hsnTsn')}: {v.hsn || v.tsn ? <span className="font-mono">{`${v.hsn ?? '—'} / ${v.tsn ?? '—'}`}</span> : none}</div>
           </div>
         </Pin>
         <Pin title={t('groups.engineOil')}>
-          {join(s.engine_oil_viscosity, s.engine_oil_spec, s.engine_oil_capacity_ml ? fmt.liters(s.engine_oil_capacity_ml) : null)}
+          {join(s.engine_oil_viscosity, s.engine_oil_spec, s.engine_oil_capacity_ml ? fmt.volume(s.engine_oil_capacity_ml) : null)}
         </Pin>
         {fluidGroups.map((g) => {
           const cap = fluidCapacity(s, g.key)
           return (
             <Pin key={g.key} title={t(g.label)}>
-              {join(fluidSpec(s, g.key), cap ? fmt.liters(cap) : null)}
+              {join(fluidSpec(s, g.key), cap ? fmt.volume(cap) : null)}
             </Pin>
           )
         })}
         <Pin title={t('groups.wheels')}>
           <div className="space-y-0.5">
-            <div>{t('fields.lugTorque')}: {s.wheel_lug_torque_nm ? fmt.nm(s.wheel_lug_torque_nm) : none}</div>
+            <div>{t('fields.lugTorque')}: {s.wheel_lug_torque_nm ? fmt.torque(s.wheel_lug_torque_nm) : none}</div>
             <div>
-              {t('fields.pressureFront')}: {s.tire_pressure_front_bar ? fmt.barRange(s.tire_pressure_front_bar, s.tire_pressure_front_max_bar) : none}
+              {t('fields.pressureFront')}: {s.tire_pressure_front_bar ? fmt.pressureRange(s.tire_pressure_front_bar, s.tire_pressure_front_max_bar) : none}
             </div>
             <div>
-              {t('fields.pressureRear')}: {s.tire_pressure_rear_bar ? fmt.barRange(s.tire_pressure_rear_bar, s.tire_pressure_rear_max_bar) : none}
+              {t('fields.pressureRear')}: {s.tire_pressure_rear_bar ? fmt.pressureRange(s.tire_pressure_rear_bar, s.tire_pressure_rear_max_bar) : none}
             </div>
           </div>
         </Pin>
@@ -121,7 +123,8 @@ export function SpecsEditDialog({ vehicleId, specs, onClose }: { vehicleId: numb
   const qc = useQueryClient()
   const errorText = useErrorText()
   const nf = user.number_format
-  const [draft, setDraft] = useState(() => initialDraft(specs, nf))
+  const units: SpecUnits = { volume: user.volume_unit, torque: user.torque_unit, pressure: user.pressure_unit }
+  const [draft, setDraft] = useState(() => initialDraft(specs, nf, units))
   const [local, setLocal] = useState<Record<string, string>>({})
   const [overwrite, setOverwrite] = useState(false)
   const [summary, setSummary] = useState<AutofillSummary | null>(null)
@@ -140,7 +143,7 @@ export function SpecsEditDialog({ vehicleId, specs, onClose }: { vehicleId: numb
     onSuccess: ({ fields }) => {
       // Applied to the latest draft, so edits made while the lookup ran survive.
       setDraft((prev) => {
-        const res = applyAutofill(prev, fields, overwrite, nf)
+        const res = applyAutofill(prev, fields, overwrite, nf, units)
         setSummary(res.summary)
         return res.draft
       })
@@ -149,7 +152,7 @@ export function SpecsEditDialog({ vehicleId, specs, onClose }: { vehicleId: numb
   const fe = { ...fieldErrors(save.error), ...local }
 
   const submit = () => {
-    const { body, errors } = toRequestBody(draft, nf)
+    const { body, errors } = toRequestBody(draft, nf, units)
     setLocal(errors)
     if (Object.keys(errors).length === 0) save.mutate(body)
   }
@@ -162,7 +165,7 @@ export function SpecsEditDialog({ vehicleId, specs, onClose }: { vehicleId: numb
     error: fe[k],
   })
 
-  const L = t('common:units.l')
+  const L = t(`common:units.${VOLUME[units.volume].label}`)
   return (
     <Dialog
       open
@@ -213,7 +216,7 @@ export function SpecsEditDialog({ vehicleId, specs, onClose }: { vehicleId: numb
         ))}
         <fieldset className="form-grid grid grid-cols-1 gap-3 sm:grid-cols-3">
           <legend className="mb-2 text-sm font-semibold text-zinc-200">{t('groups.wheels')}</legend>
-          <NumberField label={t('fields.lugTorque')} unit={t('common:units.nm')} {...bind('wheel_lug_torque_nm')} />
+          <NumberField label={t('fields.lugTorque')} unit={t(`common:units.${TORQUE[units.torque].label}`)} {...bind('wheel_lug_torque_nm')} />
           {(['front', 'rear'] as const).map((axle) => {
             const lo = `tire_pressure_${axle}_bar` as const
             const hi = `tire_pressure_${axle}_max_bar` as const
@@ -229,7 +232,7 @@ export function SpecsEditDialog({ vehicleId, specs, onClose }: { vehicleId: numb
                 onToChange={(x) => { setDraft((prev) => editField(prev, hi, x)) }}
                 toLabel={t('fields.pressureUpTo', { field: label })}
                 toPlaceholder={t('fields.pressureMax')}
-                unit={t('common:units.bar')}
+                unit={t(`common:units.${PRESSURE[units.pressure].label}`)}
                 error={fe[lo] ?? fe[hi]}
                 hint={t('fields.pressureRangeHint')}
               />

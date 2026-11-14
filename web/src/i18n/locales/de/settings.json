@@ -1,7 +1,7 @@
 {
   "preferences": {
     "title": "Präferenzen",
-    "intro": "Sprache und Formate gelten nur für dich. Einheiten sind immer metrisch.",
+    "intro": "Sprache, Formate und Einheiten gelten nur für dich. torq speichert Werte metrisch und rechnet sie für die Anzeige um.",
     "language": "Sprache",
     "dateFormat": "Datumsformat",
     "numberFormat": "Zahlenformat",
@@ -21,11 +21,64 @@
       "GBP": "Britisches Pfund (GBP)",
       "CHF": "Schweizer Franken (CHF)"
     },
-    "powerUnit": "Leistungseinheit",
-    "powerUnitHint": "Die Leistung wird in kW gespeichert; hier wählst du nur, welche Einheit zuerst angezeigt wird.",
-    "powerUnits": {
-      "kw": "kW (Kilowatt)",
-      "ps": "PS (Pferdestärke)"
+    "timeFormat": "Zeitformat",
+    "timeFormats": {
+      "24h": "24 Stunden (21:05)",
+      "12h": "12 Stunden (9:05 PM)"
+    },
+    "units": "Einheiten",
+    "unitsHint": "Wie Strecken, Flüssigkeiten, Drehmoment, Druck, Hubraum und Leistung angezeigt und eingegeben werden.",
+    "unitPreset": "Vorlage",
+    "presets": {
+      "metric": "Metrisch",
+      "us": "USA",
+      "uk": "UK"
+    },
+    "distance_unit": {
+      "label": "Strecke",
+      "hint": "Gilt für neue Fahrzeuge. Jedes Fahrzeug hat seine eigene Tachoeinheit.",
+      "options": {
+        "km": "Kilometer (km)",
+        "mi": "Meilen (mi)"
+      }
+    },
+    "volume_unit": {
+      "label": "Flüssigkeiten",
+      "options": {
+        "l": "Liter (L, mL)",
+        "qt": "US-Quarts (qt, gal, fl oz)"
+      }
+    },
+    "torque_unit": {
+      "label": "Drehmoment",
+      "options": {
+        "nm": "Newtonmeter (Nm)",
+        "lbft": "Pound-feet (lb-ft)"
+      }
+    },
+    "pressure_unit": {
+      "label": "Reifendruck",
+      "options": {
+        "bar": "bar",
+        "psi": "psi",
+        "kpa": "kPa"
+      }
+    },
+    "displacement_unit": {
+      "label": "Hubraum",
+      "options": {
+        "cc": "Kubikzentimeter (cm³)",
+        "l": "Liter (L)",
+        "ci": "Kubikzoll (ci)"
+      }
+    },
+    "power_unit": {
+      "label": "Leistung",
+      "options": {
+        "kw": "kW (Kilowatt)",
+        "ps": "PS (Pferdestärke)",
+        "hp": "hp (Horsepower)"
+      }
     }
   },
   "users": {
@@ -93,7 +146,9 @@
       "5": "Freitag",
       "6": "Samstag",
       "7": "Sonntag"
-    }
+    },
+    "defaults": "Vorgaben für neue Benutzer",
+    "defaultsIntro": "Neue Konten starten mit diesen Formaten und Einheiten. Bestehende Benutzer behalten ihre."
   },
   "about": {
     "title": "Über torq",
