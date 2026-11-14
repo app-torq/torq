@@ -16,14 +16,27 @@ const (
 	RoleMember Role = "member"
 )
 
-// Preferences control display language and formatting (FR-052).
+// Preferences control display language, formatting and units (FR-052).
+// Units are display only: values are always stored and sent in metric units.
 type Preferences struct {
 	Locale         string
-	DateFormat     string
-	NumberFormat   string
-	CurrencyCode   string
 	CurrencySymbol string // empty when not overridden
-	PowerUnit      string // "kw" or "ps"; display only, power is always stored in kW
+	Formats
+}
+
+// Formats are the format and unit preferences that also have instance-wide
+// defaults for new users.
+type Formats struct {
+	DateFormat       string
+	NumberFormat     string
+	TimeFormat       string
+	CurrencyCode     string
+	PowerUnit        string
+	DistanceUnit     string
+	VolumeUnit       string
+	TorqueUnit       string
+	PressureUnit     string
+	DisplacementUnit string
 }
 
 // User is the authenticated, provider-agnostic user.
@@ -84,11 +97,13 @@ func FromStore(u store.User) User {
 		Disabled:    u.DisabledAt.Valid,
 		Prefs: Preferences{
 			Locale:         u.Locale,
-			DateFormat:     u.DateFormat,
-			NumberFormat:   u.NumberFormat,
-			CurrencyCode:   u.CurrencyCode,
 			CurrencySymbol: u.CurrencySymbol.String,
-			PowerUnit:      u.PowerUnit,
+			Formats: Formats{
+				DateFormat: u.DateFormat, NumberFormat: u.NumberFormat, TimeFormat: u.TimeFormat,
+				CurrencyCode: u.CurrencyCode, PowerUnit: u.PowerUnit, DistanceUnit: u.DistanceUnit,
+				VolumeUnit: u.VolumeUnit, TorqueUnit: u.TorqueUnit, PressureUnit: u.PressureUnit,
+				DisplacementUnit: u.DisplacementUnit,
+			},
 		},
 	}
 }

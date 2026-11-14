@@ -34,7 +34,7 @@ var locales = []locale{
 
 func messages(l locale) map[string]Message {
 	at := time.Date(2026, 10, 30, 8, 0, 0, 0, time.UTC)
-	veh := &Vehicle{ID: 1, Name: "Mercedes-Benz C 220 CDI", LicensePlate: str("B-TQ 646"), CurrentOdometerKm: 225350}
+	veh := &Vehicle{ID: 1, Name: "Mercedes-Benz C 220 CDI", LicensePlate: str("B-TQ 646"), CurrentOdometerKm: 225350, OdometerUnit: "km"}
 	rem := func(state string, remaining int64) *Reminder {
 		return &Reminder{ID: 7, Name: "Engine Oil & Filter", State: state, Trigger: str("km"), NextDueKm: i64(225000),
 			NextDueDate: str("2027-10-15"), RemainingKm: i64(remaining), RemainingDays: i64(350)}

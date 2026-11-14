@@ -10,7 +10,7 @@ import (
 )
 
 const getInstanceSettings = `-- name: GetInstanceSettings :one
-SELECT id, weekly_digest_weekday, weekly_digest_hour, monthly_digest_day, monthly_digest_hour FROM instance_settings WHERE id = 1
+SELECT id, weekly_digest_weekday, weekly_digest_hour, monthly_digest_day, monthly_digest_hour, default_date_format, default_number_format, default_time_format, default_currency_code, default_power_unit, default_distance_unit, default_volume_unit, default_torque_unit, default_pressure_unit, default_displacement_unit FROM instance_settings WHERE id = 1
 `
 
 func (q *Queries) GetInstanceSettings(ctx context.Context) (InstanceSetting, error) {
@@ -22,6 +22,79 @@ func (q *Queries) GetInstanceSettings(ctx context.Context) (InstanceSetting, err
 		&i.WeeklyDigestHour,
 		&i.MonthlyDigestDay,
 		&i.MonthlyDigestHour,
+		&i.DefaultDateFormat,
+		&i.DefaultNumberFormat,
+		&i.DefaultTimeFormat,
+		&i.DefaultCurrencyCode,
+		&i.DefaultPowerUnit,
+		&i.DefaultDistanceUnit,
+		&i.DefaultVolumeUnit,
+		&i.DefaultTorqueUnit,
+		&i.DefaultPressureUnit,
+		&i.DefaultDisplacementUnit,
+	)
+	return i, err
+}
+
+const updateInstanceDefaults = `-- name: UpdateInstanceDefaults :one
+UPDATE instance_settings
+SET default_date_format       = ?,
+    default_number_format     = ?,
+    default_time_format       = ?,
+    default_currency_code     = ?,
+    default_power_unit        = ?,
+    default_distance_unit     = ?,
+    default_volume_unit       = ?,
+    default_torque_unit       = ?,
+    default_pressure_unit     = ?,
+    default_displacement_unit = ?
+WHERE id = 1
+RETURNING id, weekly_digest_weekday, weekly_digest_hour, monthly_digest_day, monthly_digest_hour, default_date_format, default_number_format, default_time_format, default_currency_code, default_power_unit, default_distance_unit, default_volume_unit, default_torque_unit, default_pressure_unit, default_displacement_unit
+`
+
+type UpdateInstanceDefaultsParams struct {
+	DefaultDateFormat       string
+	DefaultNumberFormat     string
+	DefaultTimeFormat       string
+	DefaultCurrencyCode     string
+	DefaultPowerUnit        string
+	DefaultDistanceUnit     string
+	DefaultVolumeUnit       string
+	DefaultTorqueUnit       string
+	DefaultPressureUnit     string
+	DefaultDisplacementUnit string
+}
+
+func (q *Queries) UpdateInstanceDefaults(ctx context.Context, arg UpdateInstanceDefaultsParams) (InstanceSetting, error) {
+	row := q.db.QueryRowContext(ctx, updateInstanceDefaults,
+		arg.DefaultDateFormat,
+		arg.DefaultNumberFormat,
+		arg.DefaultTimeFormat,
+		arg.DefaultCurrencyCode,
+		arg.DefaultPowerUnit,
+		arg.DefaultDistanceUnit,
+		arg.DefaultVolumeUnit,
+		arg.DefaultTorqueUnit,
+		arg.DefaultPressureUnit,
+		arg.DefaultDisplacementUnit,
+	)
+	var i InstanceSetting
+	err := row.Scan(
+		&i.ID,
+		&i.WeeklyDigestWeekday,
+		&i.WeeklyDigestHour,
+		&i.MonthlyDigestDay,
+		&i.MonthlyDigestHour,
+		&i.DefaultDateFormat,
+		&i.DefaultNumberFormat,
+		&i.DefaultTimeFormat,
+		&i.DefaultCurrencyCode,
+		&i.DefaultPowerUnit,
+		&i.DefaultDistanceUnit,
+		&i.DefaultVolumeUnit,
+		&i.DefaultTorqueUnit,
+		&i.DefaultPressureUnit,
+		&i.DefaultDisplacementUnit,
 	)
 	return i, err
 }
@@ -33,7 +106,7 @@ SET weekly_digest_weekday = ?,
     monthly_digest_day    = ?,
     monthly_digest_hour   = ?
 WHERE id = 1
-RETURNING id, weekly_digest_weekday, weekly_digest_hour, monthly_digest_day, monthly_digest_hour
+RETURNING id, weekly_digest_weekday, weekly_digest_hour, monthly_digest_day, monthly_digest_hour, default_date_format, default_number_format, default_time_format, default_currency_code, default_power_unit, default_distance_unit, default_volume_unit, default_torque_unit, default_pressure_unit, default_displacement_unit
 `
 
 type UpdateInstanceSettingsParams struct {
@@ -57,6 +130,16 @@ func (q *Queries) UpdateInstanceSettings(ctx context.Context, arg UpdateInstance
 		&i.WeeklyDigestHour,
 		&i.MonthlyDigestDay,
 		&i.MonthlyDigestHour,
+		&i.DefaultDateFormat,
+		&i.DefaultNumberFormat,
+		&i.DefaultTimeFormat,
+		&i.DefaultCurrencyCode,
+		&i.DefaultPowerUnit,
+		&i.DefaultDistanceUnit,
+		&i.DefaultVolumeUnit,
+		&i.DefaultTorqueUnit,
+		&i.DefaultPressureUnit,
+		&i.DefaultDisplacementUnit,
 	)
 	return i, err
 }

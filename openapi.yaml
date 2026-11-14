@@ -67,6 +67,7 @@ paths:
           application/json:
             schema:
               type: object
+              description: "The optional format and unit fields become the server defaults for new users, starting with this administrator."
               properties:
                 device_name:
                   type: string
@@ -77,6 +78,35 @@ paths:
                   type: string
                 password:
                   type: string
+                currency_code:
+                  type: string
+                date_format:
+                  type: string
+                  description: YYYY-MM-DD, DD.MM.YYYY or MM/DD/YYYY.
+                displacement_unit:
+                  type: string
+                  description: "cc, l or ci. Displacement is always sent in cm³."
+                distance_unit:
+                  type: string
+                  description: "km or mi. Used for new vehicles and distances not tied to a vehicle; a vehicle's distances use its odometer_unit. Distances are always sent in km."
+                number_format:
+                  type: string
+                  description: "point or comma: the decimal separator."
+                power_unit:
+                  type: string
+                  description: "kw, ps or hp. Display preference only; power is always sent in kW and W."
+                pressure_unit:
+                  type: string
+                  description: "bar, psi or kpa. Pressure is always sent in bar."
+                time_format:
+                  type: string
+                  description: 24h or 12h.
+                torque_unit:
+                  type: string
+                  description: "nm or lbft. Torque is always sent in Nm."
+                volume_unit:
+                  type: string
+                  description: "l or qt (US quarts). Volumes are always sent in mL."
                 token:
                   type: boolean
                   description: Return a bearer token in the response instead of setting the session cookie.
@@ -221,10 +251,21 @@ paths:
                   type:
                     - string
                     - "null"
+                  description: YYYY-MM-DD, DD.MM.YYYY or MM/DD/YYYY.
+                displacement_unit:
+                  type:
+                    - string
+                    - "null"
+                  description: "cc, l or ci. Displacement is always sent in cm³."
                 display_name:
                   type:
                     - string
                     - "null"
+                distance_unit:
+                  type:
+                    - string
+                    - "null"
+                  description: "km or mi. Used for new vehicles and distances not tied to a vehicle; a vehicle's distances use its odometer_unit. Distances are always sent in km."
                 locale:
                   type:
                     - string
@@ -237,6 +278,27 @@ paths:
                   type:
                     - string
                     - "null"
+                  description: "kw, ps or hp. Display preference only; power is always sent in kW and W."
+                pressure_unit:
+                  type:
+                    - string
+                    - "null"
+                  description: "bar, psi or kpa. Pressure is always sent in bar."
+                time_format:
+                  type:
+                    - string
+                    - "null"
+                  description: 24h or 12h.
+                torque_unit:
+                  type:
+                    - string
+                    - "null"
+                  description: "nm or lbft. Torque is always sent in Nm."
+                volume_unit:
+                  type:
+                    - string
+                    - "null"
+                  description: "l or qt (US quarts). Volumes are always sent in mL."
               additionalProperties: false
       x-torq-error-codes:
         - validation.failed
@@ -2697,6 +2759,8 @@ paths:
             schema:
               type: object
               properties:
+                defaults:
+                  $ref: "#/components/schemas/FormatsInput"
                 monthly_digest_day:
                   type: integer
                 monthly_digest_hour:
@@ -3402,7 +3466,7 @@ components:
           type:
             - string
             - "null"
-          description: "L or mL: the unit the amount was entered in."
+          description: "L, mL, qt, gal or fl_oz (US units): the unit the amount was entered in. The amount is always quantity_ml."
         specification:
           type: string
     HistoryTorque:
@@ -3418,6 +3482,84 @@ components:
           type: string
         value_nm:
           type: number
+    Formats:
+      type: object
+      description: Format and unit preferences. Values are always stored and sent in metric units; these only decide how they are shown and entered.
+      required:
+        - currency_code
+        - date_format
+        - displacement_unit
+        - distance_unit
+        - number_format
+        - power_unit
+        - pressure_unit
+        - time_format
+        - torque_unit
+        - volume_unit
+      properties:
+        currency_code:
+          type: string
+        date_format:
+          type: string
+          description: YYYY-MM-DD, DD.MM.YYYY or MM/DD/YYYY.
+        displacement_unit:
+          type: string
+          description: "cc, l or ci. Displacement is always sent in cm³."
+        distance_unit:
+          type: string
+          description: "km or mi. Used for new vehicles and distances not tied to a vehicle; a vehicle's distances use its odometer_unit. Distances are always sent in km."
+        number_format:
+          type: string
+          description: "point or comma: the decimal separator."
+        power_unit:
+          type: string
+          description: "kw, ps or hp. Display preference only; power is always sent in kW and W."
+        pressure_unit:
+          type: string
+          description: "bar, psi or kpa. Pressure is always sent in bar."
+        time_format:
+          type: string
+          description: 24h or 12h.
+        torque_unit:
+          type: string
+          description: "nm or lbft. Torque is always sent in Nm."
+        volume_unit:
+          type: string
+          description: "l or qt (US quarts). Volumes are always sent in mL."
+    FormatsInput:
+      type: object
+      description: Format and unit preferences to change; omitted or empty fields stay unchanged.
+      properties:
+        currency_code:
+          type: string
+        date_format:
+          type: string
+          description: YYYY-MM-DD, DD.MM.YYYY or MM/DD/YYYY.
+        displacement_unit:
+          type: string
+          description: "cc, l or ci. Displacement is always sent in cm³."
+        distance_unit:
+          type: string
+          description: "km or mi. Used for new vehicles and distances not tied to a vehicle; a vehicle's distances use its odometer_unit. Distances are always sent in km."
+        number_format:
+          type: string
+          description: "point or comma: the decimal separator."
+        power_unit:
+          type: string
+          description: "kw, ps or hp. Display preference only; power is always sent in kW and W."
+        pressure_unit:
+          type: string
+          description: "bar, psi or kpa. Pressure is always sent in bar."
+        time_format:
+          type: string
+          description: 24h or 12h.
+        torque_unit:
+          type: string
+          description: "nm or lbft. Torque is always sent in Nm."
+        volume_unit:
+          type: string
+          description: "l or qt (US quarts). Volumes are always sent in mL."
+      additionalProperties: false
     HistoryVehicle:
       type: object
       required:
@@ -3432,7 +3574,9 @@ components:
         - make
         - model
         - model_year
+        - odometer_unit
         - power_kw
+        - power_w
         - tsn
         - vin
       properties:
@@ -3469,7 +3613,14 @@ components:
           type:
             - integer
             - "null"
+        odometer_unit:
+          type: string
+          description: "km or mi: how the vehicle's odometer reads. Distances are always in km."
         power_kw:
+          type:
+            - integer
+            - "null"
+        power_w:
           type:
             - integer
             - "null"
@@ -3513,6 +3664,7 @@ components:
       type: object
       required:
         - base_url_configured
+        - defaults
         - max_upload_mb
         - monthly_digest_day
         - monthly_digest_hour
@@ -3523,6 +3675,9 @@ components:
       properties:
         base_url_configured:
           type: boolean
+        defaults:
+          $ref: "#/components/schemas/Formats"
+          description: The formats and units new users start with.
         max_upload_mb:
           type: integer
           description: "Upload limit per file in MB; 0 when uploads are off."
@@ -4129,7 +4284,7 @@ components:
           type:
             - string
             - "null"
-          description: "L or mL: the unit the amount was entered in."
+          description: "L, mL, qt, gal or fl_oz (US units): the unit the amount was entered in. The amount is always quantity_ml."
         specification:
           type: string
     ServiceLog:
@@ -4217,6 +4372,7 @@ components:
                   - "null"
               quantity_unit:
                 type: string
+                description: "L, mL, qt, gal or fl_oz (US units): the unit the amount was entered in."
               specification:
                 type: string
         notes:
@@ -4340,13 +4496,19 @@ components:
         - currency_symbol
         - date_format
         - disabled
+        - displacement_unit
         - display_name
+        - distance_unit
         - id
         - locale
         - number_format
         - power_unit
+        - pressure_unit
         - role
+        - time_format
+        - torque_unit
         - username
+        - volume_unit
       properties:
         currency_code:
           type: string
@@ -4356,11 +4518,17 @@ components:
             - "null"
         date_format:
           type: string
-          description: YYYY-MM-DD or DD.MM.YYYY.
+          description: YYYY-MM-DD, DD.MM.YYYY or MM/DD/YYYY.
         disabled:
           type: boolean
+        displacement_unit:
+          type: string
+          description: "cc, l or ci. Displacement is always sent in cm³."
         display_name:
           type: string
+        distance_unit:
+          type: string
+          description: "km or mi. Used for new vehicles and distances not tied to a vehicle; a vehicle's distances use its odometer_unit. Distances are always sent in km."
         id:
           type: integer
         locale:
@@ -4371,7 +4539,19 @@ components:
           description: "point or comma: the decimal separator."
         power_unit:
           type: string
-          description: "kw or ps. Display preference only; power is always stored and sent in kW."
+          description: "kw, ps or hp. Display preference only; power is always sent in kW and W."
+        pressure_unit:
+          type: string
+          description: "bar, psi or kpa. Pressure is always sent in bar."
+        time_format:
+          type: string
+          description: 24h or 12h.
+        torque_unit:
+          type: string
+          description: "nm or lbft. Torque is always sent in Nm."
+        volume_unit:
+          type: string
+          description: "l or qt (US quarts). Volumes are always sent in mL."
         role:
           type: string
           description: admin or member.

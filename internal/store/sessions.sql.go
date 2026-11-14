@@ -104,7 +104,7 @@ func (q *Queries) DeleteUserSessionsExcept(ctx context.Context, arg DeleteUserSe
 }
 
 const getSessionByTokenHash = `-- name: GetSessionByTokenHash :one
-SELECT sessions.id, sessions.user_id, sessions.token_hash, sessions.created_at, sessions.last_seen_at, sessions.expires_at, sessions.user_agent, sessions.ip, sessions.device_name, users.id, users.username, users.display_name, users.role, users.locale, users.date_format, users.number_format, users.currency_code, users.currency_symbol, users.disabled_at, users.created_at, users.updated_at, users.power_unit
+SELECT sessions.id, sessions.user_id, sessions.token_hash, sessions.created_at, sessions.last_seen_at, sessions.expires_at, sessions.user_agent, sessions.ip, sessions.device_name, users.id, users.username, users.display_name, users.role, users.locale, users.date_format, users.number_format, users.currency_code, users.currency_symbol, users.disabled_at, users.created_at, users.updated_at, users.power_unit, users.time_format, users.distance_unit, users.volume_unit, users.torque_unit, users.pressure_unit, users.displacement_unit
 FROM sessions
 JOIN users ON users.id = sessions.user_id
 WHERE sessions.token_hash = ? AND users.disabled_at IS NULL
@@ -141,6 +141,12 @@ func (q *Queries) GetSessionByTokenHash(ctx context.Context, tokenHash []byte) (
 		&i.User.CreatedAt,
 		&i.User.UpdatedAt,
 		&i.User.PowerUnit,
+		&i.User.TimeFormat,
+		&i.User.DistanceUnit,
+		&i.User.VolumeUnit,
+		&i.User.TorqueUnit,
+		&i.User.PressureUnit,
+		&i.User.DisplacementUnit,
 	)
 	return i, err
 }

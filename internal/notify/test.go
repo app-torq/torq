@@ -33,11 +33,12 @@ func (s *Service) SendTest(ctx context.Context, webhookID int64) (Result, error)
 	}
 	if len(vehicles) > 0 {
 		v := vehicles[0]
-		veh := presets.Vehicle{ID: v.ID, Name: v.Make + " " + v.Model, LicensePlate: ptrStr(v.LicensePlate), CurrentOdometerKm: v.CurrentOdometerKm}
+		veh := presets.Vehicle{ID: v.ID, Name: v.Make + " " + v.Model, LicensePlate: ptrStr(v.LicensePlate),
+			CurrentOdometerKm: v.CurrentOdometerKm, OdometerUnit: v.OdometerUnit}
 		msg.Vehicle = &veh
 		msg.Fields = []presets.Field{
 			{Name: loc.T("notify.field.vehicle", nil), Value: veh.Name},
-			{Name: loc.T("notify.field.odometer", nil), Value: loc.Km(veh.CurrentOdometerKm)},
+			{Name: loc.T("notify.field.odometer", nil), Value: loc.Distance(veh.CurrentOdometerKm, veh.OdometerUnit)},
 		}
 		if rems, err := q.ListRemindersForVehicle(ctx, v.ID); err == nil && len(rems) > 0 {
 			if r, err := loadReminder(ctx, q, rems[0].ID); err == nil {
@@ -47,7 +48,7 @@ func (s *Service) SendTest(ctx context.Context, webhookID int64) (Result, error)
 			}
 		}
 	} else {
-		veh := presets.Vehicle{Name: loc.T("sample.vehicle", nil), CurrentOdometerKm: 123456}
+		veh := presets.Vehicle{Name: loc.T("sample.vehicle", nil), CurrentOdometerKm: 123456, OdometerUnit: "km"}
 		msg.Vehicle = &veh
 	}
 	id, err := s.insert(ctx, q, wh, EventTest, sql.NullInt64{}, msg)

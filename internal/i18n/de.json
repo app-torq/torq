@@ -33,5 +33,6 @@
   "categories.brake_pads_rotors": "Bremsbeläge/-scheiben",
   "categories.timing_belt_chain": "Zahnriemen/Steuerkette",
   "sample.reminder": "Motoröl & Filter",
-  "sample.vehicle": "Beispielfahrzeug"
+  "sample.vehicle": "Beispielfahrzeug",
+  "unit.mi": "mi"
 }

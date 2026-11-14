@@ -30,6 +30,16 @@ func TestFormatting(t *testing.T) {
 	if got := Default.Km(215000); got != "215,000 km" {
 		t.Fatalf("km %q", got)
 	}
+	if got := Default.Distance(215000, "mi"); got != "133,595 mi" {
+		t.Fatalf("mi %q", got)
+	}
+	if got := de.Distance(215000, "km"); got != "215.000 km" {
+		t.Fatalf("distance km %q", got)
+	}
+	us := Locale{Lang: "en", DateFormat: "MM/DD/YYYY", NumberFormat: "point"}
+	if got := us.Date("2026-10-15"); got != "10/15/2026" {
+		t.Fatalf("us date %q", got)
+	}
 	if got := de.T("notify.overdue.title", map[string]string{"reminder": "Öl", "vehicle": "S203"}); got != "Überfällig: Öl — S203" {
 		t.Fatalf("t %q", got)
 	}

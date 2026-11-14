@@ -5,6 +5,7 @@ package i18n
 import (
 	"embed"
 	"encoding/json"
+	"math"
 	"strings"
 	"time"
 
@@ -44,7 +45,7 @@ func Keys(locale string) []string {
 // Locale formats text, numbers and dates for one user.
 type Locale struct {
 	Lang         string // "en" or "de"
-	DateFormat   string // "DD.MM.YYYY" or "YYYY-MM-DD"
+	DateFormat   string // "DD.MM.YYYY", "YYYY-MM-DD" or "MM/DD/YYYY"
 	NumberFormat string // "point" or "comma"
 }
 
@@ -81,14 +82,29 @@ func (l Locale) Number(n int64) string {
 // Km formats a distance, e.g. "215,000 km" or "215.000 km".
 func (l Locale) Km(n int64) string { return l.Number(n) + " km" }
 
+// kmPerMile is the international mile.
+const kmPerMile = 1.609344
+
+// Distance formats a distance stored in km in the given unit ("km" or "mi"),
+// e.g. "133,595 mi". Distances are only converted for display.
+func (l Locale) Distance(km int64, unit string) string {
+	if unit != "mi" {
+		return l.Km(km)
+	}
+	return l.Number(int64(math.Round(float64(km)/kmPerMile))) + " " + l.T("unit.mi", nil)
+}
+
 // Date formats a YYYY-MM-DD date per the chosen pattern.
 func (l Locale) Date(iso string) string {
 	t, err := time.Parse("2006-01-02", iso)
 	if err != nil {
 		return iso
 	}
-	if l.DateFormat == "DD.MM.YYYY" {
+	switch l.DateFormat {
+	case "DD.MM.YYYY":
 		return t.Format("02.01.2006")
+	case "MM/DD/YYYY":
+		return t.Format("01/02/2006")
 	}
 	return t.Format("2006-01-02")
 }

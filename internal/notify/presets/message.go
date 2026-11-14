@@ -29,6 +29,8 @@ type Vehicle struct {
 	Name              string  `json:"name"`
 	LicensePlate      *string `json:"license_plate"`
 	CurrentOdometerKm int64   `json:"current_odometer_km"`
+	// OdometerUnit is "km" or "mi"; distances stay in km.
+	OdometerUnit string `json:"odometer_unit"`
 }
 
 // DigestItem is one reminder listed in a digest.

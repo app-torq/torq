@@ -21,7 +21,7 @@ func TestSessionLifecycle(t *testing.T) {
 	d := testutil.NewDB(t)
 	clk := testutil.FixedClock(t, "2026-10-30")
 	users := &Users{DB: d, Clock: clk}
-	u, err := users.Setup(ctx, NewUser{Username: "marek", DisplayName: "Marek", Password: "long-enough-pw", Locale: "en"})
+	u, err := users.Setup(ctx, NewUser{Username: "marek", DisplayName: "Marek", Password: "long-enough-pw", Locale: "en"}, Formats{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestRevokeAllExcept(t *testing.T) {
 	ctx := context.Background()
 	d := testutil.NewDB(t)
 	clk := testutil.FixedClock(t, "2026-10-30")
-	u, err := (&Users{DB: d, Clock: clk}).Setup(ctx, NewUser{Username: "marek", DisplayName: "Marek", Password: "long-enough-pw", Locale: "en"})
+	u, err := (&Users{DB: d, Clock: clk}).Setup(ctx, NewUser{Username: "marek", DisplayName: "Marek", Password: "long-enough-pw", Locale: "en"}, Formats{})
 	if err != nil {
 		t.Fatal(err)
 	}

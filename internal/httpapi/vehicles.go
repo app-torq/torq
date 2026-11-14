@@ -156,6 +156,10 @@ func (s *Server) createVehicle(w http.ResponseWriter, r *http.Request) error {
 		v.Add("current_odometer_km", "validation.required")
 		return v.Err()
 	}
+	if in.OdometerUnit == nil {
+		unit := currentUser(r).Prefs.DistanceUnit
+		in.OdometerUnit = &unit
+	}
 	v, err := s.vehicles.Create(r.Context(), in.profile(), *in.CurrentOdometerKm, currentUser(r).ID)
 	if err != nil {
 		return err

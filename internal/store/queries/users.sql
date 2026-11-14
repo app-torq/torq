@@ -2,8 +2,10 @@
 SELECT COUNT(*) FROM users;
 
 -- name: CreateUser :one
-INSERT INTO users (username, display_name, role, locale, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO users (username, display_name, role, locale, date_format, number_format, time_format, currency_code,
+                   power_unit, distance_unit, volume_unit, torque_unit, pressure_unit, displacement_unit,
+                   created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING *;
 
 -- name: GetUser :one
@@ -20,8 +22,9 @@ UPDATE users SET username = ?, display_name = ?, updated_at = ? WHERE id = ? RET
 
 -- name: UpdateUserPreferences :one
 UPDATE users
-SET display_name = ?, locale = ?, date_format = ?, number_format = ?,
-    currency_code = ?, currency_symbol = ?, power_unit = ?, updated_at = ?
+SET display_name = ?, locale = ?, date_format = ?, number_format = ?, time_format = ?,
+    currency_code = ?, currency_symbol = ?, power_unit = ?, distance_unit = ?, volume_unit = ?,
+    torque_unit = ?, pressure_unit = ?, displacement_unit = ?, updated_at = ?
 WHERE id = ?
 RETURNING *;
 

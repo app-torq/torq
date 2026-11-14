@@ -168,3 +168,99 @@ func TestVehicleRebuildMigrationKeepsData(t *testing.T) {
 		t.Fatalf("cascade left %d rows (%v)", left, err)
 	}
 }
+
+// TestUnitPreferencesMigrationKeepsData covers migration 00013, which
+// rebuilds users and service_log_items: preferences, references and items
+// survive, new preferences start metric and the new choices are accepted.
+func TestUnitPreferencesMigrationKeepsData(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	d, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	sub, err := fs.Sub(migrationsFS, "migrations")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := goose.NewProvider(goose.DialectSQLite3, d.Writer, sub)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.UpTo(ctx, 12); err != nil {
+		t.Fatal(err)
+	}
+	for _, stmt := range []string{
+		`INSERT INTO users (id, username, display_name, role, locale, date_format, number_format, currency_code, currency_symbol, power_unit, created_at, updated_at)
+		 VALUES (1, 'marek', 'Marek', 'admin', 'de', 'DD.MM.YYYY', 'comma', 'CHF', 'Fr.', 'ps', 'x', 'x')`,
+		`INSERT INTO sessions (user_id, token_hash, created_at, last_seen_at, expires_at) VALUES (1, x'01', 'x', 'x', 'x')`,
+		`INSERT INTO vehicles (id, make, model, current_odometer_km, created_by, created_at, updated_at) VALUES (1, 'BMW', '330d', 1, 1, 'x', 'x')`,
+		`INSERT INTO service_logs (id, vehicle_id, service_date, odometer_km, created_by, created_at, updated_at) VALUES (1, 1, '2026-10-01', 1, 1, 'x', 'x')`,
+		`INSERT INTO service_log_items (service_log_id, category_id, quantity_ml, quantity_unit, cost_type, sort_order) VALUES (1, 1, 6500, 'L', 'fluids', 1)`,
+	} {
+		if _, err := d.Writer.ExecContext(ctx, stmt); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := Migrate(ctx, d, dir); err != nil {
+		t.Fatal(err)
+	}
+
+	var locale, dateFmt, numFmt, currency, power, timeFmt, dist, vol, torque, pressure, disp string
+	var symbol sql.NullString
+	if err := d.Reader.QueryRowContext(ctx, `SELECT locale, date_format, number_format, currency_code, currency_symbol, power_unit,
+		time_format, distance_unit, volume_unit, torque_unit, pressure_unit, displacement_unit FROM users WHERE id = 1`).
+		Scan(&locale, &dateFmt, &numFmt, &currency, &symbol, &power, &timeFmt, &dist, &vol, &torque, &pressure, &disp); err != nil {
+		t.Fatal(err)
+	}
+	if locale != "de" || dateFmt != "DD.MM.YYYY" || numFmt != "comma" || currency != "CHF" || symbol.String != "Fr." || power != "ps" {
+		t.Fatalf("preferences changed: %s %s %s %s %v %s", locale, dateFmt, numFmt, currency, symbol, power)
+	}
+	if timeFmt != "24h" || dist != "km" || vol != "l" || torque != "nm" || pressure != "bar" || disp != "cc" {
+		t.Fatalf("new preferences not metric: %s %s %s %s %s %s", timeFmt, dist, vol, torque, pressure, disp)
+	}
+	var ml int64
+	var unit string
+	if err := d.Reader.QueryRowContext(ctx, "SELECT quantity_ml, quantity_unit FROM service_log_items").Scan(&ml, &unit); err != nil || ml != 6500 || unit != "L" {
+		t.Fatalf("item %d %s (%v)", ml, unit, err)
+	}
+	var defaults string
+	if err := d.Reader.QueryRowContext(ctx, "SELECT default_distance_unit || default_date_format || default_currency_code FROM instance_settings").Scan(&defaults); err != nil || defaults != "kmYYYY-MM-DDEUR" {
+		t.Fatalf("defaults %q (%v)", defaults, err)
+	}
+
+	var fk int
+	if err := d.Writer.QueryRowContext(ctx, "PRAGMA foreign_keys").Scan(&fk); err != nil || fk != 1 {
+		t.Fatalf("foreign_keys = %d (%v)", fk, err)
+	}
+	for _, stmt := range []string{
+		"UPDATE users SET date_format = 'MM/DD/YYYY', power_unit = 'hp', time_format = '12h', distance_unit = 'mi', volume_unit = 'qt', torque_unit = 'lbft', pressure_unit = 'kpa', displacement_unit = 'ci'",
+		"UPDATE service_log_items SET quantity_ml = 4732, quantity_unit = 'qt'",
+		"UPDATE instance_settings SET default_distance_unit = 'mi', default_volume_unit = 'qt'",
+	} {
+		if _, err := d.Writer.ExecContext(ctx, stmt); err != nil {
+			t.Fatalf("%s: %v", stmt, err)
+		}
+	}
+	for _, stmt := range []string{
+		"UPDATE users SET distance_unit = 'nmi'", "UPDATE users SET date_format = 'DD/MM/YYYY'",
+		"UPDATE service_log_items SET quantity_unit = 'pt'", "UPDATE instance_settings SET default_pressure_unit = 'atm'",
+	} {
+		if _, err := d.Writer.ExecContext(ctx, stmt); err == nil {
+			t.Errorf("CHECK accepted %s", stmt)
+		}
+	}
+	// References into the rebuilt users table still apply.
+	if _, err := d.Writer.ExecContext(ctx, "DELETE FROM users WHERE id = 1"); err != nil {
+		t.Fatal(err)
+	}
+	var sessions int
+	var createdBy sql.NullInt64
+	if err := d.Reader.QueryRowContext(ctx, "SELECT (SELECT count(*) FROM sessions), (SELECT created_by FROM vehicles WHERE id = 1)").Scan(&sessions, &createdBy); err != nil {
+		t.Fatal(err)
+	}
+	if sessions != 0 || createdBy.Valid {
+		t.Fatalf("after user delete: %d sessions, created_by %v", sessions, createdBy)
+	}
+}

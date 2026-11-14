@@ -9,3 +9,18 @@ SET weekly_digest_weekday = ?,
     monthly_digest_hour   = ?
 WHERE id = 1
 RETURNING *;
+
+-- name: UpdateInstanceDefaults :one
+UPDATE instance_settings
+SET default_date_format       = ?,
+    default_number_format     = ?,
+    default_time_format       = ?,
+    default_currency_code     = ?,
+    default_power_unit        = ?,
+    default_distance_unit     = ?,
+    default_volume_unit       = ?,
+    default_torque_unit       = ?,
+    default_pressure_unit     = ?,
+    default_displacement_unit = ?
+WHERE id = 1
+RETURNING *;
