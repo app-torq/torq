@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { api } from '../../lib/api'
 import { queryKeys } from '../../lib/queryKeys'
 import { parseNumber } from '../../lib/format'
+import { vinWarning } from '../../lib/vin'
 import { fieldErrors, useErrorText } from '../../lib/errors'
 import { FUEL_TYPES, type CatalogEngine, type CatalogGeneration, type CatalogModel, type KbaVariant, type Vehicle } from '../../lib/types'
 import { useSession } from '../../app/session'
@@ -164,6 +165,8 @@ function VehicleForm({ vehicle }: { vehicle?: Vehicle }) {
     const details = [g.body ? t(`catalogBody.${g.body}`) : '', y && !g.name.includes(y) ? y : ''].filter(Boolean)
     return details.length > 0 ? `${g.name} (${details.join(', ')})` : g.name
   }
+  const vinIssue = vinWarning(values.vin)
+  const vinHint = vinIssue ? <span className="text-amber-300">{t(`vinWarning.${vinIssue}`)}</span> : undefined
   // Power is entered in kW; with PS preferred, show the PS value as a hint.
   const powerKw = parseNumber(values.power, user.number_format)
   const powerHint = user.power_unit === 'ps' && powerKw != null && powerKw > 0 ? `≈ ${fmt.powerShort(powerKw)}` : undefined
@@ -309,7 +312,7 @@ function VehicleForm({ vehicle }: { vehicle?: Vehicle }) {
             {!vehicle && (
               <NumberField label={t('fields.odometer')} value={values.odometer} onChange={set('odometer')} error={fe.current_odometer_km} unit={t('common:units.km')} decimal={false} />
             )}
-            <TextField label={t('fields.vin')} value={values.vin} onChange={set('vin')} error={fe.vin} maxLength={17} optional />
+            <TextField label={t('fields.vin')} value={values.vin} onChange={set('vin')} error={fe.vin} hint={vinHint} maxLength={32} optional />
             <TextField label={t('fields.licensePlate')} value={values.plate} onChange={set('plate')} error={fe.license_plate} maxLength={16} optional />
           </div>
           <div className="flex gap-2">

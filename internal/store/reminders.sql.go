@@ -51,9 +51,10 @@ func (q *Queries) CountReminderStatesByVehicle(ctx context.Context) ([]CountRemi
 
 const createReminder = `-- name: CreateReminder :one
 INSERT INTO reminders (vehicle_id, service_category_id, title, interval_km, interval_months, interval_days,
-                       lead_km, lead_days, start_date, start_odometer_km, state_changed_at, created_by, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-RETURNING id, vehicle_id, service_category_id, title, interval_km, interval_months, interval_days, lead_km, lead_days, start_date, start_odometer_km, last_done_date, last_done_odometer_km, next_due_km, next_due_date, state, state_trigger, state_changed_at, last_notified_state, paused_at, created_by, created_at, updated_at
+                       lead_km, lead_days, start_date, start_odometer_km, last_done_unknown,
+                       state_changed_at, created_by, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+RETURNING id, vehicle_id, service_category_id, title, interval_km, interval_months, interval_days, lead_km, lead_days, start_date, start_odometer_km, last_done_date, last_done_odometer_km, next_due_km, next_due_date, state, state_trigger, state_changed_at, last_notified_state, paused_at, created_by, created_at, updated_at, last_done_unknown
 `
 
 type CreateReminderParams struct {
@@ -67,6 +68,7 @@ type CreateReminderParams struct {
 	LeadDays          sql.NullInt64
 	StartDate         string
 	StartOdometerKm   int64
+	LastDoneUnknown   int64
 	StateChangedAt    string
 	CreatedBy         sql.NullInt64
 	CreatedAt         string
@@ -85,6 +87,7 @@ func (q *Queries) CreateReminder(ctx context.Context, arg CreateReminderParams) 
 		arg.LeadDays,
 		arg.StartDate,
 		arg.StartOdometerKm,
+		arg.LastDoneUnknown,
 		arg.StateChangedAt,
 		arg.CreatedBy,
 		arg.CreatedAt,
@@ -115,6 +118,7 @@ func (q *Queries) CreateReminder(ctx context.Context, arg CreateReminderParams) 
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.LastDoneUnknown,
 	)
 	return i, err
 }
@@ -129,7 +133,7 @@ func (q *Queries) DeleteReminder(ctx context.Context, id int64) error {
 }
 
 const getReminder = `-- name: GetReminder :one
-SELECT id, vehicle_id, service_category_id, title, interval_km, interval_months, interval_days, lead_km, lead_days, start_date, start_odometer_km, last_done_date, last_done_odometer_km, next_due_km, next_due_date, state, state_trigger, state_changed_at, last_notified_state, paused_at, created_by, created_at, updated_at FROM reminders WHERE id = ?
+SELECT id, vehicle_id, service_category_id, title, interval_km, interval_months, interval_days, lead_km, lead_days, start_date, start_odometer_km, last_done_date, last_done_odometer_km, next_due_km, next_due_date, state, state_trigger, state_changed_at, last_notified_state, paused_at, created_by, created_at, updated_at, last_done_unknown FROM reminders WHERE id = ?
 `
 
 func (q *Queries) GetReminder(ctx context.Context, id int64) (Reminder, error) {
@@ -159,6 +163,7 @@ func (q *Queries) GetReminder(ctx context.Context, id int64) (Reminder, error) {
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.LastDoneUnknown,
 	)
 	return i, err
 }
@@ -190,7 +195,7 @@ func (q *Queries) LatestServiceForCategory(ctx context.Context, arg LatestServic
 }
 
 const listReminders = `-- name: ListReminders :many
-SELECT r.id, r.vehicle_id, r.service_category_id, r.title, r.interval_km, r.interval_months, r.interval_days, r.lead_km, r.lead_days, r.start_date, r.start_odometer_km, r.last_done_date, r.last_done_odometer_km, r.next_due_km, r.next_due_date, r.state, r.state_trigger, r.state_changed_at, r.last_notified_state, r.paused_at, r.created_by, r.created_at, r.updated_at FROM reminders r
+SELECT r.id, r.vehicle_id, r.service_category_id, r.title, r.interval_km, r.interval_months, r.interval_days, r.lead_km, r.lead_days, r.start_date, r.start_odometer_km, r.last_done_date, r.last_done_odometer_km, r.next_due_km, r.next_due_date, r.state, r.state_trigger, r.state_changed_at, r.last_notified_state, r.paused_at, r.created_by, r.created_at, r.updated_at, r.last_done_unknown FROM reminders r
 JOIN vehicles v ON v.id = r.vehicle_id
 WHERE (CAST(?1 AS INTEGER) = 0 OR r.vehicle_id = ?1)
   AND (CAST(?2 AS TEXT) = '' OR r.state = ?2)
@@ -244,6 +249,7 @@ func (q *Queries) ListReminders(ctx context.Context, arg ListRemindersParams) ([
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.LastDoneUnknown,
 		); err != nil {
 			return nil, err
 		}
@@ -259,7 +265,7 @@ func (q *Queries) ListReminders(ctx context.Context, arg ListRemindersParams) ([
 }
 
 const listRemindersForVehicle = `-- name: ListRemindersForVehicle :many
-SELECT id, vehicle_id, service_category_id, title, interval_km, interval_months, interval_days, lead_km, lead_days, start_date, start_odometer_km, last_done_date, last_done_odometer_km, next_due_km, next_due_date, state, state_trigger, state_changed_at, last_notified_state, paused_at, created_by, created_at, updated_at FROM reminders WHERE vehicle_id = ? ORDER BY id
+SELECT id, vehicle_id, service_category_id, title, interval_km, interval_months, interval_days, lead_km, lead_days, start_date, start_odometer_km, last_done_date, last_done_odometer_km, next_due_km, next_due_date, state, state_trigger, state_changed_at, last_notified_state, paused_at, created_by, created_at, updated_at, last_done_unknown FROM reminders WHERE vehicle_id = ? ORDER BY id
 `
 
 func (q *Queries) ListRemindersForVehicle(ctx context.Context, vehicleID int64) ([]Reminder, error) {
@@ -295,6 +301,7 @@ func (q *Queries) ListRemindersForVehicle(ctx context.Context, vehicleID int64) 
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.LastDoneUnknown,
 		); err != nil {
 			return nil, err
 		}
@@ -392,7 +399,7 @@ func (q *Queries) SetReminderEvaluation(ctx context.Context, arg SetReminderEval
 }
 
 const setReminderPaused = `-- name: SetReminderPaused :one
-UPDATE reminders SET paused_at = ?, updated_at = ? WHERE id = ? RETURNING id, vehicle_id, service_category_id, title, interval_km, interval_months, interval_days, lead_km, lead_days, start_date, start_odometer_km, last_done_date, last_done_odometer_km, next_due_km, next_due_date, state, state_trigger, state_changed_at, last_notified_state, paused_at, created_by, created_at, updated_at
+UPDATE reminders SET paused_at = ?, updated_at = ? WHERE id = ? RETURNING id, vehicle_id, service_category_id, title, interval_km, interval_months, interval_days, lead_km, lead_days, start_date, start_odometer_km, last_done_date, last_done_odometer_km, next_due_km, next_due_date, state, state_trigger, state_changed_at, last_notified_state, paused_at, created_by, created_at, updated_at, last_done_unknown
 `
 
 type SetReminderPausedParams struct {
@@ -428,6 +435,7 @@ func (q *Queries) SetReminderPaused(ctx context.Context, arg SetReminderPausedPa
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.LastDoneUnknown,
 	)
 	return i, err
 }
@@ -435,9 +443,9 @@ func (q *Queries) SetReminderPaused(ctx context.Context, arg SetReminderPausedPa
 const updateReminder = `-- name: UpdateReminder :one
 UPDATE reminders
 SET service_category_id = ?, title = ?, interval_km = ?, interval_months = ?, interval_days = ?,
-    lead_km = ?, lead_days = ?, start_date = ?, start_odometer_km = ?, updated_at = ?
+    lead_km = ?, lead_days = ?, start_date = ?, start_odometer_km = ?, last_done_unknown = ?, updated_at = ?
 WHERE id = ?
-RETURNING id, vehicle_id, service_category_id, title, interval_km, interval_months, interval_days, lead_km, lead_days, start_date, start_odometer_km, last_done_date, last_done_odometer_km, next_due_km, next_due_date, state, state_trigger, state_changed_at, last_notified_state, paused_at, created_by, created_at, updated_at
+RETURNING id, vehicle_id, service_category_id, title, interval_km, interval_months, interval_days, lead_km, lead_days, start_date, start_odometer_km, last_done_date, last_done_odometer_km, next_due_km, next_due_date, state, state_trigger, state_changed_at, last_notified_state, paused_at, created_by, created_at, updated_at, last_done_unknown
 `
 
 type UpdateReminderParams struct {
@@ -450,6 +458,7 @@ type UpdateReminderParams struct {
 	LeadDays          sql.NullInt64
 	StartDate         string
 	StartOdometerKm   int64
+	LastDoneUnknown   int64
 	UpdatedAt         string
 	ID                int64
 }
@@ -465,6 +474,7 @@ func (q *Queries) UpdateReminder(ctx context.Context, arg UpdateReminderParams) 
 		arg.LeadDays,
 		arg.StartDate,
 		arg.StartOdometerKm,
+		arg.LastDoneUnknown,
 		arg.UpdatedAt,
 		arg.ID,
 	)
@@ -493,6 +503,7 @@ func (q *Queries) UpdateReminder(ctx context.Context, arg UpdateReminderParams) 
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.LastDoneUnknown,
 	)
 	return i, err
 }

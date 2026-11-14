@@ -50,7 +50,7 @@ func newStore(t *testing.T, maxBytes int64) (*Store, int64) {
 	clk := testutil.FixedClock(t, "2026-10-30")
 	ctx := context.Background()
 	w := store.New(d.Writer)
-	v, err := w.CreateVehicle(ctx, store.CreateVehicleParams{Make: "BMW", Model: "330d", CurrentOdometerKm: 1, CreatedAt: "x", UpdatedAt: "x"})
+	v, err := w.CreateVehicle(ctx, store.CreateVehicleParams{Make: "BMW", Model: "330d", OdometerUnit: "km", CurrentOdometerKm: 1, CreatedAt: "x", UpdatedAt: "x"})
 	if err != nil {
 		t.Fatal(err)
 	}

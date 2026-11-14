@@ -29,7 +29,9 @@
     "leadHint": "Warn this much before the due point.",
     "startDate": "Last done (date)",
     "startOdometer": "Last done (odometer)",
-    "startHint": "Used until a matching service entry exists.",
+    "startHint": "Leave empty to count from today. Used until a matching service entry exists.",
+    "lastDoneUnknown": "Never done / unknown",
+    "lastDoneUnknownHint": "The reminder is due right away until you log the work.",
     "kind": "Type"
   },
   "due": {
@@ -54,7 +56,8 @@
     "or": "or",
     "whicheverFirst": "whichever comes first",
     "baseline": "Last done {{date}} at {{km}}",
-    "baselineStart": "Counting from {{date}} at {{km}}"
+    "baselineStart": "Counting from {{date}} at {{km}}",
+    "neverDone": "Due now: no record of when this was last done"
   },
   "actions": {
     "markDone": "Mark done",

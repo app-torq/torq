@@ -118,6 +118,7 @@ type Reminder struct {
 	CreatedBy          sql.NullInt64
 	CreatedAt          string
 	UpdatedAt          string
+	LastDoneUnknown    int64
 }
 
 type RepairFaultCode struct {
@@ -264,6 +265,8 @@ type Vehicle struct {
 	DisplacementCc    sql.NullInt64
 	PowerKw           sql.NullInt64
 	FuelType          sql.NullString
+	OdometerUnit      string
+	PowerW            sql.NullInt64
 }
 
 type VehicleSpec struct {

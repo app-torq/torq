@@ -92,9 +92,12 @@ type Lead struct {
 }
 
 // Baseline is the last time the work was done (or the manual start point).
+// Unknown marks a start point without a known last service: the work is due
+// at the baseline itself rather than one interval after it.
 type Baseline struct {
-	Date Date
-	Km   int64
+	Date    Date
+	Km      int64
+	Unknown bool
 }
 
 // Due is the next due point; a nil field means that dimension is not tracked.
@@ -103,9 +106,21 @@ type Due struct {
 	Date *Date
 }
 
-// NextDue adds the interval to the baseline.
+// NextDue adds the interval to the baseline, or returns the baseline itself
+// when it is unknown.
 func NextDue(b Baseline, iv Interval) Due {
 	var due Due
+	if b.Unknown {
+		if iv.Km != nil {
+			km := b.Km
+			due.Km = &km
+		}
+		if iv.HasTime() {
+			d := b.Date
+			due.Date = &d
+		}
+		return due
+	}
 	if iv.Km != nil {
 		km := b.Km + *iv.Km
 		due.Km = &km

@@ -50,7 +50,7 @@
     "date": "Gib ein gültiges Datum ein.",
     "future_date": "Darf nicht in der Zukunft liegen.",
     "url": "Gib eine vollständige http(s)-Adresse ein.",
-    "vin": "17 Zeichen, Buchstaben und Ziffern (ohne I, O, Q).",
+    "vin": "1–32 Buchstaben, Ziffern oder Bindestriche.",
     "header_name": "Kein erlaubter Header-Name.",
     "duplicate": "Doppelter Eintrag.",
     "header_value": "Header-Werte dürfen keine Zeilenumbrüche enthalten."

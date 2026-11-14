@@ -21,7 +21,8 @@ const (
 )
 
 // Input defines a reminder. On create, nil leads take defaults and nil
-// intervals on a linked reminder take the category's defaults.
+// intervals on a linked reminder take the category's defaults. A nil
+// LastDoneUnknown means false on create and "unchanged" on update.
 type Input struct {
 	VehicleID         int64
 	ServiceCategoryID *int64
@@ -33,6 +34,14 @@ type Input struct {
 	LeadDays          *int64
 	StartDate         string
 	StartOdometerKm   *int64
+	LastDoneUnknown   *bool
+}
+
+func boolInt64(b *bool) int64 {
+	if b != nil && *b {
+		return 1
+	}
+	return 0
 }
 
 func nullInt(p *int64) sql.NullInt64 {
@@ -146,8 +155,9 @@ func (s *Service) Create(ctx context.Context, in Input, createdBy int64) (store.
 			VehicleID: in.VehicleID, ServiceCategoryID: nullInt(in.ServiceCategoryID), Title: in.Title,
 			IntervalKm: nullInt(in.IntervalKm), IntervalMonths: nullInt(in.IntervalMonths), IntervalDays: nullInt(in.IntervalDays),
 			LeadKm: nullInt(in.LeadKm), LeadDays: nullInt(in.LeadDays),
-			StartDate: in.StartDate, StartOdometerKm: *in.StartOdometerKm, StateChangedAt: now,
-			CreatedBy: sql.NullInt64{Int64: createdBy, Valid: createdBy > 0}, CreatedAt: now, UpdatedAt: now,
+			StartDate: in.StartDate, StartOdometerKm: *in.StartOdometerKm, LastDoneUnknown: boolInt64(in.LastDoneUnknown),
+			StateChangedAt: now,
+			CreatedBy:      sql.NullInt64{Int64: createdBy, Valid: createdBy > 0}, CreatedAt: now, UpdatedAt: now,
 		})
 		if err != nil {
 			return err
@@ -190,6 +200,10 @@ func (s *Service) Update(ctx context.Context, id int64, in Input) (store.Reminde
 			km := cur.StartOdometerKm
 			in.StartOdometerKm = &km
 		}
+		if in.LastDoneUnknown == nil {
+			unknown := cur.LastDoneUnknown == 1
+			in.LastDoneUnknown = &unknown
+		}
 		changedCategory := in.ServiceCategoryID != nil && (!cur.ServiceCategoryID.Valid || cur.ServiceCategoryID.Int64 != *in.ServiceCategoryID)
 		if err := checkCategory(ctx, q, in.ServiceCategoryID, changedCategory); err != nil {
 			return err
@@ -203,7 +217,8 @@ func (s *Service) Update(ctx context.Context, id int64, in Input) (store.Reminde
 			ServiceCategoryID: nullInt(in.ServiceCategoryID), Title: in.Title,
 			IntervalKm: nullInt(in.IntervalKm), IntervalMonths: nullInt(in.IntervalMonths), IntervalDays: nullInt(in.IntervalDays),
 			LeadKm: nullInt(in.LeadKm), LeadDays: nullInt(in.LeadDays),
-			StartDate: in.StartDate, StartOdometerKm: *in.StartOdometerKm, UpdatedAt: clock.Timestamp(s.Clock.Now()), ID: id,
+			StartDate: in.StartDate, StartOdometerKm: *in.StartOdometerKm, LastDoneUnknown: boolInt64(in.LastDoneUnknown),
+			UpdatedAt: clock.Timestamp(s.Clock.Now()), ID: id,
 		}); err != nil {
 			return err
 		}

@@ -190,6 +190,54 @@ func TestTimeBasedAdvancesWithClock(t *testing.T) {
 	}
 }
 
+// TestUnknownLastDoneIsDueImmediately covers issue #11: a reminder for work
+// with no known last service is overdue from the start until it is logged.
+func TestUnknownLastDoneIsDueImmediately(t *testing.T) {
+	f := newFixture(t, 150000)
+	unknown := true
+	brake, err := f.rem.Create(f.ctx, Input{
+		VehicleID: f.vehicleID, Title: "Brake fluid", IntervalMonths: i64(24), LastDoneUnknown: &unknown,
+	}, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if brake.State != "overdue" || brake.StateTrigger.String != "time" || brake.NextDueDate.String != "2026-10-30" || brake.LastDoneUnknown != 1 {
+		t.Fatalf("created: %+v", brake)
+	}
+	if len(f.transitions) != 1 || f.transitions[0].To != "overdue" {
+		t.Fatalf("transitions %+v", f.transitions)
+	}
+	if _, err := f.rem.MarkDone(f.ctx, brake.ID, "", nil); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.reload(t, brake.ID); got.State != "upcoming" || got.NextDueDate.String != "2028-10-30" {
+		t.Fatalf("after done: %+v", got)
+	}
+
+	cat := int64(engineOilCategory)
+	oil, err := f.rem.Create(f.ctx, Input{
+		VehicleID: f.vehicleID, ServiceCategoryID: &cat, IntervalKm: i64(15000), LastDoneUnknown: &unknown,
+	}, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if oil.State != "overdue" || oil.NextDueKm.Int64 != 150000 {
+		t.Fatalf("oil: %+v", oil)
+	}
+	// Update without the flag keeps it.
+	upd, err := f.rem.Update(f.ctx, oil.ID, Input{ServiceCategoryID: &cat, IntervalKm: i64(10000)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if upd.LastDoneUnknown != 1 || upd.State != "overdue" {
+		t.Fatalf("update kept flag: %+v", upd)
+	}
+	f.logOil(t, "2026-10-30", 150100)
+	if got := f.reload(t, oil.ID); got.State != "upcoming" || got.NextDueKm.Int64 != 160100 {
+		t.Fatalf("after service: %+v", got)
+	}
+}
+
 func TestPausedAndArchivedDoNotNotify(t *testing.T) {
 	f := newFixture(t, 214500)
 	r := f.oilReminder(t, "2026-08-01", 205500)

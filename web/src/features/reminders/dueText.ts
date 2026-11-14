@@ -16,6 +16,13 @@ export function intervalText(r: Reminder, t: TFunction, fmt: Formatter): string 
 /** Remaining or exceeded distance/time, e.g. "900 km left · 350 days left". */
 export function remainingText(r: Reminder, t: TFunction, fmt: Formatter): string {
   const parts: string[] = []
+  if (r.baseline.source === 'unknown') {
+    // Due since the start point: say why instead of "0 km left · due today".
+    parts.push(t('reminders:due.neverDone'))
+    if (r.remaining_km !== null && r.remaining_km < 0) parts.push(t('reminders:due.overKm', { value: fmt.km(-r.remaining_km) }))
+    if (r.remaining_days !== null && r.remaining_days < 0) parts.push(t('reminders:due.overDays', { count: -r.remaining_days }))
+    return parts.join(' · ')
+  }
   if (r.remaining_km !== null) {
     parts.push(r.remaining_km >= 0 ? t('reminders:due.remainingKm', { value: fmt.km(r.remaining_km) }) : t('reminders:due.overKm', { value: fmt.km(-r.remaining_km) }))
   }

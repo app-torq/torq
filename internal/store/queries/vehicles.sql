@@ -1,8 +1,8 @@
 -- name: CreateVehicle :one
 INSERT INTO vehicles (make, model, chassis_code, model_year, engine_code, vin, license_plate,
-                      hsn, tsn, displacement_cc, power_kw, fuel_type,
+                      hsn, tsn, displacement_cc, power_kw, power_w, fuel_type, odometer_unit,
                       current_odometer_km, created_by, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING *;
 
 -- name: GetVehicle :one
@@ -20,7 +20,7 @@ ORDER BY archived_at IS NOT NULL, make COLLATE NOCASE, model COLLATE NOCASE, id;
 -- name: UpdateVehicleProfile :one
 UPDATE vehicles
 SET make = ?, model = ?, chassis_code = ?, model_year = ?, engine_code = ?, vin = ?, license_plate = ?,
-    hsn = ?, tsn = ?, displacement_cc = ?, power_kw = ?, fuel_type = ?, updated_at = ?
+    hsn = ?, tsn = ?, displacement_cc = ?, power_kw = ?, power_w = ?, fuel_type = ?, odometer_unit = ?, updated_at = ?
 WHERE id = ?
 RETURNING *;
 

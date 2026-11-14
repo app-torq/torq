@@ -8,7 +8,7 @@ import { fieldErrors, useErrorText } from '../../lib/errors'
 import { vehicleName, type Reminder } from '../../lib/types'
 import { useSession } from '../../app/session'
 import { Button } from '../../components/Button'
-import { FieldPair, SelectField, TextField } from '../../components/Field'
+import { Checkbox, FieldPair, SelectField, TextField } from '../../components/Field'
 import { NumberField } from '../../components/NumberField'
 import { Dialog } from '../../components/Dialog'
 import { ErrorBanner } from '../../components/ui'
@@ -43,6 +43,7 @@ export function ReminderForm({ reminder, vehicleId, onClose }: Props) {
   const [leadDays, setLeadDays] = useState(str(reminder?.lead_days))
   const [startDate, setStartDate] = useState(reminder?.start_date ?? '')
   const [startKm, setStartKm] = useState(str(reminder?.start_odometer_km))
+  const [unknown, setUnknown] = useState(reminder?.last_done_unknown ?? false)
   const [local, setLocal] = useState<Record<string, string>>({})
 
   const save = useMutation({
@@ -87,6 +88,7 @@ export function ReminderForm({ reminder, vehicleId, onClose }: Props) {
       interval_days: timeUnit === 'days' ? time : null,
       start_date: startDate,
       start_odometer_km: int('start_odometer_km', startKm),
+      last_done_unknown: unknown,
     }
     const lk = int('lead_km', leadKm)
     const ld = int('lead_days', leadDays)
@@ -156,8 +158,16 @@ export function ReminderForm({ reminder, vehicleId, onClose }: Props) {
           </FieldPair>
           <NumberField label={t('fields.leadKm')} unit={km} decimal={false} value={leadKm} onChange={setLeadKm} error={fe.lead_km} hint={t('fields.leadHint')} optional />
           <NumberField label={t('fields.leadDays')} unit={t('fields.days')} decimal={false} value={leadDays} onChange={setLeadDays} error={fe.lead_days} optional />
-          <TextField label={t('fields.startDate')} type="date" value={startDate} onChange={setStartDate} error={fe.start_date} hint={t('fields.startHint')} optional />
-          <NumberField label={t('fields.startOdometer')} unit={km} decimal={false} value={startKm} onChange={setStartKm} error={fe.start_odometer_km} optional />
+          <div className="sm:col-span-2">
+            <Checkbox label={t('fields.lastDoneUnknown')} checked={unknown} onChange={setUnknown} />
+            <p className="mt-1 text-xs text-zinc-400">{t('fields.lastDoneUnknownHint')}</p>
+          </div>
+          {!unknown && (
+            <>
+              <TextField label={t('fields.startDate')} type="date" value={startDate} onChange={setStartDate} error={fe.start_date} hint={t('fields.startHint')} optional />
+              <NumberField label={t('fields.startOdometer')} unit={km} decimal={false} value={startKm} onChange={setStartKm} error={fe.start_odometer_km} optional />
+            </>
+          )}
         </div>
       </div>
     </Dialog>

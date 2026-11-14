@@ -37,6 +37,9 @@ const (
 	BaselineServiceLog = "service_log"
 	BaselineMarkDone   = "mark_done"
 	BaselineStart      = "start"
+	// BaselineUnknown is the start point of a reminder whose last service is
+	// unknown; it is due right away.
+	BaselineUnknown = "unknown"
 )
 
 func ptr(n sql.NullInt64) *int64 {
@@ -81,6 +84,9 @@ func resolveBaseline(ctx context.Context, q *store.Queries, r store.Reminder) (e
 	d, err := engine.ParseDate(r.StartDate)
 	if err != nil {
 		return engine.Baseline{}, "", err
+	}
+	if r.LastDoneUnknown == 1 {
+		return engine.Baseline{Date: d, Km: r.StartOdometerKm, Unknown: true}, BaselineUnknown, nil
 	}
 	return engine.Baseline{Date: d, Km: r.StartOdometerKm}, BaselineStart, nil
 }
@@ -136,7 +142,7 @@ func (s *Service) EvaluateVehicle(ctx context.Context, tx *sql.Tx, vehicleID int
 			changedAt = now
 		}
 		lastDate, lastKm := sql.NullString{}, sql.NullInt64{}
-		if source != BaselineStart {
+		if source != BaselineStart && source != BaselineUnknown {
 			lastDate = sql.NullString{String: base.Date.String(), Valid: true}
 			lastKm = sql.NullInt64{Int64: base.Km, Valid: true}
 		}
