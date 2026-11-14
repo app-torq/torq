@@ -81,6 +81,7 @@ type reminderRow struct {
 	Make, Model       string
 	LicensePlate      sql.NullString
 	CurrentOdometerKm int64
+	OdometerUnit      string
 }
 
 func ptrInt(n sql.NullInt64) *int64 {
@@ -131,14 +132,15 @@ func (s *Service) describe(ctx context.Context, q *store.Queries, r reminderRow,
 			}
 		}
 	}
-	veh := presets.Vehicle{ID: r.VehicleID, Name: r.Make + " " + r.Model, LicensePlate: ptrStr(r.LicensePlate), CurrentOdometerKm: r.CurrentOdometerKm}
+	veh := presets.Vehicle{ID: r.VehicleID, Name: r.Make + " " + r.Model, LicensePlate: ptrStr(r.LicensePlate),
+		CurrentOdometerKm: r.CurrentOdometerKm, OdometerUnit: r.OdometerUnit}
 
 	var parts []string
 	if rem.RemainingKm != nil {
 		if *rem.RemainingKm >= 0 {
-			parts = append(parts, loc.T("notify.remaining_km", map[string]string{"value": loc.Km(*rem.RemainingKm)}))
+			parts = append(parts, loc.T("notify.remaining_km", map[string]string{"value": loc.Distance(*rem.RemainingKm, r.OdometerUnit)}))
 		} else {
-			parts = append(parts, loc.T("notify.over_km", map[string]string{"value": loc.Km(-*rem.RemainingKm)}))
+			parts = append(parts, loc.T("notify.over_km", map[string]string{"value": loc.Distance(-*rem.RemainingKm, r.OdometerUnit)}))
 		}
 	}
 	if rem.RemainingDays != nil {
@@ -153,7 +155,7 @@ func (s *Service) describe(ctx context.Context, q *store.Queries, r reminderRow,
 	}
 	var due []string
 	if rem.NextDueKm != nil {
-		due = append(due, loc.T("notify.due_at_km", map[string]string{"value": loc.Km(*rem.NextDueKm)}))
+		due = append(due, loc.T("notify.due_at_km", map[string]string{"value": loc.Distance(*rem.NextDueKm, r.OdometerUnit)}))
 	}
 	if rem.NextDueDate != nil {
 		due = append(due, loc.T("notify.due_on", map[string]string{"value": loc.Date(*rem.NextDueDate)}))
@@ -197,7 +199,7 @@ func (s *Service) reminderMessage(ctx context.Context, q *store.Queries, event s
 		Reminder: &rem, Vehicle: &veh,
 		Fields: []presets.Field{
 			{Name: loc.T("notify.field.vehicle", nil), Value: veh.Name},
-			{Name: loc.T("notify.field.odometer", nil), Value: loc.Km(veh.CurrentOdometerKm)},
+			{Name: loc.T("notify.field.odometer", nil), Value: loc.Distance(veh.CurrentOdometerKm, veh.OdometerUnit)},
 		},
 		SentAt: s.Clock.Now(),
 	}
@@ -214,5 +216,6 @@ func loadReminder(ctx context.Context, q *store.Queries, id int64) (reminderRow,
 			NextDueKm: row.NextDueKm, NextDueDate: row.NextDueDate, State: row.State, StateTrigger: row.StateTrigger,
 		},
 		Make: row.Make, Model: row.Model, LicensePlate: row.LicensePlate, CurrentOdometerKm: row.CurrentOdometerKm,
+		OdometerUnit: row.OdometerUnit,
 	}, nil
 }

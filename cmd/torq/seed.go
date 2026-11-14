@@ -68,7 +68,7 @@ func seedDemo(args []string) error {
 	if required, err := users.SetupRequired(ctx); err != nil {
 		return err
 	} else if required {
-		if _, err := users.Setup(ctx, auth.NewUser{Username: demoUser, DisplayName: "Demo", Password: demoPassword, Locale: "en"}); err != nil {
+		if _, err := users.Setup(ctx, auth.NewUser{Username: demoUser, DisplayName: "Demo", Password: demoPassword, Locale: "en"}, auth.Formats{}); err != nil {
 			return err
 		}
 		fmt.Printf("created admin %q with password %q\n", demoUser, demoPassword)

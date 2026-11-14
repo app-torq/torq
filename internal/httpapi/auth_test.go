@@ -434,6 +434,94 @@ func TestPreferences(t *testing.T) {
 	}
 }
 
+func TestUnitPreferences(t *testing.T) {
+	e := newEnv(t)
+	c := e.admin()
+	var out struct {
+		User userJSON `json:"user"`
+	}
+	c.call(http.MethodGet, "/auth/me", nil, http.StatusOK, &out)
+	if out.User.DistanceUnit != "km" || out.User.VolumeUnit != "l" || out.User.TimeFormat != "24h" || out.User.PowerUnit != "kw" {
+		t.Fatalf("metric defaults %+v", out.User)
+	}
+	c.call(http.MethodPatch, "/me/preferences", map[string]any{
+		"date_format": "MM/DD/YYYY", "time_format": "12h", "power_unit": "hp", "distance_unit": "mi", "volume_unit": "qt",
+		"torque_unit": "lbft", "pressure_unit": "psi", "displacement_unit": "ci",
+	}, http.StatusOK, &out)
+	u := out.User
+	if u.DateFormat != "MM/DD/YYYY" || u.TimeFormat != "12h" || u.PowerUnit != "hp" || u.DistanceUnit != "mi" || u.VolumeUnit != "qt" ||
+		u.TorqueUnit != "lbft" || u.PressureUnit != "psi" || u.DisplacementUnit != "ci" || u.CurrencyCode != "EUR" {
+		t.Fatalf("user %+v", u)
+	}
+	for field, bad := range map[string]string{"distance_unit": "furlong", "pressure_unit": "atm", "time_format": "13h", "power_unit": "bhp"} {
+		if code := c.errorCode(http.MethodPatch, "/me/preferences", map[string]any{field: bad}, http.StatusUnprocessableEntity); code != "validation.failed" {
+			t.Fatalf("%s: code %q", field, code)
+		}
+	}
+
+	// New vehicles read in the creator's distance unit.
+	var v vehicleResp
+	c.call(http.MethodPost, "/vehicles", map[string]any{"make": "Ford", "model": "Mustang", "current_odometer_km": 1609}, http.StatusCreated, &v)
+	if v.Vehicle.OdometerUnit != "mi" {
+		t.Fatalf("vehicle %+v", v.Vehicle)
+	}
+}
+
+func TestInstanceDefaultsApplyToNewUsers(t *testing.T) {
+	e := newEnv(t)
+	adm := e.admin()
+	var inst instanceSettingsJSON
+	adm.call(http.MethodPatch, "/settings/instance", map[string]any{
+		"defaults": map[string]string{"distance_unit": "mi", "currency_code": "usd", "date_format": "MM/DD/YYYY"},
+	}, http.StatusOK, &inst)
+	if inst.Defaults.DistanceUnit != "mi" || inst.Defaults.CurrencyCode != "USD" || inst.Defaults.VolumeUnit != "l" {
+		t.Fatalf("defaults %+v", inst.Defaults)
+	}
+	if code := adm.errorCode(http.MethodPatch, "/settings/instance", map[string]any{"defaults": map[string]string{"volume_unit": "pint"}}, http.StatusUnprocessableEntity); code != "validation.failed" {
+		t.Fatalf("code %q", code)
+	}
+	var created struct {
+		User userJSON `json:"user"`
+	}
+	adm.call(http.MethodPost, "/users", map[string]string{
+		"username": "partner", "display_name": "Partner", "password": testPassword, "role": "member",
+	}, http.StatusCreated, &created)
+	if u := created.User; u.DistanceUnit != "mi" || u.CurrencyCode != "USD" || u.DateFormat != "MM/DD/YYYY" {
+		t.Fatalf("new user %+v", u)
+	}
+	// Existing users keep their preferences.
+	var me struct {
+		User userJSON `json:"user"`
+	}
+	adm.call(http.MethodGet, "/auth/me", nil, http.StatusOK, &me)
+	if me.User.DistanceUnit != "km" {
+		t.Fatalf("admin changed %+v", me.User)
+	}
+}
+
+func TestSetupWithUnits(t *testing.T) {
+	e := newEnv(t)
+	c := e.client()
+	var out meResponse
+	c.call(http.MethodPost, "/setup", map[string]string{
+		"username": "marek", "display_name": "Marek", "password": testPassword,
+		"distance_unit": "mi", "volume_unit": "qt", "torque_unit": "lbft", "pressure_unit": "psi", "displacement_unit": "l", "power_unit": "hp",
+	}, http.StatusCreated, &out)
+	if u := out.User; u.DistanceUnit != "mi" || u.VolumeUnit != "qt" || u.PowerUnit != "hp" || u.DateFormat != "YYYY-MM-DD" {
+		t.Fatalf("admin %+v", u)
+	}
+	var inst instanceSettingsJSON
+	c.call(http.MethodGet, "/settings/instance", nil, http.StatusOK, &inst)
+	if inst.Defaults.DistanceUnit != "mi" || inst.Defaults.TorqueUnit != "lbft" {
+		t.Fatalf("defaults %+v", inst.Defaults)
+	}
+	if code := e.client().errorCode(http.MethodPost, "/setup", map[string]string{
+		"username": "other", "display_name": "Other", "password": testPassword, "distance_unit": "mi",
+	}, http.StatusConflict); code != "setup.already_completed" {
+		t.Fatalf("code %q", code)
+	}
+}
+
 func TestUserAdministration(t *testing.T) {
 	e := newEnv(t)
 	adm := e.admin()

@@ -290,3 +290,25 @@ func TestRetentionKeeps100(t *testing.T) {
 		t.Fatalf("kept %d deliveries", n)
 	}
 }
+
+// TestMessageUsesOdometerUnit checks that the text of a notification shows
+// distances in the vehicle's odometer unit while the JSON fields stay in km.
+func TestMessageUsesOdometerUnit(t *testing.T) {
+	f := setup(t)
+	if _, err := f.veh.Update(f.ctx, f.vid, vehicles.Profile{Make: "Mercedes-Benz", Model: "C 220 CDI", OdometerUnit: "mi"}); err != nil {
+		t.Fatal(err)
+	}
+	wh := f.webhook(t, f.srv.URL, WebhookInput{Enabled: true, DueSoon: true})
+	f.reminder(t)
+	f.odometer(t, 209100) // 900 km = 559 mi left
+	d := f.deliveries(t, wh.ID)
+	if len(d) != 1 {
+		t.Fatalf("deliveries %d", len(d))
+	}
+	body := string(d[0].RequestBody)
+	for _, want := range []string{`"message":"559 mi left (due at 130,488 mi)"`, `"remaining_km":900`, `"odometer_unit":"mi"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("body lacks %s:\n%s", want, body)
+		}
+	}
+}

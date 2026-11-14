@@ -113,6 +113,7 @@ func (s *Service) digestMessage(ctx context.Context, q *store.Queries, event str
 				NextDueKm: row.NextDueKm, NextDueDate: row.NextDueDate, State: row.State, StateTrigger: row.StateTrigger,
 			},
 			Make: row.Make, Model: row.Model, LicensePlate: row.LicensePlate, CurrentOdometerKm: row.CurrentOdometerKm,
+			OdometerUnit: row.OdometerUnit,
 		}
 		rem, veh, line := s.describe(ctx, q, r, loc)
 		item := presets.DigestItem{Reminder: rem, Vehicle: veh, Line: line}

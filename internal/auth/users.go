@@ -77,21 +77,51 @@ func (u *Users) SetupRequired(ctx context.Context) (bool, error) {
 }
 
 // Setup creates the initial administrator. It fails once any user exists.
-func (u *Users) Setup(ctx context.Context, in NewUser) (User, error) {
+// The non-empty fields of formats become the instance defaults, which the
+// administrator starts with like every new user.
+func (u *Users) Setup(ctx context.Context, in NewUser, formats Formats) (User, error) {
 	in.Role = RoleAdmin
 	var created User
 	err := u.DB.WithTx(ctx, func(tx *sql.Tx) error {
-		n, err := store.New(tx).CountUsers(ctx)
+		q := store.New(tx)
+		n, err := q.CountUsers(ctx)
 		if err != nil {
 			return err
 		}
 		if n > 0 {
 			return apperr.Conflict("setup.already_completed", nil)
 		}
+		if formats != (Formats{}) {
+			cur, err := q.GetInstanceSettings(ctx)
+			if err != nil {
+				return err
+			}
+			if _, err := SaveDefaults(ctx, q, OverlayFormats(DefaultsFromStore(cur), formats)); err != nil {
+				return err
+			}
+		}
 		created, err = u.create(ctx, tx, in)
 		return err
 	})
 	return created, err
+}
+
+// OverlayFormats returns base with every non-empty field of f applied.
+func OverlayFormats(base, f Formats) Formats {
+	for _, p := range []struct {
+		dst *string
+		src string
+	}{
+		{&base.DateFormat, f.DateFormat}, {&base.NumberFormat, f.NumberFormat}, {&base.TimeFormat, f.TimeFormat},
+		{&base.CurrencyCode, f.CurrencyCode}, {&base.PowerUnit, f.PowerUnit}, {&base.DistanceUnit, f.DistanceUnit},
+		{&base.VolumeUnit, f.VolumeUnit}, {&base.TorqueUnit, f.TorqueUnit}, {&base.PressureUnit, f.PressureUnit},
+		{&base.DisplacementUnit, f.DisplacementUnit},
+	} {
+		if p.src != "" {
+			*p.dst = p.src
+		}
+	}
+	return base
 }
 
 // Create adds a household user (admin only).
@@ -124,10 +154,17 @@ func (u *Users) create(ctx context.Context, tx *sql.Tx, in NewUser) (User, error
 	if err != nil {
 		return User{}, err
 	}
+	settings, err := q.GetInstanceSettings(ctx)
+	if err != nil {
+		return User{}, err
+	}
+	f := DefaultsFromStore(settings)
 	now := clock.Timestamp(u.Clock.Now())
 	row, err := q.CreateUser(ctx, store.CreateUserParams{
-		Username: in.Username, DisplayName: in.DisplayName, Role: string(in.Role),
-		Locale: in.Locale, CreatedAt: now, UpdatedAt: now,
+		Username: in.Username, DisplayName: in.DisplayName, Role: string(in.Role), Locale: in.Locale,
+		DateFormat: f.DateFormat, NumberFormat: f.NumberFormat, TimeFormat: f.TimeFormat, CurrencyCode: f.CurrencyCode,
+		PowerUnit: f.PowerUnit, DistanceUnit: f.DistanceUnit, VolumeUnit: f.VolumeUnit, TorqueUnit: f.TorqueUnit,
+		PressureUnit: f.PressureUnit, DisplacementUnit: f.DisplacementUnit, CreatedAt: now, UpdatedAt: now,
 	})
 	if err != nil {
 		return User{}, err
@@ -198,11 +235,9 @@ func (u *Users) Update(ctx context.Context, id int64, p UserPatch) (User, error)
 		now := clock.Timestamp(u.Clock.Now())
 		updated = cur
 		if p.DisplayName != nil {
-			updated, err = q.UpdateUserPreferences(ctx, store.UpdateUserPreferencesParams{
-				DisplayName: strings.TrimSpace(*p.DisplayName), Locale: cur.Locale, DateFormat: cur.DateFormat,
-				NumberFormat: cur.NumberFormat, CurrencyCode: cur.CurrencyCode, CurrencySymbol: cur.CurrencySymbol,
-				PowerUnit: cur.PowerUnit, UpdatedAt: now, ID: id,
-			})
+			params := preferencesParams(cur)
+			params.DisplayName, params.UpdatedAt = strings.TrimSpace(*p.DisplayName), now
+			updated, err = q.UpdateUserPreferences(ctx, params)
 			if err != nil {
 				return err
 			}
@@ -321,15 +356,22 @@ func (u *Users) ChangeOwnPassword(ctx context.Context, userID, keepSessionID int
 	})
 }
 
-// PreferencesPatch updates the caller's own display settings; nil fields stay.
+// PreferencesPatch updates the caller's own display settings. Formats holds
+// the format and unit choices; empty fields stay unchanged.
 type PreferencesPatch struct {
 	DisplayName    *string
 	Locale         *string
-	DateFormat     *string
-	NumberFormat   *string
-	CurrencyCode   *string
 	CurrencySymbol *string // "" clears the override
-	PowerUnit      *string
+	Formats        Formats
+}
+
+func preferencesParams(u store.User) store.UpdateUserPreferencesParams {
+	return store.UpdateUserPreferencesParams{
+		DisplayName: u.DisplayName, Locale: u.Locale, DateFormat: u.DateFormat, NumberFormat: u.NumberFormat,
+		TimeFormat: u.TimeFormat, CurrencyCode: u.CurrencyCode, CurrencySymbol: u.CurrencySymbol,
+		PowerUnit: u.PowerUnit, DistanceUnit: u.DistanceUnit, VolumeUnit: u.VolumeUnit, TorqueUnit: u.TorqueUnit,
+		PressureUnit: u.PressureUnit, DisplacementUnit: u.DisplacementUnit, ID: u.ID,
+	}
 }
 
 // UpdatePreferences validates and stores the caller's preferences.
@@ -338,11 +380,8 @@ func (u *Users) UpdatePreferences(ctx context.Context, userID int64, p Preferenc
 	if err != nil {
 		return User{}, err
 	}
-	next := store.UpdateUserPreferencesParams{
-		DisplayName: cur.DisplayName, Locale: cur.Locale, DateFormat: cur.DateFormat, NumberFormat: cur.NumberFormat,
-		CurrencyCode: cur.CurrencyCode, CurrencySymbol: cur.CurrencySymbol, PowerUnit: cur.PowerUnit,
-		UpdatedAt: clock.Timestamp(u.Clock.Now()), ID: userID,
-	}
+	next := preferencesParams(cur)
+	next.UpdatedAt = clock.Timestamp(u.Clock.Now())
 	var v apperr.Validation
 	if p.DisplayName != nil {
 		validateDisplayName(&v, *p.DisplayName)
@@ -352,31 +391,19 @@ func (u *Users) UpdatePreferences(ctx context.Context, userID int64, p Preferenc
 		v.Check(*p.Locale != "en" && *p.Locale != "de", "locale", "validation.invalid_choice")
 		next.Locale = *p.Locale
 	}
-	if p.DateFormat != nil {
-		v.Check(*p.DateFormat != "DD.MM.YYYY" && *p.DateFormat != "YYYY-MM-DD", "date_format", "validation.invalid_choice")
-		next.DateFormat = *p.DateFormat
-	}
-	if p.NumberFormat != nil {
-		v.Check(*p.NumberFormat != "point" && *p.NumberFormat != "comma", "number_format", "validation.invalid_choice")
-		next.NumberFormat = *p.NumberFormat
-	}
-	if p.CurrencyCode != nil {
-		code := strings.ToUpper(strings.TrimSpace(*p.CurrencyCode))
-		v.Check(!currencyCodeRe.MatchString(code), "currency_code", "validation.currency_code")
-		next.CurrencyCode = code
-	}
 	if p.CurrencySymbol != nil {
 		sym := strings.TrimSpace(*p.CurrencySymbol)
 		v.Check(utf8.RuneCountInString(sym) > 5, "currency_symbol", "validation.length")
 		next.CurrencySymbol = sql.NullString{String: sym, Valid: sym != ""}
 	}
-	if p.PowerUnit != nil {
-		v.Check(*p.PowerUnit != "kw" && *p.PowerUnit != "ps", "power_unit", "validation.invalid_choice")
-		next.PowerUnit = *p.PowerUnit
-	}
+	f := OverlayFormats(FromStore(cur).Prefs.Formats, p.Formats)
+	f.Validate(&v, "")
 	if err := v.Err(); err != nil {
 		return User{}, err
 	}
+	next.DateFormat, next.NumberFormat, next.TimeFormat, next.CurrencyCode = f.DateFormat, f.NumberFormat, f.TimeFormat, f.CurrencyCode
+	next.PowerUnit, next.DistanceUnit, next.VolumeUnit = f.PowerUnit, f.DistanceUnit, f.VolumeUnit
+	next.TorqueUnit, next.PressureUnit, next.DisplacementUnit = f.TorqueUnit, f.PressureUnit, f.DisplacementUnit
 	row, err := store.New(u.DB.Writer).UpdateUserPreferences(ctx, next)
 	if err != nil {
 		return User{}, err

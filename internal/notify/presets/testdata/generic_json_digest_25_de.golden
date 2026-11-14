@@ -17,7 +17,8 @@ Content-Type: application/json
           "current_odometer_km": 225350,
           "id": 1,
           "license_plate": "B-TQ 646",
-          "name": "Mercedes-Benz C 220 CDI"
+          "name": "Mercedes-Benz C 220 CDI",
+          "odometer_unit": "km"
         }
       },
       {
@@ -33,7 +34,8 @@ Content-Type: application/json
           "current_odometer_km": 225350,
           "id": 1,
           "license_plate": "B-TQ 646",
-          "name": "Mercedes-Benz C 220 CDI"
+          "name": "Mercedes-Benz C 220 CDI",
+          "odometer_unit": "km"
         }
       },
       {
@@ -49,7 +51,8 @@ Content-Type: application/json
           "current_odometer_km": 225350,
           "id": 1,
           "license_plate": "B-TQ 646",
-          "name": "Mercedes-Benz C 220 CDI"
+          "name": "Mercedes-Benz C 220 CDI",
+          "odometer_unit": "km"
         }
       },
       {
@@ -65,7 +68,8 @@ Content-Type: application/json
           "current_odometer_km": 225350,
           "id": 1,
           "license_plate": "B-TQ 646",
-          "name": "Mercedes-Benz C 220 CDI"
+          "name": "Mercedes-Benz C 220 CDI",
+          "odometer_unit": "km"
         }
       },
       {
@@ -81,7 +85,8 @@ Content-Type: application/json
           "current_odometer_km": 225350,
           "id": 1,
           "license_plate": "B-TQ 646",
-          "name": "Mercedes-Benz C 220 CDI"
+          "name": "Mercedes-Benz C 220 CDI",
+          "odometer_unit": "km"
         }
       },
       {
@@ -97,7 +102,8 @@ Content-Type: application/json
           "current_odometer_km": 225350,
           "id": 1,
           "license_plate": "B-TQ 646",
-          "name": "Mercedes-Benz C 220 CDI"
+          "name": "Mercedes-Benz C 220 CDI",
+          "odometer_unit": "km"
         }
       },
       {
@@ -113,7 +119,8 @@ Content-Type: application/json
           "current_odometer_km": 225350,
           "id": 1,
           "license_plate": "B-TQ 646",
-          "name": "Mercedes-Benz C 220 CDI"
+          "name": "Mercedes-Benz C 220 CDI",
+          "odometer_unit": "km"
         }
       },
       {
@@ -129,7 +136,8 @@ Content-Type: application/json
           "current_odometer_km": 225350,
           "id": 1,
           "license_plate": "B-TQ 646",
-          "name": "Mercedes-Benz C 220 CDI"
+          "name": "Mercedes-Benz C 220 CDI",
+          "odometer_unit": "km"
         }
       },
       {
@@ -145,7 +153,8 @@ Content-Type: application/json
           "current_odometer_km": 225350,
           "id": 1,
           "license_plate": "B-TQ 646",
-          "name": "Mercedes-Benz C 220 CDI"
+          "name": "Mercedes-Benz C 220 CDI",
+          "odometer_unit": "km"
         }
       },
       {
@@ -161,7 +170,8 @@ Content-Type: application/json
           "current_odometer_km": 225350,
           "id": 1,
           "license_plate": "B-TQ 646",
-          "name": "Mercedes-Benz C 220 CDI"
+          "name": "Mercedes-Benz C 220 CDI",
+          "odometer_unit": "km"
         }
       },
       {
@@ -177,7 +187,8 @@ Content-Type: application/json
           "current_odometer_km": 225350,
           "id": 1,
           "license_plate": "B-TQ 646",
-          "name": "Mercedes-Benz C 220 CDI"
+          "name": "Mercedes-Benz C 220 CDI",
+          "odometer_unit": "km"
         }
       },
       {
@@ -193,7 +204,8 @@ Content-Type: application/json
           "current_odometer_km": 225350,
           "id": 1,
           "license_plate": "B-TQ 646",
-          "name": "Mercedes-Benz C 220 CDI"
+          "name": "Mercedes-Benz C 220 CDI",
+          "odometer_unit": "km"
         }
       },
       {
@@ -209,7 +221,8 @@ Content-Type: application/json
           "current_odometer_km": 225350,
           "id": 1,
           "license_plate": "B-TQ 646",
-          "name": "Mercedes-Benz C 220 CDI"
+          "name": "Mercedes-Benz C 220 CDI",
+          "odometer_unit": "km"
         }
       },
       {
@@ -225,7 +238,8 @@ Content-Type: application/json
           "current_odometer_km": 225350,
           "id": 1,
           "license_plate": "B-TQ 646",
-          "name": "Mercedes-Benz C 220 CDI"
+          "name": "Mercedes-Benz C 220 CDI",
+          "odometer_unit": "km"
         }
       },
       {
@@ -241,7 +255,8 @@ Content-Type: application/json
           "current_odometer_km": 225350,
           "id": 1,
           "license_plate": "B-TQ 646",
-          "name": "Mercedes-Benz C 220 CDI"
+          "name": "Mercedes-Benz C 220 CDI",
+          "odometer_unit": "km"
         }
       },
       {
@@ -257,7 +272,8 @@ Content-Type: application/json
           "current_odometer_km": 225350,
           "id": 1,
           "license_plate": "B-TQ 646",
-          "name": "Mercedes-Benz C 220 CDI"
+          "name": "Mercedes-Benz C 220 CDI",
+          "odometer_unit": "km"
         }
       },
       {
@@ -273,7 +289,8 @@ Content-Type: application/json
           "current_odometer_km": 225350,
           "id": 1,
           "license_plate": "B-TQ 646",
-          "name": "Mercedes-Benz C 220 CDI"
+          "name": "Mercedes-Benz C 220 CDI",
+          "odometer_unit": "km"
         }
       },
       {
@@ -289,7 +306,8 @@ Content-Type: application/json
           "current_odometer_km": 225350,
           "id": 1,
           "license_plate": "B-TQ 646",
-          "name": "Mercedes-Benz C 220 CDI"
+          "name": "Mercedes-Benz C 220 CDI",
+          "odometer_unit": "km"
         }
       },
       {
@@ -305,7 +323,8 @@ Content-Type: application/json
           "current_odometer_km": 225350,
           "id": 1,
           "license_plate": "B-TQ 646",
-          "name": "Mercedes-Benz C 220 CDI"
+          "name": "Mercedes-Benz C 220 CDI",
+          "odometer_unit": "km"
         }
       },
       {
@@ -321,7 +340,8 @@ Content-Type: application/json
           "current_odometer_km": 225350,
           "id": 1,
           "license_plate": "B-TQ 646",
-          "name": "Mercedes-Benz C 220 CDI"
+          "name": "Mercedes-Benz C 220 CDI",
+          "odometer_unit": "km"
         }
       },
       {
@@ -337,7 +357,8 @@ Content-Type: application/json
           "current_odometer_km": 225350,
           "id": 1,
           "license_plate": "B-TQ 646",
-          "name": "Mercedes-Benz C 220 CDI"
+          "name": "Mercedes-Benz C 220 CDI",
+          "odometer_unit": "km"
         }
       },
       {
@@ -353,7 +374,8 @@ Content-Type: application/json
           "current_odometer_km": 225350,
           "id": 1,
           "license_plate": "B-TQ 646",
-          "name": "Mercedes-Benz C 220 CDI"
+          "name": "Mercedes-Benz C 220 CDI",
+          "odometer_unit": "km"
         }
       },
       {
@@ -369,7 +391,8 @@ Content-Type: application/json
           "current_odometer_km": 225350,
           "id": 1,
           "license_plate": "B-TQ 646",
-          "name": "Mercedes-Benz C 220 CDI"
+          "name": "Mercedes-Benz C 220 CDI",
+          "odometer_unit": "km"
         }
       },
       {
@@ -385,7 +408,8 @@ Content-Type: application/json
           "current_odometer_km": 225350,
           "id": 1,
           "license_plate": "B-TQ 646",
-          "name": "Mercedes-Benz C 220 CDI"
+          "name": "Mercedes-Benz C 220 CDI",
+          "odometer_unit": "km"
         }
       },
       {
@@ -401,7 +425,8 @@ Content-Type: application/json
           "current_odometer_km": 225350,
           "id": 1,
           "license_plate": "B-TQ 646",
-          "name": "Mercedes-Benz C 220 CDI"
+          "name": "Mercedes-Benz C 220 CDI",
+          "odometer_unit": "km"
         }
       }
     ],

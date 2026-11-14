@@ -11,25 +11,52 @@ import (
 	"github.com/app-torq/torq/internal/auth/local"
 )
 
+// formatsJSON carries the format and unit preferences. In requests an
+// omitted (empty) field stays unchanged.
+type formatsJSON struct {
+	DateFormat       string `json:"date_format"`
+	NumberFormat     string `json:"number_format"`
+	TimeFormat       string `json:"time_format"`
+	CurrencyCode     string `json:"currency_code"`
+	PowerUnit        string `json:"power_unit"`
+	DistanceUnit     string `json:"distance_unit"`
+	VolumeUnit       string `json:"volume_unit"`
+	TorqueUnit       string `json:"torque_unit"`
+	PressureUnit     string `json:"pressure_unit"`
+	DisplacementUnit string `json:"displacement_unit"`
+}
+
+func toFormatsJSON(f auth.Formats) formatsJSON {
+	return formatsJSON{
+		DateFormat: f.DateFormat, NumberFormat: f.NumberFormat, TimeFormat: f.TimeFormat, CurrencyCode: f.CurrencyCode,
+		PowerUnit: f.PowerUnit, DistanceUnit: f.DistanceUnit, VolumeUnit: f.VolumeUnit, TorqueUnit: f.TorqueUnit,
+		PressureUnit: f.PressureUnit, DisplacementUnit: f.DisplacementUnit,
+	}
+}
+
+func (f formatsJSON) formats() auth.Formats {
+	return auth.Formats{
+		DateFormat: f.DateFormat, NumberFormat: f.NumberFormat, TimeFormat: f.TimeFormat, CurrencyCode: f.CurrencyCode,
+		PowerUnit: f.PowerUnit, DistanceUnit: f.DistanceUnit, VolumeUnit: f.VolumeUnit, TorqueUnit: f.TorqueUnit,
+		PressureUnit: f.PressureUnit, DisplacementUnit: f.DisplacementUnit,
+	}
+}
+
 type userJSON struct {
 	ID             int64   `json:"id"`
 	Username       string  `json:"username"`
 	DisplayName    string  `json:"display_name"`
 	Role           string  `json:"role"`
 	Locale         string  `json:"locale"`
-	DateFormat     string  `json:"date_format"`
-	NumberFormat   string  `json:"number_format"`
-	CurrencyCode   string  `json:"currency_code"`
 	CurrencySymbol *string `json:"currency_symbol"`
-	PowerUnit      string  `json:"power_unit"`
 	Disabled       bool    `json:"disabled"`
+	formatsJSON
 }
 
 func toUserJSON(u auth.User) userJSON {
 	out := userJSON{
 		ID: u.ID, Username: u.Username, DisplayName: u.DisplayName, Role: string(u.Role),
-		Locale: u.Prefs.Locale, DateFormat: u.Prefs.DateFormat, NumberFormat: u.Prefs.NumberFormat,
-		CurrencyCode: u.Prefs.CurrencyCode, PowerUnit: u.Prefs.PowerUnit, Disabled: u.Disabled,
+		Locale: u.Prefs.Locale, Disabled: u.Disabled, formatsJSON: toFormatsJSON(u.Prefs.Formats),
 	}
 	if u.Prefs.CurrencySymbol != "" {
 		sym := u.Prefs.CurrencySymbol
@@ -102,13 +129,14 @@ func (s *Server) setup(w http.ResponseWriter, r *http.Request) error {
 		Password    string `json:"password"`
 		Locale      string `json:"locale"`
 		signIn
+		formatsJSON
 	}
 	if err := decodeJSON(w, r, &in); err != nil {
 		return err
 	}
 	user, err := s.users.Setup(r.Context(), auth.NewUser{
 		Username: in.Username, DisplayName: in.DisplayName, Password: in.Password, Locale: in.Locale,
-	})
+	}, in.formats())
 	if err != nil {
 		return err
 	}
@@ -223,19 +251,14 @@ func (s *Server) updatePreferences(w http.ResponseWriter, r *http.Request) error
 	var in struct {
 		DisplayName    *string `json:"display_name"`
 		Locale         *string `json:"locale"`
-		DateFormat     *string `json:"date_format"`
-		NumberFormat   *string `json:"number_format"`
-		CurrencyCode   *string `json:"currency_code"`
 		CurrencySymbol *string `json:"currency_symbol"`
-		PowerUnit      *string `json:"power_unit"`
+		formatsJSON
 	}
 	if err := decodeJSON(w, r, &in); err != nil {
 		return err
 	}
 	user, err := s.users.UpdatePreferences(r.Context(), currentUser(r).ID, auth.PreferencesPatch{
-		DisplayName: in.DisplayName, Locale: in.Locale, DateFormat: in.DateFormat,
-		NumberFormat: in.NumberFormat, CurrencyCode: in.CurrencyCode, CurrencySymbol: in.CurrencySymbol,
-		PowerUnit: in.PowerUnit,
+		DisplayName: in.DisplayName, Locale: in.Locale, CurrencySymbol: in.CurrencySymbol, Formats: in.formats(),
 	})
 	if err != nil {
 		return err

@@ -48,7 +48,10 @@ type HistoryVehicle struct {
 	TSN               *string `json:"tsn"`
 	DisplacementCC    *int64  `json:"displacement_cc"`
 	PowerKW           *int64  `json:"power_kw"`
+	PowerW            *int64  `json:"power_w"`
 	FuelType          *string `json:"fuel_type"`
+	// OdometerUnit is how the vehicle's odometer reads; distances stay in km.
+	OdometerUnit string `json:"odometer_unit"`
 }
 
 type HistoryEntry struct {
@@ -167,7 +170,8 @@ func (s *Service) History(ctx context.Context, vehicleID int64, opt ExportOption
 		Schema: "torq.vehicle-history/v1",
 		Vehicle: HistoryVehicle{ID: v.ID, Make: v.Make, Model: v.Model, ChassisCode: v.ChassisCode, ModelYear: ptrI(v.ModelYear),
 			EngineCode: v.EngineCode, VIN: ptrS(v.Vin), LicensePlate: ptrS(v.LicensePlate), CurrentOdometerKm: v.CurrentOdometerKm,
-			HSN: ptrS(v.Hsn), TSN: ptrS(v.Tsn), DisplacementCC: ptrI(v.DisplacementCc), PowerKW: ptrI(v.PowerKw), FuelType: ptrS(v.FuelType)},
+			HSN: ptrS(v.Hsn), TSN: ptrS(v.Tsn), DisplacementCC: ptrI(v.DisplacementCc), PowerKW: ptrI(v.PowerKw), PowerW: ptrI(v.PowerW), FuelType: ptrS(v.FuelType),
+			OdometerUnit: v.OdometerUnit},
 		Specs: map[string]any{
 			"engine_oil_viscosity": spec.EngineOilViscosity, "engine_oil_spec": spec.EngineOilSpec, "engine_oil_capacity_ml": ptrI(spec.EngineOilCapacityMl),
 			"transmission_fluid_spec": spec.TransmissionFluidSpec, "transmission_fluid_capacity_ml": ptrI(spec.TransmissionFluidCapacityMl),
@@ -312,14 +316,16 @@ func money(cents *int64) string {
 	return fmt.Sprintf("%s%d.%02d", sign, c/100, c%100)
 }
 
+// qty returns the quantity in metric units: mL when it was entered in mL,
+// otherwise L (including amounts entered in US units).
 func qty(ml *int64, unit *string) (string, string) {
 	if ml == nil || unit == nil {
 		return "", ""
 	}
-	if *unit == "L" {
-		return strconv.FormatFloat(float64(*ml)/1000, 'f', -1, 64), "L"
+	if *unit == "mL" {
+		return strconv.FormatInt(*ml, 10), "mL"
 	}
-	return strconv.FormatInt(*ml, 10), "mL"
+	return strconv.FormatFloat(float64(*ml)/1000, 'f', -1, 64), "L"
 }
 
 // neutralize prefixes text cells a spreadsheet would run as a formula

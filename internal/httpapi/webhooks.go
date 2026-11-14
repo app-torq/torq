@@ -1,9 +1,11 @@
 package httpapi
 
 import (
+	"database/sql"
 	"net/http"
 
 	"github.com/app-torq/torq/internal/apperr"
+	"github.com/app-torq/torq/internal/auth"
 	"github.com/app-torq/torq/internal/notify"
 	"github.com/app-torq/torq/internal/store"
 )
@@ -226,6 +228,8 @@ type instanceSettingsJSON struct {
 	TimeZone            string `json:"time_zone"`
 	MaxUploadMB         int    `json:"max_upload_mb"`
 	Version             string `json:"version"`
+	// Defaults are the formats and units new users start with.
+	Defaults formatsJSON `json:"defaults"`
 }
 
 func (s *Server) instanceSettingsOut(c store.InstanceSetting) instanceSettingsJSON {
@@ -233,7 +237,7 @@ func (s *Server) instanceSettingsOut(c store.InstanceSetting) instanceSettingsJS
 		WeeklyDigestWeekday: c.WeeklyDigestWeekday, WeeklyDigestHour: c.WeeklyDigestHour,
 		MonthlyDigestDay: c.MonthlyDigestDay, MonthlyDigestHour: c.MonthlyDigestHour,
 		BaseURLConfigured: s.Config.BaseURL != "", TimeZone: s.Clock.Now().Location().String(),
-		MaxUploadMB: s.Config.MaxUploadMB, Version: s.Version,
+		MaxUploadMB: s.Config.MaxUploadMB, Version: s.Version, Defaults: toFormatsJSON(auth.DefaultsFromStore(c)),
 	}
 }
 
@@ -252,11 +256,12 @@ func (s *Server) patchInstanceSettings(w http.ResponseWriter, r *http.Request) e
 		return err
 	}
 	in := struct {
-		WeeklyDigestWeekday int64 `json:"weekly_digest_weekday"`
-		WeeklyDigestHour    int64 `json:"weekly_digest_hour"`
-		MonthlyDigestDay    int64 `json:"monthly_digest_day"`
-		MonthlyDigestHour   int64 `json:"monthly_digest_hour"`
-	}{cur.WeeklyDigestWeekday, cur.WeeklyDigestHour, cur.MonthlyDigestDay, cur.MonthlyDigestHour}
+		WeeklyDigestWeekday int64        `json:"weekly_digest_weekday"`
+		WeeklyDigestHour    int64        `json:"weekly_digest_hour"`
+		MonthlyDigestDay    int64        `json:"monthly_digest_day"`
+		MonthlyDigestHour   int64        `json:"monthly_digest_hour"`
+		Defaults            *formatsJSON `json:"defaults"`
+	}{cur.WeeklyDigestWeekday, cur.WeeklyDigestHour, cur.MonthlyDigestDay, cur.MonthlyDigestHour, nil}
 	if err := decodeJSON(w, r, &in); err != nil {
 		return err
 	}
@@ -268,9 +273,23 @@ func (s *Server) patchInstanceSettings(w http.ResponseWriter, r *http.Request) e
 	if err := v.Err(); err != nil {
 		return err
 	}
-	c, err := store.New(s.DB.Writer).UpdateInstanceSettings(r.Context(), store.UpdateInstanceSettingsParams{
-		WeeklyDigestWeekday: in.WeeklyDigestWeekday, WeeklyDigestHour: in.WeeklyDigestHour,
-		MonthlyDigestDay: in.MonthlyDigestDay, MonthlyDigestHour: in.MonthlyDigestHour,
+	var c store.InstanceSetting
+	err = s.DB.WithTx(r.Context(), func(tx *sql.Tx) error {
+		q := store.New(tx)
+		if in.Defaults != nil {
+			// Omitted fields keep the current defaults.
+			f := in.Defaults.formats()
+			base := auth.DefaultsFromStore(cur)
+			if _, err := auth.SaveDefaults(r.Context(), q, auth.OverlayFormats(base, f)); err != nil {
+				return err
+			}
+		}
+		var err error
+		c, err = q.UpdateInstanceSettings(r.Context(), store.UpdateInstanceSettingsParams{
+			WeeklyDigestWeekday: in.WeeklyDigestWeekday, WeeklyDigestHour: in.WeeklyDigestHour,
+			MonthlyDigestDay: in.MonthlyDigestDay, MonthlyDigestHour: in.MonthlyDigestHour,
+		})
+		return err
 	})
 	if err != nil {
 		return err

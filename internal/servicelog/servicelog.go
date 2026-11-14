@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -36,13 +37,17 @@ type Service struct {
 	RemoveFiles func(keys []string)
 }
 
+// QuantityUnits are the units a quantity can be entered in. The amount is
+// always stored in mL; the unit only decides how it is shown.
+var QuantityUnits = []string{"L", "mL", "qt", "gal", "fl_oz"}
+
 // ItemInput is one category worked on in a session.
 type ItemInput struct {
 	CategoryID            int64
 	Brand                 string
 	Specification         string
 	QuantityMl            *int64
-	QuantityUnit          string // "L" or "mL"; required when QuantityMl is set
+	QuantityUnit          string // the unit it was entered in (QuantityUnits); required when QuantityMl is set
 	OEMPartNumber         string
 	AftermarketPartNumber string
 	CostCents             *int64
@@ -124,7 +129,7 @@ func (s *Service) validate(ctx context.Context, q *store.Queries, in *Input) err
 		v.Check(it.CostType != CostParts && it.CostType != CostFluids, prefix+"cost_type", "validation.invalid_choice")
 		if it.QuantityMl != nil {
 			v.Check(*it.QuantityMl <= 0, prefix+"quantity_ml", "validation.positive")
-			v.Check(it.QuantityUnit != "L" && it.QuantityUnit != "mL", prefix+"quantity_unit", "validation.invalid_choice")
+			v.Check(!slices.Contains(QuantityUnits, it.QuantityUnit), prefix+"quantity_unit", "validation.invalid_choice")
 		} else {
 			it.QuantityUnit = ""
 		}

@@ -76,11 +76,21 @@ type CatalogVehicle struct {
 }
 
 type InstanceSetting struct {
-	ID                  int64
-	WeeklyDigestWeekday int64
-	WeeklyDigestHour    int64
-	MonthlyDigestDay    int64
-	MonthlyDigestHour   int64
+	ID                      int64
+	WeeklyDigestWeekday     int64
+	WeeklyDigestHour        int64
+	MonthlyDigestDay        int64
+	MonthlyDigestHour       int64
+	DefaultDateFormat       string
+	DefaultNumberFormat     string
+	DefaultTimeFormat       string
+	DefaultCurrencyCode     string
+	DefaultPowerUnit        string
+	DefaultDistanceUnit     string
+	DefaultVolumeUnit       string
+	DefaultTorqueUnit       string
+	DefaultPressureUnit     string
+	DefaultDisplacementUnit string
 }
 
 type OdometerReading struct {
@@ -220,19 +230,25 @@ type Session struct {
 }
 
 type User struct {
-	ID             int64
-	Username       string
-	DisplayName    string
-	Role           string
-	Locale         string
-	DateFormat     string
-	NumberFormat   string
-	CurrencyCode   string
-	CurrencySymbol sql.NullString
-	DisabledAt     sql.NullString
-	CreatedAt      string
-	UpdatedAt      string
-	PowerUnit      string
+	ID               int64
+	Username         string
+	DisplayName      string
+	Role             string
+	Locale           string
+	DateFormat       string
+	NumberFormat     string
+	CurrencyCode     string
+	CurrencySymbol   sql.NullString
+	DisabledAt       sql.NullString
+	CreatedAt        string
+	UpdatedAt        string
+	PowerUnit        string
+	TimeFormat       string
+	DistanceUnit     string
+	VolumeUnit       string
+	TorqueUnit       string
+	PressureUnit     string
+	DisplacementUnit string
 }
 
 type UserIdentity struct {

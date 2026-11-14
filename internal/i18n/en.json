@@ -33,5 +33,6 @@
   "categories.brake_pads_rotors": "Brake Pads/Rotors",
   "categories.timing_belt_chain": "Timing Belt/Chain",
   "sample.reminder": "Engine Oil & Filter",
-  "sample.vehicle": "Example vehicle"
+  "sample.vehicle": "Example vehicle",
+  "unit.mi": "mi"
 }
