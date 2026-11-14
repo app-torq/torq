@@ -44,6 +44,22 @@ func TestNextDue(t *testing.T) {
 	}
 }
 
+func TestNextDueUnknownBaseline(t *testing.T) {
+	b := Baseline{Date: MustDate("2026-10-15"), Km: 215000, Unknown: true}
+	d := NextDue(b, Interval{Km: i64(10000), Months: i64(24)})
+	if *d.Km != 215000 || d.Date.String() != "2026-10-15" {
+		t.Fatalf("composite: %+v", d)
+	}
+	d = NextDue(b, Interval{Days: i64(30)})
+	if d.Km != nil || d.Date.String() != "2026-10-15" {
+		t.Fatalf("days-only: %+v", d)
+	}
+	st := Evaluate(NextDue(b, Interval{Months: i64(24)}), Lead{Days: i64(30)}, 215000, MustDate("2026-10-15"))
+	if st.State != Overdue || st.Trigger != TriggerTime || *st.RemainingDays != 0 {
+		t.Fatalf("evaluate: %+v", st)
+	}
+}
+
 func TestEvaluateKmBoundaries(t *testing.T) {
 	due := Due{Km: i64(225000)}
 	lead := Lead{Km: i64(1000)}

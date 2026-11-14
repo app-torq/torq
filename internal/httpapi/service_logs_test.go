@@ -194,3 +194,24 @@ func TestRemindersAndDashboard(t *testing.T) {
 	}
 	c.call(http.MethodDelete, "/reminders/"+itoa(rem.Reminder.ID), nil, http.StatusNoContent, nil)
 }
+
+func TestReminderLastDoneUnknown(t *testing.T) {
+	e := newEnv(t)
+	c := e.admin()
+	v := createVehicle(t, c, 100000)
+	var rem struct {
+		Reminder reminderJSON `json:"reminder"`
+	}
+	c.call(http.MethodPost, "/reminders", map[string]any{"vehicle_id": v.ID, "title": "Brake fluid", "interval_months": 24, "last_done_unknown": true}, http.StatusCreated, &rem)
+	if rem.Reminder.State != "overdue" || !rem.Reminder.LastDoneUnknown || rem.Reminder.Baseline.Source != "unknown" {
+		t.Fatalf("created %+v", rem.Reminder)
+	}
+	c.call(http.MethodPatch, "/reminders/"+itoa(rem.Reminder.ID), map[string]any{"title": "Brake fluid", "interval_months": 36}, http.StatusOK, &rem)
+	if !rem.Reminder.LastDoneUnknown || rem.Reminder.State != "overdue" {
+		t.Fatalf("flag not kept %+v", rem.Reminder)
+	}
+	c.call(http.MethodPatch, "/reminders/"+itoa(rem.Reminder.ID), map[string]any{"title": "Brake fluid", "interval_months": 36, "last_done_unknown": false}, http.StatusOK, &rem)
+	if rem.Reminder.LastDoneUnknown || rem.Reminder.State != "upcoming" || rem.Reminder.Baseline.Source != "start" {
+		t.Fatalf("flag not cleared %+v", rem.Reminder)
+	}
+}

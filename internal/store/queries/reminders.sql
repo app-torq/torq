@@ -1,7 +1,8 @@
 -- name: CreateReminder :one
 INSERT INTO reminders (vehicle_id, service_category_id, title, interval_km, interval_months, interval_days,
-                       lead_km, lead_days, start_date, start_odometer_km, state_changed_at, created_by, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                       lead_km, lead_days, start_date, start_odometer_km, last_done_unknown,
+                       state_changed_at, created_by, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING *;
 
 -- name: GetReminder :one
@@ -22,7 +23,7 @@ SELECT * FROM reminders WHERE vehicle_id = ? ORDER BY id;
 -- name: UpdateReminder :one
 UPDATE reminders
 SET service_category_id = ?, title = ?, interval_km = ?, interval_months = ?, interval_days = ?,
-    lead_km = ?, lead_days = ?, start_date = ?, start_odometer_km = ?, updated_at = ?
+    lead_km = ?, lead_days = ?, start_date = ?, start_odometer_km = ?, last_done_unknown = ?, updated_at = ?
 WHERE id = ?
 RETURNING *;
 

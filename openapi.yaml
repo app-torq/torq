@@ -5,7 +5,7 @@
 openapi: "3.1.0"
 info:
   title: torq API
-  version: "1"
+  version: "2"
   description: |-
     The REST API of torq, a self-hosted vehicle maintenance and DIY repair tracker. It is used by the web app and the torq mobile app.
 
@@ -855,6 +855,7 @@ paths:
               $ref: "#/components/schemas/VehicleInput"
       x-torq-error-codes:
         - validation.failed
+        - validation.invalid_choice
         - validation.vin
         - vehicle.displacement_out_of_range
         - vehicle.fuel_type_invalid
@@ -3631,6 +3632,7 @@ components:
         - remaining_days
         - remaining_km
         - service_category_id
+        - last_done_unknown
         - start_date
         - start_odometer_km
         - state
@@ -3658,6 +3660,9 @@ components:
           type:
             - integer
             - "null"
+        last_done_unknown:
+          type: boolean
+          description: "The last service is unknown: until one is logged, the reminder is due at its start point."
         lead_km:
           type:
             - integer
@@ -3713,7 +3718,7 @@ components:
           type: integer
         source:
           type: string
-          description: start, service_log or mark_done.
+          description: start, unknown, service_log or mark_done.
     ReminderCounts:
       type: object
       required:
@@ -3743,6 +3748,9 @@ components:
           type:
             - integer
             - "null"
+        last_done_unknown:
+          type: boolean
+          description: "Never done or unknown: the reminder is due at its start point. Defaults to false; omitted on update keeps the current value."
         lead_km:
           type:
             - integer
@@ -4386,7 +4394,9 @@ components:
         - make
         - model
         - model_year
+        - odometer_unit
         - power_kw
+        - power_w
         - reminder_counts
         - tsn
         - updated_at
@@ -4433,10 +4443,19 @@ components:
           type:
             - integer
             - "null"
+        odometer_unit:
+          type: string
+          description: "km or mi: the unit the vehicle's odometer reads in. Distances are always sent in km."
         power_kw:
           type:
             - integer
             - "null"
+          description: Power rounded to whole kW.
+        power_w:
+          type:
+            - integer
+            - "null"
+          description: Power in watts, the precise value behind power_kw.
         reminder_counts:
           $ref: "#/components/schemas/ReminderCounts"
         tsn:
@@ -4449,6 +4468,7 @@ components:
           type:
             - string
             - "null"
+          description: "VIN or chassis number: 1–32 letters, digits or hyphens."
     VehicleInput:
       type: object
       properties:
@@ -4485,10 +4505,19 @@ components:
           type:
             - integer
             - "null"
+        odometer_unit:
+          type: string
+          description: "km or mi. Defaults to the user's distance unit on create."
         power_kw:
           type:
             - integer
             - "null"
+          description: "Power in kW. Ignored when power_w is sent; on update, sending the unchanged value keeps the precise power_w."
+        power_w:
+          type:
+            - integer
+            - "null"
+          description: Power in watts (1–2,000,000). Takes precedence over power_kw.
         tsn:
           type:
             - string
@@ -4497,6 +4526,7 @@ components:
           type:
             - string
             - "null"
+          description: "VIN or chassis number: 1–32 letters, digits or hyphens, upper-cased."
       additionalProperties: false
     VehicleSpecs:
       type: object

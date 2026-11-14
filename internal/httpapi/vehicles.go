@@ -27,8 +27,10 @@ type vehicleJSON struct {
 	TSN               *string        `json:"tsn"`
 	DisplacementCC    *int64         `json:"displacement_cc"`
 	PowerKW           *int64         `json:"power_kw"`
+	PowerW            *int64         `json:"power_w"`
 	FuelType          *string        `json:"fuel_type"`
 	CurrentOdometerKm int64          `json:"current_odometer_km"`
+	OdometerUnit      string         `json:"odometer_unit"`
 	AvatarURL         *string        `json:"avatar_url"`
 	Archived          bool           `json:"archived"`
 	ReminderCounts    reminderCounts `json:"reminder_counts"`
@@ -47,7 +49,8 @@ func (s *Server) toVehicleJSON(v store.Vehicle, x vehicleExtras) vehicleJSON {
 		ID: v.ID, Make: v.Make, Model: v.Model, ChassisCode: v.ChassisCode, ModelYear: intPtr(v.ModelYear),
 		EngineCode: v.EngineCode, VIN: strPtr(v.Vin), LicensePlate: strPtr(v.LicensePlate),
 		HSN: strPtr(v.Hsn), TSN: strPtr(v.Tsn), DisplacementCC: intPtr(v.DisplacementCc), PowerKW: intPtr(v.PowerKw),
-		FuelType: strPtr(v.FuelType), CurrentOdometerKm: v.CurrentOdometerKm, Archived: v.ArchivedAt.Valid,
+		PowerW: intPtr(v.PowerW), FuelType: strPtr(v.FuelType), CurrentOdometerKm: v.CurrentOdometerKm,
+		OdometerUnit: v.OdometerUnit, Archived: v.ArchivedAt.Valid,
 		ReminderCounts: x.counts[v.ID], CreatedAt: v.CreatedAt, UpdatedAt: v.UpdatedAt,
 	}
 	if url, ok := x.avatar[v.ID]; ok {
@@ -92,14 +95,20 @@ type vehicleInput struct {
 	TSN               *string `json:"tsn"`
 	DisplacementCC    *int64  `json:"displacement_cc"`
 	PowerKW           *int64  `json:"power_kw"`
+	PowerW            *int64  `json:"power_w"`
 	FuelType          *string `json:"fuel_type"`
 	CurrentOdometerKm *int64  `json:"current_odometer_km"`
+	OdometerUnit      *string `json:"odometer_unit"`
 }
 
 func (in vehicleInput) profile() vehicles.Profile {
 	p := vehicles.Profile{
 		Make: in.Make, Model: in.Model, ChassisCode: in.ChassisCode, ModelYear: in.ModelYear, EngineCode: in.EngineCode,
-		HSN: in.HSN, TSN: in.TSN, DisplacementCC: in.DisplacementCC, PowerKW: in.PowerKW, FuelType: in.FuelType,
+		HSN: in.HSN, TSN: in.TSN, DisplacementCC: in.DisplacementCC, PowerKW: in.PowerKW, PowerW: in.PowerW,
+		FuelType: in.FuelType,
+	}
+	if in.OdometerUnit != nil {
+		p.OdometerUnit = *in.OdometerUnit
 	}
 	if in.VIN != nil {
 		p.VIN = *in.VIN
@@ -190,10 +199,15 @@ func (s *Server) updateVehicle(w http.ResponseWriter, r *http.Request) error {
 		Make: cur.Make, Model: cur.Model, ChassisCode: cur.ChassisCode, ModelYear: intPtr(cur.ModelYear),
 		EngineCode: cur.EngineCode, VIN: strPtr(cur.Vin), LicensePlate: strPtr(cur.LicensePlate),
 		HSN: strPtr(cur.Hsn), TSN: strPtr(cur.Tsn), DisplacementCC: intPtr(cur.DisplacementCc),
-		PowerKW: intPtr(cur.PowerKw), FuelType: strPtr(cur.FuelType),
+		PowerKW: intPtr(cur.PowerKw), FuelType: strPtr(cur.FuelType), OdometerUnit: &cur.OdometerUnit,
 	}
 	if err := decodeJSON(w, r, &in); err != nil {
 		return err
+	}
+	// A client that only knows power_kw sends back the rounded value; keep the
+	// precise power_w then instead of overwriting it with whole kW.
+	if in.PowerW == nil && in.PowerKW != nil && cur.PowerKw.Valid && *in.PowerKW == cur.PowerKw.Int64 {
+		in.PowerW = intPtr(cur.PowerW)
 	}
 	if in.CurrentOdometerKm != nil {
 		return apperr.BadRequest("vehicle.odometer_use_quick_update")

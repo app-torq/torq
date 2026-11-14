@@ -29,7 +29,9 @@
     "leadHint": "So viel vor dem Fälligkeitspunkt warnen.",
     "startDate": "Zuletzt erledigt (Datum)",
     "startOdometer": "Zuletzt erledigt (km-Stand)",
-    "startHint": "Gilt, bis ein passender Wartungseintrag existiert.",
+    "startHint": "Leer lassen, um ab heute zu zählen. Gilt, bis ein passender Wartungseintrag existiert.",
+    "lastDoneUnknown": "Noch nie erledigt / unbekannt",
+    "lastDoneUnknownHint": "Die Erinnerung ist sofort fällig, bis die Arbeit eingetragen ist.",
     "kind": "Art"
   },
   "due": {
@@ -54,7 +56,8 @@
     "or": "oder",
     "whicheverFirst": "je nachdem, was zuerst eintritt",
     "baseline": "Zuletzt am {{date}} bei {{km}}",
-    "baselineStart": "Gezählt ab {{date}} bei {{km}}"
+    "baselineStart": "Gezählt ab {{date}} bei {{km}}",
+    "neverDone": "Jetzt fällig: nicht bekannt, wann dies zuletzt erledigt wurde"
   },
   "actions": {
     "markDone": "Als erledigt markieren",

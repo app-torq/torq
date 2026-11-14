@@ -50,7 +50,7 @@
     "date": "Enter a valid date.",
     "future_date": "Must not be in the future.",
     "url": "Enter a full http(s) address.",
-    "vin": "17 characters, letters and digits (no I, O or Q).",
+    "vin": "1–32 letters, digits or hyphens.",
     "header_name": "Not an allowed header name.",
     "duplicate": "Duplicate entry.",
     "header_value": "Header values must not contain line breaks."

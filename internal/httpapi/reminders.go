@@ -26,6 +26,7 @@ type reminderJSON struct {
 	LeadDays          *int64       `json:"lead_days"`
 	StartDate         string       `json:"start_date"`
 	StartOdometerKm   int64        `json:"start_odometer_km"`
+	LastDoneUnknown   bool         `json:"last_done_unknown"`
 	Baseline          baselineJSON `json:"baseline"`
 	NextDueKm         *int64       `json:"next_due_km"`
 	NextDueDate       *string      `json:"next_due_date"`
@@ -47,7 +48,7 @@ func toReminderJSON(v reminders.View) reminderJSON {
 		Baseline:  baselineJSON{Date: v.Baseline.Date.String(), OdometerKm: v.Baseline.Km, Source: v.BaselineSource},
 		NextDueKm: intPtr(v.NextDueKm), NextDueDate: strPtr(v.NextDueDate),
 		RemainingKm: v.Status.RemainingKm, RemainingDays: v.Status.RemainingDays,
-		State: v.Status.State, Paused: v.PausedAt.Valid,
+		State: v.Status.State, Paused: v.PausedAt.Valid, LastDoneUnknown: v.LastDoneUnknown == 1,
 	}
 	if v.Status.Trigger != "" {
 		tr := v.Status.Trigger
@@ -108,6 +109,7 @@ type reminderInput struct {
 	LeadDays          *int64 `json:"lead_days"`
 	StartDate         string `json:"start_date"`
 	StartOdometerKm   *int64 `json:"start_odometer_km"`
+	LastDoneUnknown   *bool  `json:"last_done_unknown"`
 }
 
 func (in reminderInput) domain() reminders.Input {
@@ -115,6 +117,7 @@ func (in reminderInput) domain() reminders.Input {
 		VehicleID: in.VehicleID, ServiceCategoryID: in.ServiceCategoryID, Title: in.Title,
 		IntervalKm: in.IntervalKm, IntervalMonths: in.IntervalMonths, IntervalDays: in.IntervalDays,
 		LeadKm: in.LeadKm, LeadDays: in.LeadDays, StartDate: in.StartDate, StartOdometerKm: in.StartOdometerKm,
+		LastDoneUnknown: in.LastDoneUnknown,
 	}
 }
 

@@ -38,9 +38,11 @@ func TestVehicleCRUD(t *testing.T) {
 			Fields map[string]string `json:"fields"`
 		} `json:"error"`
 	}
-	c.call(http.MethodPatch, "/vehicles/"+itoa(v.ID), map[string]any{"vin": "SHORT"}, http.StatusUnprocessableEntity, &fields)
-	if fields.Error.Fields["vin"] != "validation.vin" {
-		t.Fatalf("fields %v", fields.Error.Fields)
+	for _, bad := range []string{"WDB2030081A1234567890123456789012", "JZA80 0012345", "ÄBC"} {
+		c.call(http.MethodPatch, "/vehicles/"+itoa(v.ID), map[string]any{"vin": bad}, http.StatusUnprocessableEntity, &fields)
+		if fields.Error.Fields["vin"] != "validation.vin" {
+			t.Fatalf("vin %q: fields %v", bad, fields.Error.Fields)
+		}
 	}
 
 	var list listResponse[vehicleJSON]
@@ -64,6 +66,67 @@ func TestVehicleCRUD(t *testing.T) {
 	}
 	c.call(http.MethodDelete, "/vehicles/"+itoa(v.ID), map[string]string{"confirm_name": "mercedes-benz c 220 cdi"}, http.StatusNoContent, nil)
 	c.errorCode(http.MethodGet, "/vehicles/"+itoa(v.ID), nil, http.StatusNotFound)
+}
+
+// TestVehicleNonStandardVIN covers chassis numbers and old VINs that are not
+// 17 characters long (issue #10).
+func TestVehicleNonStandardVIN(t *testing.T) {
+	e := newEnv(t)
+	c := e.admin()
+	v := createVehicle(t, c, 1000)
+	for in, want := range map[string]string{"jza80-0012345": "JZA80-0012345", " 1F02H1234 ": "1F02H1234", "X": "X"} {
+		var got vehicleResp
+		c.call(http.MethodPatch, "/vehicles/"+itoa(v.ID), map[string]any{"vin": in}, http.StatusOK, &got)
+		if got.Vehicle.VIN == nil || *got.Vehicle.VIN != want {
+			t.Fatalf("vin %q stored as %v", in, got.Vehicle.VIN)
+		}
+	}
+	var got vehicleResp
+	c.call(http.MethodPatch, "/vehicles/"+itoa(v.ID), map[string]any{"vin": nil}, http.StatusOK, &got)
+	if got.Vehicle.VIN != nil {
+		t.Fatalf("vin not cleared: %v", *got.Vehicle.VIN)
+	}
+}
+
+func TestVehicleOdometerUnitAndPower(t *testing.T) {
+	e := newEnv(t)
+	c := e.admin()
+	v := createVehicle(t, c, 1000)
+	if v.OdometerUnit != "km" || v.PowerKW != nil || v.PowerW != nil {
+		t.Fatalf("defaults %+v", v)
+	}
+	var got vehicleResp
+	// 301 hp = 224,459 W; whole kW alone would read back as 300 hp.
+	c.call(http.MethodPatch, "/vehicles/"+itoa(v.ID), map[string]any{"odometer_unit": "mi", "power_w": 224459}, http.StatusOK, &got)
+	if got.Vehicle.OdometerUnit != "mi" || *got.Vehicle.PowerW != 224459 || *got.Vehicle.PowerKW != 224 {
+		t.Fatalf("patched %+v", got.Vehicle)
+	}
+	// A client that only knows power_kw sends back the rounded value: keep power_w.
+	c.call(http.MethodPatch, "/vehicles/"+itoa(v.ID), map[string]any{"power_kw": 224, "model": "C 220"}, http.StatusOK, &got)
+	if *got.Vehicle.PowerW != 224459 {
+		t.Fatalf("precise power lost: %+v", got.Vehicle)
+	}
+	c.call(http.MethodPatch, "/vehicles/"+itoa(v.ID), map[string]any{"power_kw": 110}, http.StatusOK, &got)
+	if *got.Vehicle.PowerW != 110000 || *got.Vehicle.PowerKW != 110 {
+		t.Fatalf("power_kw change: %+v", got.Vehicle)
+	}
+	c.call(http.MethodPatch, "/vehicles/"+itoa(v.ID), map[string]any{"power_kw": nil}, http.StatusOK, &got)
+	if got.Vehicle.PowerW != nil || got.Vehicle.PowerKW != nil {
+		t.Fatalf("power not cleared: %+v", got.Vehicle)
+	}
+	if code := c.errorCode(http.MethodPatch, "/vehicles/"+itoa(v.ID), map[string]any{"odometer_unit": "furlong"}, http.StatusUnprocessableEntity); code != "validation.failed" {
+		t.Fatalf("code %q", code)
+	}
+	if code := c.errorCode(http.MethodPatch, "/vehicles/"+itoa(v.ID), map[string]any{"power_w": 2000001}, http.StatusUnprocessableEntity); code != "validation.failed" {
+		t.Fatalf("code %q", code)
+	}
+	var created vehicleResp
+	c.call(http.MethodPost, "/vehicles", map[string]any{
+		"make": "Toyota", "model": "Supra", "current_odometer_km": 80467, "odometer_unit": "mi", "power_kw": 206,
+	}, http.StatusCreated, &created)
+	if created.Vehicle.OdometerUnit != "mi" || *created.Vehicle.PowerW != 206000 {
+		t.Fatalf("created %+v", created.Vehicle)
+	}
 }
 
 func TestOdometerEndpoint(t *testing.T) {

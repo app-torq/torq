@@ -292,7 +292,9 @@ export interface Reminder {
   lead_days: number | null
   start_date: string
   start_odometer_km: number
-  baseline: { date: string; odometer_km: number; source: 'service_log' | 'mark_done' | 'start' }
+  /** Never done or unknown: due at the start point until the work is logged. */
+  last_done_unknown: boolean
+  baseline: { date: string; odometer_km: number; source: 'service_log' | 'mark_done' | 'start' | 'unknown' }
   next_due_km: number | null
   next_due_date: string | null
   remaining_km: number | null

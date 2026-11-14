@@ -172,7 +172,7 @@ func (q *Queries) GetDelivery(ctx context.Context, id int64) (WebhookDelivery, e
 }
 
 const getReminderWithVehicle = `-- name: GetReminderWithVehicle :one
-SELECT r.id, r.vehicle_id, r.service_category_id, r.title, r.interval_km, r.interval_months, r.interval_days, r.lead_km, r.lead_days, r.start_date, r.start_odometer_km, r.last_done_date, r.last_done_odometer_km, r.next_due_km, r.next_due_date, r.state, r.state_trigger, r.state_changed_at, r.last_notified_state, r.paused_at, r.created_by, r.created_at, r.updated_at, v.make, v.model, v.license_plate, v.current_odometer_km
+SELECT r.id, r.vehicle_id, r.service_category_id, r.title, r.interval_km, r.interval_months, r.interval_days, r.lead_km, r.lead_days, r.start_date, r.start_odometer_km, r.last_done_date, r.last_done_odometer_km, r.next_due_km, r.next_due_date, r.state, r.state_trigger, r.state_changed_at, r.last_notified_state, r.paused_at, r.created_by, r.created_at, r.updated_at, r.last_done_unknown, v.make, v.model, v.license_plate, v.current_odometer_km
 FROM reminders r
 JOIN vehicles v ON v.id = r.vehicle_id
 WHERE r.id = ?
@@ -202,6 +202,7 @@ type GetReminderWithVehicleRow struct {
 	CreatedBy          sql.NullInt64
 	CreatedAt          string
 	UpdatedAt          string
+	LastDoneUnknown    int64
 	Make               string
 	Model              string
 	LicensePlate       sql.NullString
@@ -235,6 +236,7 @@ func (q *Queries) GetReminderWithVehicle(ctx context.Context, id int64) (GetRemi
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.LastDoneUnknown,
 		&i.Make,
 		&i.Model,
 		&i.LicensePlate,
@@ -355,7 +357,7 @@ func (q *Queries) ListDeliveries(ctx context.Context, arg ListDeliveriesParams) 
 }
 
 const listDueReminders = `-- name: ListDueReminders :many
-SELECT r.id, r.vehicle_id, r.service_category_id, r.title, r.interval_km, r.interval_months, r.interval_days, r.lead_km, r.lead_days, r.start_date, r.start_odometer_km, r.last_done_date, r.last_done_odometer_km, r.next_due_km, r.next_due_date, r.state, r.state_trigger, r.state_changed_at, r.last_notified_state, r.paused_at, r.created_by, r.created_at, r.updated_at, v.make, v.model, v.license_plate, v.current_odometer_km
+SELECT r.id, r.vehicle_id, r.service_category_id, r.title, r.interval_km, r.interval_months, r.interval_days, r.lead_km, r.lead_days, r.start_date, r.start_odometer_km, r.last_done_date, r.last_done_odometer_km, r.next_due_km, r.next_due_date, r.state, r.state_trigger, r.state_changed_at, r.last_notified_state, r.paused_at, r.created_by, r.created_at, r.updated_at, r.last_done_unknown, v.make, v.model, v.license_plate, v.current_odometer_km
 FROM reminders r
 JOIN vehicles v ON v.id = r.vehicle_id
 WHERE r.state IN ('due_soon', 'overdue') AND r.paused_at IS NULL AND v.archived_at IS NULL
@@ -386,6 +388,7 @@ type ListDueRemindersRow struct {
 	CreatedBy          sql.NullInt64
 	CreatedAt          string
 	UpdatedAt          string
+	LastDoneUnknown    int64
 	Make               string
 	Model              string
 	LicensePlate       sql.NullString
@@ -425,6 +428,7 @@ func (q *Queries) ListDueReminders(ctx context.Context) ([]ListDueRemindersRow, 
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.LastDoneUnknown,
 			&i.Make,
 			&i.Model,
 			&i.LicensePlate,

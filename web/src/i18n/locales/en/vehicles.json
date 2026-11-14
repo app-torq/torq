@@ -128,5 +128,9 @@
   "combobox": {
     "useCustom": "Use custom: '{{value}}'",
     "loading": "Loading suggestions…"
+  },
+  "vinWarning": {
+    "nonStandard": "Not a standard 17-character VIN. Fine for chassis numbers of older or JDM vehicles; check for typos otherwise.",
+    "checkDigit": "The check digit (9th character) does not match. Check for typos."
   }
 }

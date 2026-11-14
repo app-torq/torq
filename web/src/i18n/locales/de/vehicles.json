@@ -128,5 +128,9 @@
   "combobox": {
     "useCustom": "Eigenen Wert verwenden: '{{value}}'",
     "loading": "Vorschläge werden geladen…"
+  },
+  "vinWarning": {
+    "nonStandard": "Keine Standard-FIN mit 17 Zeichen. Bei Fahrgestellnummern älterer oder japanischer Fahrzeuge in Ordnung, sonst auf Tippfehler prüfen.",
+    "checkDigit": "Die Prüfziffer (9. Zeichen) stimmt nicht. Auf Tippfehler prüfen."
   }
 }
