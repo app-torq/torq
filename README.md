@@ -35,13 +35,13 @@ Self-hosted · one small Docker container · your data stays on your server
 
 - 🛢️ **Service logbook**: oil changes, fluids, filters, brakes. Each entry records brand, spec, quantity, part numbers and cost, and resets its reminder.
 - 🔧 **Self-repair projects**: a board from *Planned* to *Completed*, with OBD2 fault codes, root cause, procedure notes, torque specs, a parts list and photos.
-- ⏰ **Reminders** by kilometres, by time or whichever comes first, re-checked with every odometer update.
+- ⏰ **Reminders** by distance, by time or whichever comes first, re-checked with every odometer update. Work that was never done is due right away.
 - 🚗 **Vehicle catalog that works offline**: enter the HSN/TSN from the German registration certificate, or pick make → model → chassis code (W203, E46, Golf IV) → engine to fill in the technical data.
 - 📋 **Spec sheet** with oil and fluid specs, capacities, lug torque and tyre pressure, filled in from the web on request, with a source link for every value.
 - 🔔 **Notifications** via webhooks to Discord, ntfy, Gotify, Home Assistant or any JSON endpoint.
 - 📊 **Reports**: costs per vehicle, service vs. repair, cost per km, a timeline and a printable history with JSON/CSV export.
 - 📱 **On your phone like an app**: add torq to the home screen, no app store and no extra install.
-- 🌍 English and German, metric units, multiple users per garage.
+- 🌍 English and German; metric, US or UK units per user (each vehicle keeps its own km or mile odometer); multiple users per garage.
 
 ## Quick start
 

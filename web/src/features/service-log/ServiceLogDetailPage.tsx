@@ -11,7 +11,7 @@ import { vehicleName, type ServiceLog } from '../../lib/types'
 import { Button } from '../../components/Button'
 import { ConfirmDialog } from '../../components/Dialog'
 import { Card, DefinitionList, ErrorBanner, Loading, Notice, PageHeader, Table } from '../../components/ui'
-import { invalidateOdometerDependents, useVehicle } from '../vehicles/hooks'
+import { invalidateOdometerDependents, useOdometerUnit, useVehicle } from '../vehicles/hooks'
 import { categoryLabel, useCategories } from './hooks'
 import { ServiceLogAttachments } from './ServiceLogAttachments'
 import { BackLink } from '../../components/BackLink'
@@ -21,6 +21,7 @@ export function ServiceLogDetailPage() {
   const logId = Number(id)
   const { t } = useTranslation('service')
   const fmt = useFormat()
+  const odometerUnit = useOdometerUnit()
   const qc = useQueryClient()
   const navigate = useNavigate()
   const location = useLocation()
@@ -73,7 +74,7 @@ export function ServiceLogDetailPage() {
         <DefinitionList
           items={[
             { label: t('fields.date'), value: fmt.date(l.service_date) },
-            { label: t('fields.odometer'), value: <span className="tabular-nums">{fmt.km(l.odometer_km)}</span> },
+            { label: t('fields.odometer'), value: <span className="tabular-nums">{fmt.distance(l.odometer_km, odometerUnit(l.vehicle_id))}</span> },
             { label: t('fields.total'), value: <span className="tabular-nums">{fmt.money(l.total_cents)}</span> },
             ...(l.extra_cost_cents > 0 ? [{ label: l.extra_cost_label || t('fields.extraCost'), value: <span className="tabular-nums">{fmt.money(l.extra_cost_cents)}</span> }] : []),
           ]}

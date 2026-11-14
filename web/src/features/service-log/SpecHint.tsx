@@ -11,7 +11,7 @@ export function SpecHint({ vehicleId, category }: { vehicleId: number; category:
   const specs = useSpecs(vehicleId)
   if (!category?.builtin_key || !specs.data) return null
   const s: VehicleSpecs = specs.data.specs
-  const cap = (ml: number | null) => (ml ? fmt.liters(ml) : null)
+  const cap = (ml: number | null) => (ml ? fmt.volume(ml) : null)
   const parts: (string | null)[] = (() => {
     switch (category.builtin_key) {
       case 'engine_oil':

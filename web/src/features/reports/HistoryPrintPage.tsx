@@ -6,6 +6,7 @@ import { ArrowLeft, Download, Printer } from 'lucide-react'
 import { API_BASE, api, withQuery } from '../../lib/api'
 import { queryKeys } from '../../lib/queryKeys'
 import { useFormat } from '../../lib/useFormat'
+import { powerW } from '../../lib/format'
 import { useErrorText } from '../../lib/errors'
 import type { VehicleHistory } from '../../lib/types'
 import { Button } from '../../components/Button'
@@ -75,13 +76,13 @@ export function HistoryPrintPage() {
                 [t('vehicles:fields.chassisCode'), h.vehicle.chassis_code || none],
                 [t('vehicles:fields.engineCode'), h.vehicle.engine_code || none],
                 [t('vehicles:fields.displacement'), h.vehicle.displacement_cc != null ? fmt.displacement(h.vehicle.displacement_cc) : none],
-                [t('vehicles:fields.power'), h.vehicle.power_kw != null ? fmt.power(h.vehicle.power_kw) : none],
+                [t('vehicles:fields.power'), h.vehicle.power_kw != null ? fmt.power(powerW(h.vehicle) ?? 0) : none],
                 [t('vehicles:fields.fuelType'), h.vehicle.fuel_type ? t(`vehicles:fuel.${h.vehicle.fuel_type}`) : none],
                 [t('vehicles:fields.hsnTsn'), h.vehicle.hsn || h.vehicle.tsn ? `${h.vehicle.hsn ?? '—'} / ${h.vehicle.tsn ?? '—'}` : none],
                 [t('vehicles:fields.modelYear'), h.vehicle.model_year ?? none],
                 [t('vehicles:fields.vin'), h.vehicle.vin ?? none],
                 [t('vehicles:fields.licensePlate'), h.vehicle.license_plate ?? none],
-                [t('vehicles:fields.odometer'), fmt.km(h.vehicle.current_odometer_km)],
+                [t('vehicles:fields.odometer'), fmt.distance(h.vehicle.current_odometer_km, h.vehicle.odometer_unit)],
               ].map(([label, value]) => (
                 <div key={String(label)}>
                   <dt className="text-xs text-zinc-400 print:text-black">{label}</dt>
@@ -95,9 +96,9 @@ export function HistoryPrintPage() {
             <h2 className="mb-2 text-base font-semibold">{t('history.specs')}</h2>
             <ul className="grid grid-cols-1 gap-1 sm:grid-cols-2">
               {h.specs.engine_oil_viscosity || h.specs.engine_oil_spec ? (
-                <li>{t('specs:groups.engineOil')}: {[h.specs.engine_oil_viscosity, h.specs.engine_oil_spec, typeof h.specs.engine_oil_capacity_ml === 'number' ? fmt.liters(h.specs.engine_oil_capacity_ml) : null].filter(Boolean).join(' · ')}</li>
+                <li>{t('specs:groups.engineOil')}: {[h.specs.engine_oil_viscosity, h.specs.engine_oil_spec, typeof h.specs.engine_oil_capacity_ml === 'number' ? fmt.volume(h.specs.engine_oil_capacity_ml) : null].filter(Boolean).join(' · ')}</li>
               ) : null}
-              {typeof h.specs.wheel_lug_torque_nm === 'number' && <li>{t('specs:fields.lugTorque')}: {fmt.nm(h.specs.wheel_lug_torque_nm)}</li>}
+              {typeof h.specs.wheel_lug_torque_nm === 'number' && <li>{t('specs:fields.lugTorque')}: {fmt.torque(h.specs.wheel_lug_torque_nm)}</li>}
               {h.spec_entries.map((e) => <li key={e.label}>{e.label}: {e.value}</li>)}
             </ul>
           </section>
@@ -109,7 +110,7 @@ export function HistoryPrintPage() {
               {h.service_logs.map((l) => (
                 <div key={l.id} className="break-inside-avoid border-b border-zinc-800 pb-2 print:border-gray-400">
                   <div className="flex justify-between font-medium">
-                    <span>{fmt.date(l.service_date)} · {fmt.km(l.odometer_km)}</span>
+                    <span>{fmt.date(l.service_date)} · {fmt.distance(l.odometer_km, h.vehicle.odometer_unit)}</span>
                     {l.total_cents !== undefined && <span className="tabular-nums">{fmt.money(l.total_cents)}</span>}
                   </div>
                   <ul className="ml-4 list-disc">
@@ -133,13 +134,13 @@ export function HistoryPrintPage() {
               {h.repairs.map((r) => (
                 <div key={r.id} className="break-inside-avoid border-b border-zinc-800 pb-3 print:border-gray-400">
                   <div className="flex justify-between font-medium">
-                    <span>{fmt.date(r.completed_on)} · {fmt.km(r.completion_odometer_km)} · {r.title}</span>
+                    <span>{fmt.date(r.completed_on)} · {fmt.distance(r.completion_odometer_km, h.vehicle.odometer_unit)} · {r.title}</span>
                     {r.parts_total_cents !== undefined && <span className="tabular-nums">{fmt.money(r.parts_total_cents)}</span>}
                   </div>
                   {r.fault_codes.length > 0 && <p className="font-mono text-xs">{r.fault_codes.join(', ')}</p>}
                   {r.symptom && <p><span className="text-zinc-400 print:text-black">{t('repairs:fields.symptom')}:</span> {r.symptom}</p>}
                   {r.root_cause && <p><span className="text-zinc-400 print:text-black">{t('repairs:fields.rootCause')}:</span> {r.root_cause}</p>}
-                  {r.torque_specs.length > 0 && <p>{r.torque_specs.map((ts) => `${ts.label} ${fmt.nm(ts.value_nm)}${ts.note ? ` (${ts.note})` : ''}`).join('; ')}</p>}
+                  {r.torque_specs.length > 0 && <p>{r.torque_specs.map((ts) => `${ts.label} ${fmt.torque(ts.value_nm)}${ts.note ? ` (${ts.note})` : ''}`).join('; ')}</p>}
                   {r.parts.length > 0 && (
                     <ul className="ml-4 list-disc">
                       {r.parts.map((p, i) => (

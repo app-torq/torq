@@ -35,7 +35,7 @@ export function VehicleDetailLayout() {
             {v.archived && <Badge>{t('archivedBadge')}</Badge>}
           </div>
           <p className="text-sm text-zinc-400">
-            {[v.chassis_code, v.engine_code, v.model_year, fmt.km(v.current_odometer_km)].filter(Boolean).join(' · ')}
+            {[v.chassis_code, v.engine_code, v.model_year, fmt.distance(v.current_odometer_km, v.odometer_unit)].filter(Boolean).join(' · ')}
           </p>
         </div>
         <Link to={`/vehicles/${v.id}/edit`} className="focus-ring inline-flex h-10 items-center gap-2 rounded-md border border-zinc-700 bg-zinc-900 px-4 text-sm hover:bg-zinc-800">

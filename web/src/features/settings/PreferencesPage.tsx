@@ -3,15 +3,23 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../lib/api'
 import { queryKeys } from '../../lib/queryKeys'
-import type { DateFormat, Locale, MeResponse, NumberFormat, PowerUnit, User } from '../../lib/types'
+import type { Formats, Locale, MeResponse, User } from '../../lib/types'
 import { createFormatter } from '../../lib/format'
 import { fieldErrors, useErrorText } from '../../lib/errors'
 import { useSession } from '../../app/session'
 import { Button } from '../../components/Button'
 import { SelectField, TextField } from '../../components/Field'
 import { Card, ErrorBanner, Notice, PageHeader } from '../../components/ui'
+import { FormatFields, UnitFields, unitChoices } from './FormatFields'
 
-const currencies = ['EUR', 'USD', 'GBP', 'CHF'] as const
+/** The format and unit fields of a user. */
+function formatsOf(u: User): Formats {
+  return {
+    date_format: u.date_format, number_format: u.number_format, time_format: u.time_format, currency_code: u.currency_code,
+    power_unit: u.power_unit, distance_unit: u.distance_unit, volume_unit: u.volume_unit, torque_unit: u.torque_unit,
+    pressure_unit: u.pressure_unit, displacement_unit: u.displacement_unit,
+  }
+}
 
 export function PreferencesPage() {
   const { t, i18n } = useTranslation(['settings', 'common'])
@@ -21,23 +29,13 @@ export function PreferencesPage() {
 
   const [displayName, setDisplayName] = useState(user.display_name)
   const [locale, setLocale] = useState<Locale>(user.locale)
-  const [dateFormat, setDateFormat] = useState<DateFormat>(user.date_format)
-  const [numberFormat, setNumberFormat] = useState<NumberFormat>(user.number_format)
-  const [currencyCode, setCurrencyCode] = useState(user.currency_code)
+  const [formats, setFormats] = useState<Formats>(() => formatsOf(user))
   const [currencySymbol, setCurrencySymbol] = useState(user.currency_symbol ?? '')
-  const [powerUnit, setPowerUnit] = useState<PowerUnit>(user.power_unit)
+  const patch = (p: Partial<Formats>) => { setFormats((prev) => ({ ...prev, ...p })) }
 
   const save = useMutation({
     mutationFn: () =>
-      api.patch<{ user: User }>('/me/preferences', {
-        display_name: displayName,
-        locale,
-        date_format: dateFormat,
-        number_format: numberFormat,
-        currency_code: currencyCode,
-        currency_symbol: currencySymbol,
-        power_unit: powerUnit,
-      }),
+      api.patch<{ user: User }>('/me/preferences', { display_name: displayName, locale, currency_symbol: currencySymbol, ...formats }),
     onSuccess: ({ user: updated }) => {
       qc.setQueryData<MeResponse | null>(queryKeys.me, (prev) => (prev ? { ...prev, user: updated } : prev))
       void i18n.changeLanguage(updated.locale)
@@ -47,18 +45,18 @@ export function PreferencesPage() {
 
   const preview = createFormatter(
     {
-      dateFormat,
-      numberFormat,
-      currencyCode: /^[A-Z]{3}$/.test(currencyCode) ? currencyCode : 'EUR',
+      dateFormat: formats.date_format,
+      numberFormat: formats.number_format,
+      currencyCode: /^[A-Z]{3}$/.test(formats.currency_code) ? formats.currency_code : 'EUR',
       currencySymbol: currencySymbol.trim() || null,
-      powerUnit,
+      powerUnit: formats.power_unit,
+      volumeUnit: formats.volume_unit,
+      torqueUnit: formats.torque_unit,
+      pressureUnit: formats.pressure_unit,
+      displacementUnit: formats.displacement_unit,
     },
     (u) => t(`common:units.${u}`),
   )
-
-  const currencyOptions = currencies.includes(currencyCode as (typeof currencies)[number])
-    ? currencies.map((c) => ({ value: c, label: t(`preferences.currencies.${c}`) }))
-    : [...currencies.map((c) => ({ value: c, label: t(`preferences.currencies.${c}`) })), { value: currencyCode, label: currencyCode }]
 
   const submit = (e: SubmitEvent) => {
     e.preventDefault()
@@ -84,38 +82,7 @@ export function PreferencesPage() {
               ]}
               error={fe.locale}
             />
-            <SelectField
-              label={t('preferences.dateFormat')}
-              value={dateFormat}
-              onChange={(v) => { setDateFormat(v as DateFormat) }}
-              options={[
-                { value: 'DD.MM.YYYY', label: 'DD.MM.YYYY' },
-                { value: 'YYYY-MM-DD', label: 'YYYY-MM-DD' },
-              ]}
-              error={fe.date_format}
-            />
-            <SelectField
-              label={t('preferences.numberFormat')}
-              value={numberFormat}
-              onChange={(v) => { setNumberFormat(v as NumberFormat) }}
-              options={[
-                { value: 'point', label: t('preferences.numberPoint') },
-                { value: 'comma', label: t('preferences.numberComma') },
-              ]}
-              error={fe.number_format}
-            />
-            <SelectField label={t('preferences.currency')} value={currencyCode} onChange={setCurrencyCode} options={currencyOptions} error={fe.currency_code} />
-            <SelectField
-              label={t('preferences.powerUnit')}
-              value={powerUnit}
-              onChange={(v) => { setPowerUnit(v as PowerUnit) }}
-              options={[
-                { value: 'kw', label: t('preferences.powerUnits.kw') },
-                { value: 'ps', label: t('preferences.powerUnits.ps') },
-              ]}
-              hint={t('preferences.powerUnitHint')}
-              error={fe.power_unit}
-            />
+            <FormatFields value={formats} onChange={patch} errors={fe} />
           </div>
           <TextField
             label={t('preferences.currencySymbol')}
@@ -126,10 +93,23 @@ export function PreferencesPage() {
             hint={t('preferences.currencySymbolHint')}
             error={fe.currency_symbol}
           />
+          <fieldset className="space-y-2 border-t border-zinc-800 pt-4">
+            <legend className="text-sm font-semibold text-zinc-200">{t('preferences.units')}</legend>
+            <p className="text-xs text-zinc-400">{t('preferences.unitsHint')}</p>
+            <UnitFields value={unitChoices(formats)} onChange={patch} errors={fe} />
+          </fieldset>
           <div className="rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm">
             <span className="text-zinc-400">{t('preferences.preview')}: </span>
             <span className="tabular-nums text-zinc-200">
-              {[preview.date('2026-10-15'), preview.km(215000), preview.liters(6500), preview.money(8950), preview.power(110)].join(' · ')}
+              {[
+                preview.date('2026-10-15'),
+                preview.distance(215000, formats.distance_unit),
+                preview.volume(6500),
+                preview.money(8950),
+                preview.power(110000),
+                preview.torque(120),
+                preview.pressure(2.3),
+              ].join(' · ')}
             </span>
           </div>
           <Button type="submit" variant="primary" disabled={save.isPending}>

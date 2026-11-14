@@ -54,7 +54,7 @@ export function TimelinePage() {
               </span>
               <Link to={it.kind === 'service' ? `/service/${it.id}` : `/repairs/${it.id}`} className="focus-ring block rounded-lg border border-zinc-800 bg-zinc-900 p-3 hover:border-zinc-700">
                 <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-400">
-                  <span className="tabular-nums">{fmt.date(it.date)} · {fmt.km(it.odometer_km)}</span>
+                  <span className="tabular-nums">{fmt.date(it.date)} · {fmt.distance(it.odometer_km, v.odometer_unit)}</span>
                   <span>{t(`timeline.${it.kind}`)}</span>
                 </div>
                 <div className="mt-1 flex items-center justify-between gap-2">

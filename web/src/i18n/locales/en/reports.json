@@ -20,7 +20,10 @@
     "costPerKm": "Cost per km",
     "distance": "Distance driven",
     "notEnoughData": "Not enough data",
-    "perKm": "{{value}}/km"
+    "perKm": "{{value}}/km",
+    "costPerMi": "Cost per mile",
+    "perMi": "{{value}}/mi",
+    "costPerDistance": "Cost per distance"
   },
   "breakdown": {
     "bySource": "Routine service vs. self-repair",

@@ -1,7 +1,8 @@
 import { useQuery, type QueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { odometerDependentKeys, queryKeys } from '../../lib/queryKeys'
-import type { ListResponse, Vehicle } from '../../lib/types'
+import type { DistanceUnit, ListResponse, Vehicle } from '../../lib/types'
+import { useSession } from '../../app/session'
 
 export type ArchiveFilter = 'false' | 'true' | 'all'
 
@@ -17,6 +18,17 @@ export function useVehicle(id: number) {
     queryKey: queryKeys.vehicle(id),
     queryFn: () => api.get<{ vehicle: Vehicle }>(`/vehicles/${id}`).then((r) => r.vehicle),
   })
+}
+
+/**
+ * Looks up the odometer unit of a vehicle for distances shown outside its
+ * pages; falls back to the user's distance unit while vehicles load.
+ */
+export function useOdometerUnit(): (vehicleId: number) => DistanceUnit {
+  const { user } = useSession()
+  const vehicles = useVehicles('all')
+  const byId = new Map(vehicles.data?.items.map((v) => [v.id, v.odometer_unit]))
+  return (id) => byId.get(id) ?? user.distance_unit
 }
 
 /** Invalidates everything that depends on odometer readings or service history. */

@@ -54,7 +54,7 @@
   "deleteBody": "Delete this service entry? Linked reminders will be recalculated.",
   "warnings": {
     "odometer": {
-      "inconsistent_with_history": "The odometer reading does not fit the order of other service entries. Saved anyway; double-check the date and km."
+      "inconsistent_with_history": "The odometer reading does not fit the order of other service entries. Saved anyway; double-check the date and odometer reading."
     }
   },
   "categoryAdmin": {

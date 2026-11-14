@@ -54,7 +54,7 @@
   "deleteBody": "Diesen Wartungseintrag löschen? Verknüpfte Erinnerungen werden neu berechnet.",
   "warnings": {
     "odometer": {
-      "inconsistent_with_history": "Der Kilometerstand passt nicht zur Reihenfolge der anderen Einträge. Trotzdem gespeichert; bitte Datum und km prüfen."
+      "inconsistent_with_history": "Der Kilometerstand passt nicht zur Reihenfolge der anderen Einträge. Trotzdem gespeichert; bitte Datum und Kilometerstand prüfen."
     }
   },
   "categoryAdmin": {

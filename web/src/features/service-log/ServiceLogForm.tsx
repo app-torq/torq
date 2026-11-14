@@ -5,7 +5,8 @@ import { useTranslation } from 'react-i18next'
 import { Plus, Trash2 } from 'lucide-react'
 import { api } from '../../lib/api'
 import { queryKeys } from '../../lib/queryKeys'
-import { parseMoneyToCents, parseNumber, toInputValue } from '../../lib/format'
+import { distanceField, metricField, parseMoneyToCents, readDistance, readMetricField, toInputValue, type MetricField } from '../../lib/format'
+import { QUANTITY, QUANTITY_UNITS, type QuantityUnit } from '../../lib/units'
 import { fieldErrors, useErrorText } from '../../lib/errors'
 import { vehicleName, type CostType, type ServiceCategory, type ServiceLog } from '../../lib/types'
 import { useSession } from '../../app/session'
@@ -13,7 +14,7 @@ import { Button, IconButton } from '../../components/Button'
 import { FieldPair, SelectField, TextAreaField, TextField } from '../../components/Field'
 import { NumberField } from '../../components/NumberField'
 import { Card, ErrorBanner, Loading, PageHeader } from '../../components/ui'
-import { invalidateOdometerDependents, useVehicles } from '../vehicles/hooks'
+import { invalidateOdometerDependents, useOdometerUnit, useVehicles } from '../vehicles/hooks'
 import { categoryLabel, useCategories } from './hooks'
 import { SpecHint } from './SpecHint'
 
@@ -23,7 +24,9 @@ interface ItemDraft {
   brand: string
   specification: string
   quantity: string
-  unit: 'L' | 'mL'
+  unit: QuantityUnit
+  /** The stored amount and its text, so an untouched quantity is saved unchanged. */
+  initialQuantity: MetricField
   oemPart: string
   aftermarketPart: string
   cost: string
@@ -31,8 +34,8 @@ interface ItemDraft {
 }
 
 let nextKey = 1
-function emptyItem(): ItemDraft {
-  return { key: nextKey++, categoryId: '', brand: '', specification: '', quantity: '', unit: 'L', oemPart: '', aftermarketPart: '', cost: '', costType: '' }
+function emptyItem(unit: QuantityUnit): ItemDraft {
+  return { key: nextKey++, categoryId: '', brand: '', specification: '', quantity: '', unit, initialQuantity: { text: '', value: null }, oemPart: '', aftermarketPart: '', cost: '', costType: '' }
 }
 
 export function ServiceLogFormPage() {
@@ -43,6 +46,9 @@ export function ServiceLogFormPage() {
     queryFn: () => api.get<{ service_log: ServiceLog }>(`/service-logs/${id ?? ''}`).then((r) => r.service_log),
     enabled: id !== undefined,
   })
+  // Odometer and quantities are converted to the vehicle's units on load.
+  const vehicles = useVehicles('all')
+  if (vehicles.isPending) return <Loading />
   if (id === undefined) return <ServiceLogForm />
   if (log.isPending) return <Loading />
   if (log.isError) return <ErrorBanner message={errorText(log.error)} />
@@ -59,10 +65,14 @@ function ServiceLogForm({ log }: { log?: ServiceLog }) {
   const errorText = useErrorText()
   const vehicles = useVehicles('false')
   const categories = useCategories(log !== undefined)
+  const odometerUnit = useOdometerUnit()
+  const largeUnit = QUANTITY_UNITS[user.volume_unit][0] ?? 'L'
 
   const [vehicleId, setVehicleId] = useState(String(log?.vehicle_id ?? params.get('vehicle') ?? ''))
   const [date, setDate] = useState(log?.service_date ?? new Date().toISOString().slice(0, 10))
-  const [odometer, setOdometer] = useState(log ? String(log.odometer_km) : '')
+  const unit = vehicleId ? odometerUnit(Number(vehicleId)) : user.distance_unit
+  const [initialOdometer] = useState(() => distanceField(log?.odometer_km, unit, nf))
+  const [odometer, setOdometer] = useState(initialOdometer.text)
   const [notes, setNotes] = useState(log?.notes ?? '')
   const [extraCost, setExtraCost] = useState(log && log.extra_cost_cents > 0 ? toInputValue(log.extra_cost_cents / 100, nf, 2) : '')
   const [extraLabel, setExtraLabel] = useState(log?.extra_cost_label ?? '')
@@ -73,14 +83,14 @@ function ServiceLogForm({ log }: { log?: ServiceLog }) {
           categoryId: String(it.category_id),
           brand: it.brand,
           specification: it.specification,
-          quantity: it.quantity_ml === null ? '' : toInputValue(it.quantity_unit === 'L' ? it.quantity_ml / 1000 : it.quantity_ml, nf),
-          unit: it.quantity_unit ?? 'L',
+          ...((q: MetricField) => ({ quantity: q.text, initialQuantity: q }))(metricField(it.quantity_ml, QUANTITY[it.quantity_unit ?? largeUnit], nf)),
+          unit: it.quantity_unit ?? largeUnit,
           oemPart: it.oem_part_number,
           aftermarketPart: it.aftermarket_part_number,
           cost: it.cost_cents === null ? '' : toInputValue(it.cost_cents / 100, nf, 2),
           costType: it.cost_type,
         }))
-      : [emptyItem()],
+      : [emptyItem(largeUnit)],
   )
   const [local, setLocal] = useState<Record<string, string>>({})
 
@@ -102,8 +112,8 @@ function ServiceLogForm({ log }: { log?: ServiceLog }) {
   const submit = (e: SubmitEvent) => {
     e.preventDefault()
     const errs: Record<string, string> = {}
-    const km = parseNumber(odometer, nf)
-    if (km === null || !Number.isInteger(km) || km < 0) errs.odometer_km = 'validation.number'
+    const km = readDistance(odometer, initialOdometer, unit, nf)
+    if (km === null) errs.odometer_km = 'validation.number'
     if (!vehicleId) errs.vehicle_id = 'validation.required'
     let extraCents = 0
     if (extraCost.trim() !== '') {
@@ -116,9 +126,9 @@ function ServiceLogForm({ log }: { log?: ServiceLog }) {
       if (!it.categoryId) errs[`${p}category_id`] = 'validation.required'
       let quantityMl: number | null = null
       if (it.quantity.trim() !== '') {
-        const q = parseNumber(it.quantity, nf)
-        if (q === null || q <= 0) errs[`${p}quantity_ml`] = 'validation.positive'
-        else quantityMl = Math.round(it.unit === 'L' ? q * 1000 : q)
+        const q = readMetricField(it.quantity, it.initialQuantity, QUANTITY[it.unit], nf, true)
+        if (q === null || q === undefined || q <= 0) errs[`${p}quantity_ml`] = 'validation.positive'
+        else quantityMl = q
       }
       let costCents: number | null = null
       if (it.cost.trim() !== '') {
@@ -154,8 +164,8 @@ function ServiceLogForm({ log }: { log?: ServiceLog }) {
   ]
   const costTypeDefault = (c: ServiceCategory | undefined): CostType => (c?.is_fluid ? 'fluids' : 'parts')
   const generalError = save.isError && Object.keys(fieldErrors(save.error)).length === 0 ? errorText(save.error) : undefined
-  const unitL = t('common:units.l')
-  const unitMl = t('common:units.ml')
+  const quantityOptions = (current: QuantityUnit) =>
+    [...new Set([...QUANTITY_UNITS[user.volume_unit], current])].map((u) => ({ value: u, label: t(`common:units.${QUANTITY[u].label}`) }))
 
   return (
     <div className="max-w-4xl">
@@ -172,14 +182,14 @@ function ServiceLogForm({ log }: { log?: ServiceLog }) {
               options={[{ value: '', label: '—' }, ...(vehicles.data?.items ?? []).map((v) => ({ value: String(v.id), label: vehicleName(v) }))]}
             />
             <TextField label={t('fields.date')} type="date" value={date} onChange={setDate} error={fe.service_date} />
-            <NumberField label={t('fields.odometer')} unit={t('common:units.km')} decimal={false} value={odometer} onChange={setOdometer} error={fe.odometer_km} />
+            <NumberField label={t('fields.odometer')} unit={t(`common:units.${unit}`)} decimal={false} value={odometer} onChange={setOdometer} error={fe.odometer_km} />
           </div>
         </Card>
 
         <Card
           title={t('items.title')}
           actions={
-            <Button size="sm" onClick={() => { setItems((prev) => [...prev, emptyItem()]) }}>
+            <Button size="sm" onClick={() => { setItems((prev) => [...prev, emptyItem(largeUnit)]) }}>
               <Plus size={15} />
               {t('items.add')}
             </Button>
@@ -213,9 +223,9 @@ function ServiceLogForm({ log }: { log?: ServiceLog }) {
                       <SelectField
                         label={t('fields.unit')}
                         value={it.unit}
-                        onChange={(v) => { update(it.key, { unit: v as 'L' | 'mL' }) }}
-                        options={[{ value: 'L', label: unitL }, { value: 'mL', label: unitMl }]}
-                        className="w-20"
+                        onChange={(v) => { update(it.key, { unit: v as QuantityUnit, initialQuantity: { text: '', value: null } }) }}
+                        options={quantityOptions(it.unit)}
+                        className="w-24"
                       />
                     </FieldPair>
                     <NumberField label={t('fields.cost')} value={it.cost} onChange={(v) => { update(it.key, { cost: v }) }} error={fe[`${p}cost_cents`]} optional />

@@ -43,13 +43,22 @@
   },
   "units": {
     "km": "km",
+    "mi": "mi",
     "l": "L",
     "ml": "mL",
+    "qt": "qt",
+    "gal": "gal",
+    "fl_oz": "fl oz",
     "nm": "Nm",
+    "lbft": "lb-ft",
     "bar": "bar",
+    "psi": "psi",
+    "kpa": "kPa",
     "cc": "cm³",
+    "ci": "ci",
     "kw": "kW",
-    "ps": "PS"
+    "ps": "PS",
+    "hp": "hp"
   },
   "state": {
     "loading": "Loading…",

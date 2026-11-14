@@ -3,7 +3,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../lib/api'
 import { queryKeys } from '../../lib/queryKeys'
-import { parseNumber } from '../../lib/format'
+import { distanceField, parseNumber, readDistance, type MetricField } from '../../lib/format'
+import { kmIn, type DistanceUnit } from '../../lib/units'
 import { fieldErrors, useErrorText } from '../../lib/errors'
 import { vehicleName, type Reminder } from '../../lib/types'
 import { useSession } from '../../app/session'
@@ -12,7 +13,7 @@ import { Checkbox, FieldPair, SelectField, TextField } from '../../components/Fi
 import { NumberField } from '../../components/NumberField'
 import { Dialog } from '../../components/Dialog'
 import { ErrorBanner } from '../../components/ui'
-import { invalidateOdometerDependents, useVehicles } from '../vehicles/hooks'
+import { invalidateOdometerDependents, useOdometerUnit, useVehicles } from '../vehicles/hooks'
 import { categoryLabel, useCategories } from '../service-log/hooks'
 
 interface Props {
@@ -22,6 +23,12 @@ interface Props {
 }
 
 const str = (n: number | null | undefined) => (n === null || n === undefined ? '' : String(n))
+
+/** A category's default interval in unit; miles are rounded to 500 for a sensible prefill. */
+function defaultInterval(km: number | null, unit: DistanceUnit): string {
+  if (km === null) return ''
+  return unit === 'mi' ? String(Math.max(500, Math.round(kmIn(km, 'mi') / 500) * 500)) : String(km)
+}
 
 export function ReminderForm({ reminder, vehicleId, onClose }: Props) {
   const { t } = useTranslation('reminders')
@@ -33,16 +40,23 @@ export function ReminderForm({ reminder, vehicleId, onClose }: Props) {
   const categories = useCategories(reminder !== null)
 
   const [vehicle, setVehicle] = useState(String(reminder?.vehicle_id ?? vehicleId ?? ''))
+  const unitOf = useOdometerUnit()
+  const unit = vehicle ? unitOf(Number(vehicle)) : user.distance_unit
+  // Distances are entered in the vehicle's unit; untouched fields keep their km.
+  const [initial] = useState(() => {
+    const f = (km: number | null | undefined): MetricField => distanceField(km, unit, nf)
+    return { intervalKm: f(reminder?.interval_km), leadKm: f(reminder?.lead_km), startKm: f(reminder?.start_odometer_km) }
+  })
   const [kind, setKind] = useState<'linked' | 'standalone'>(reminder && reminder.service_category_id === null ? 'standalone' : 'linked')
   const [categoryId, setCategoryId] = useState(str(reminder?.service_category_id))
   const [title, setTitle] = useState(reminder?.title ?? '')
-  const [intervalKm, setIntervalKm] = useState(str(reminder?.interval_km))
+  const [intervalKm, setIntervalKm] = useState(initial.intervalKm.text)
   const [timeUnit, setTimeUnit] = useState<'months' | 'days'>(reminder?.interval_days ? 'days' : 'months')
   const [intervalTime, setIntervalTime] = useState(str(reminder?.interval_months ?? reminder?.interval_days))
-  const [leadKm, setLeadKm] = useState(str(reminder?.lead_km))
+  const [leadKm, setLeadKm] = useState(initial.leadKm.text)
   const [leadDays, setLeadDays] = useState(str(reminder?.lead_days))
   const [startDate, setStartDate] = useState(reminder?.start_date ?? '')
-  const [startKm, setStartKm] = useState(str(reminder?.start_odometer_km))
+  const [startKm, setStartKm] = useState(initial.startKm.text)
   const [unknown, setUnknown] = useState(reminder?.last_done_unknown ?? false)
   const [local, setLocal] = useState<Record<string, string>>({})
 
@@ -60,7 +74,7 @@ export function ReminderForm({ reminder, vehicleId, onClose }: Props) {
     setCategoryId(id)
     const c = categories.data?.items.find((x) => String(x.id) === id)
     if (c && !reminder && intervalKm === '' && intervalTime === '') {
-      setIntervalKm(str(c.default_interval_km))
+      setIntervalKm(defaultInterval(c.default_interval_km, unit))
       setIntervalTime(str(c.default_interval_months))
       setTimeUnit('months')
     }
@@ -77,20 +91,26 @@ export function ReminderForm({ reminder, vehicleId, onClose }: Props) {
       }
       return n
     }
+    const dist = (field: string, raw: string, init: MetricField): number | null => {
+      if (raw.trim() === '') return null
+      const km = readDistance(raw, init, unit, nf)
+      if (km === null) errs[field] = 'validation.number'
+      return km
+    }
     if (!vehicle) errs.vehicle_id = 'validation.required'
     const time = int(timeUnit === 'months' ? 'interval_months' : 'interval_days', intervalTime)
     const body: Record<string, unknown> = {
       vehicle_id: Number(vehicle),
       service_category_id: kind === 'linked' && categoryId ? Number(categoryId) : null,
       title: kind === 'standalone' ? title : '',
-      interval_km: int('interval_km', intervalKm),
+      interval_km: dist('interval_km', intervalKm, initial.intervalKm),
       interval_months: timeUnit === 'months' ? time : null,
       interval_days: timeUnit === 'days' ? time : null,
       start_date: startDate,
-      start_odometer_km: int('start_odometer_km', startKm),
+      start_odometer_km: dist('start_odometer_km', startKm, initial.startKm),
       last_done_unknown: unknown,
     }
-    const lk = int('lead_km', leadKm)
+    const lk = dist('lead_km', leadKm, initial.leadKm)
     const ld = int('lead_days', leadDays)
     // On create, omitted leads use server defaults; on edit, empty means no lead.
     if (reminder || lk !== null) body.lead_km = lk
@@ -100,7 +120,7 @@ export function ReminderForm({ reminder, vehicleId, onClose }: Props) {
     if (Object.keys(errs).length === 0) save.mutate(body)
   }
 
-  const km = t('common:units.km')
+  const km = t(`common:units.${unit}`)
   return (
     <Dialog
       open

@@ -1,22 +1,36 @@
 // API types mirroring contracts/rest-api.md.
 
 export type Locale = 'en' | 'de'
-export type DateFormat = 'DD.MM.YYYY' | 'YYYY-MM-DD'
+import type { DisplacementUnit, DistanceUnit, PowerUnit, PressureUnit, QuantityUnit, TorqueUnit, VolumeUnit } from './units'
+
+export type { DisplacementUnit, DistanceUnit, PowerUnit, PressureUnit, QuantityUnit, TorqueUnit, VolumeUnit }
+export type DateFormat = 'DD.MM.YYYY' | 'YYYY-MM-DD' | 'MM/DD/YYYY'
 export type NumberFormat = 'point' | 'comma'
-export type PowerUnit = 'kw' | 'ps'
+export type TimeFormat = '24h' | '12h'
 export type Role = 'admin' | 'member'
 
-export interface User {
+/** Format and unit preferences; also the instance defaults for new users. */
+export interface Formats {
+  date_format: DateFormat
+  number_format: NumberFormat
+  time_format: TimeFormat
+  currency_code: string
+  power_unit: PowerUnit
+  /** For new vehicles and distances not tied to a vehicle. */
+  distance_unit: DistanceUnit
+  volume_unit: VolumeUnit
+  torque_unit: TorqueUnit
+  pressure_unit: PressureUnit
+  displacement_unit: DisplacementUnit
+}
+
+export interface User extends Formats {
   id: number
   username: string
   display_name: string
   role: Role
   locale: Locale
-  date_format: DateFormat
-  number_format: NumberFormat
-  currency_code: string
   currency_symbol: string | null
-  power_unit: PowerUnit
   disabled: boolean
 }
 
@@ -71,9 +85,13 @@ export interface Vehicle {
   hsn: string | null
   tsn: string | null
   displacement_cc: number | null
+  /** Whole kW; power_w is the precise value. */
   power_kw: number | null
+  power_w: number | null
   fuel_type: FuelType | null
   current_odometer_km: number
+  /** How the odometer reads; distances are always sent in km. */
+  odometer_unit: DistanceUnit
   avatar_url: string | null
   archived: boolean
   reminder_counts: ReminderCounts
@@ -256,7 +274,7 @@ export interface ServiceItem {
   brand: string
   specification: string
   quantity_ml: number | null
-  quantity_unit: 'L' | 'mL' | null
+  quantity_unit: QuantityUnit | null
   oem_part_number: string
   aftermarket_part_number: string
   cost_cents: number | null
@@ -407,6 +425,8 @@ export interface InstanceSettings {
   time_zone: string
   max_upload_mb: number
   version: string
+  /** Formats and units new users start with. */
+  defaults: Formats
 }
 
 export interface Costs {
@@ -438,7 +458,7 @@ export interface VehicleHistory {
   vehicle: {
     id: number; make: string; model: string; chassis_code: string; model_year: number | null; engine_code: string; vin: string | null
     license_plate: string | null; current_odometer_km: number; hsn: string | null; tsn: string | null
-    displacement_cc: number | null; power_kw: number | null; fuel_type: FuelType | null
+    displacement_cc: number | null; power_kw: number | null; power_w: number | null; fuel_type: FuelType | null; odometer_unit: DistanceUnit
   }
   specs: Record<string, string | number | null>
   spec_entries: { label: string; value: string }[]
@@ -450,7 +470,7 @@ export interface VehicleHistory {
     extra_cost_cents?: number
     extra_cost_label?: string
     total_cents?: number
-    items: { category: string; brand: string; specification: string; quantity_ml: number | null; quantity_unit: 'L' | 'mL' | null; oem_part_number: string; aftermarket_part_number: string; cost_cents?: number | null; cost_type: CostType }[]
+    items: { category: string; brand: string; specification: string; quantity_ml: number | null; quantity_unit: QuantityUnit | null; oem_part_number: string; aftermarket_part_number: string; cost_cents?: number | null; cost_type: CostType }[]
   }[]
   repairs: {
     id: number

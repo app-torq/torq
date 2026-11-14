@@ -50,8 +50,8 @@ function goFiles(dir: string): string[] {
 const codePatterns = [
   /apperr\.\w+\("([^"]+)"/g, // apperr.Conflict("code", ...)
   /\bCode:\s*"([^"]+)"/g, // &apperr.Error{Code: "code"} / errorPayload{Code: "code"} (not BodyCode:)
-  /\.Add\("[^"]*",\s*"([^"]+)"\)/g, // v.Add("field", "code")
-  /\.Check\([^\n]*?,\s*"[^"]*",\s*"([^"]+)"\)/g, // v.Check(cond, "field", "code")
+  /\.Add\((?:\w+\s*\+\s*)?"[^"]*",\s*"([^"]+)"\)/g, // v.Add("field", "code"), also prefix+"field"
+  /\.Check\([^\n]*?,\s*(?:\w+\s*\+\s*)?"[^"]*",\s*"([^"]+)"\)/g, // v.Check(cond, "field", "code"), also prefix+"field"
 ]
 const codes = new Set<string>()
 for (const file of goFiles(goRoot)) {

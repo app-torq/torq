@@ -41,7 +41,7 @@ export function DashboardPage() {
                     {vehicleName(v)}
                   </Link>
                   <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-400">
-                    <span className="tabular-nums">{fmt.km(v.current_odometer_km)}</span>
+                    <span className="tabular-nums">{fmt.distance(v.current_odometer_km, v.odometer_unit)}</span>
                     {v.reminder_counts.overdue > 0 && <Badge tone="red">{v.reminder_counts.overdue}</Badge>}
                     {v.reminder_counts.due_soon > 0 && <Badge tone="amber">{v.reminder_counts.due_soon}</Badge>}
                   </div>

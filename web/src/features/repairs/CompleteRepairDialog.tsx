@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../lib/api'
-import { parseNumber } from '../../lib/format'
+import { distanceField, readDistance } from '../../lib/format'
 import { fieldErrors, useErrorText } from '../../lib/errors'
 import type { RepairSummary } from '../../lib/types'
 import { useSession } from '../../app/session'
@@ -22,7 +22,9 @@ export function CompleteRepairDialog({ repair, onClose }: { repair: RepairSummar
   const errorText = useErrorText()
   const vehicle = useVehicle(repair.vehicle_id)
   const [date, setDate] = useState(repair.completed_on ?? new Date().toISOString().slice(0, 10))
-  const [km, setKm] = useState(repair.completion_odometer_km !== null ? String(repair.completion_odometer_km) : '')
+  const unit = vehicle.data?.odometer_unit ?? user.distance_unit
+  const initial = distanceField(repair.completion_odometer_km ?? vehicle.data?.current_odometer_km, unit, user.number_format)
+  const [km, setKm] = useState<string | null>(null)
   const [local, setLocal] = useState<string | undefined>()
   const complete = useMutation({
     mutationFn: (odometer: number) => api.post(`/repairs/${repair.id}/status`, { status: 'completed', completed_on: date, completion_odometer_km: odometer }),
@@ -32,10 +34,11 @@ export function CompleteRepairDialog({ repair, onClose }: { repair: RepairSummar
     },
   })
   const fe = fieldErrors(complete.error)
-  const value = km === '' && vehicle.data ? String(vehicle.data.current_odometer_km) : km
+  // Prefilled with the recorded or current odometer until edited.
+  const value = km ?? initial.text
   const submit = () => {
-    const n = parseNumber(value, user.number_format)
-    if (n === null || !Number.isInteger(n) || n < 0) {
+    const n = readDistance(value, initial, unit, user.number_format)
+    if (n === null) {
       setLocal('validation.number')
       return
     }
@@ -60,7 +63,7 @@ export function CompleteRepairDialog({ repair, onClose }: { repair: RepairSummar
         <p className="text-sm text-zinc-400">{t('complete.intro')}</p>
         {complete.isError && Object.keys(fe).length === 0 && <ErrorBanner message={errorText(complete.error)} />}
         <TextField label={t('fields.completedOn')} type="date" value={date} onChange={setDate} error={fe.completed_on} />
-        <NumberField label={t('fields.completionOdometer')} unit={t('common:units.km')} decimal={false} value={value} onChange={setKm} error={local ?? fe.completion_odometer_km} />
+        <NumberField label={t('fields.completionOdometer')} unit={t(`common:units.${unit}`)} decimal={false} value={value} onChange={setKm} error={local ?? fe.completion_odometer_km} />
       </div>
     </Dialog>
   )

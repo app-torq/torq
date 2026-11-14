@@ -5,7 +5,8 @@ import { useTranslation } from 'react-i18next'
 import { CheckCircle2, NotebookPen, Pause, Pencil, Play, Plus, Trash2 } from 'lucide-react'
 import { api } from '../../lib/api'
 import { queryKeys } from '../../lib/queryKeys'
-import { parseNumber } from '../../lib/format'
+import { parseDistance } from '../../lib/format'
+import { kmIn } from '../../lib/units'
 import { fieldErrors, useErrorText } from '../../lib/errors'
 import type { Reminder, ReminderState } from '../../lib/types'
 import { useSession } from '../../app/session'
@@ -140,7 +141,9 @@ function MarkDoneDialog({ reminder, onClose }: { reminder: Reminder; onClose: ()
   const qc = useQueryClient()
   const errorText = useErrorText()
   const vehicles = useVehicles('all')
-  const current = vehicles.data?.items.find((v) => v.id === reminder.vehicle_id)?.current_odometer_km
+  const veh = vehicles.data?.items.find((v) => v.id === reminder.vehicle_id)
+  const current = veh?.current_odometer_km
+  const unit = veh?.odometer_unit ?? user.distance_unit
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
   const [km, setKm] = useState('')
   const [local, setLocal] = useState<string | undefined>()
@@ -155,8 +158,8 @@ function MarkDoneDialog({ reminder, onClose }: { reminder: Reminder; onClose: ()
   const submit = () => {
     const body: Record<string, unknown> = { done_on: date }
     if (km.trim() !== '') {
-      const n = parseNumber(km, user.number_format)
-      if (n === null || !Number.isInteger(n) || n < 0) {
+      const n = parseDistance(km, unit, user.number_format)
+      if (n === null) {
         setLocal('validation.number')
         return
       }
@@ -185,11 +188,11 @@ function MarkDoneDialog({ reminder, onClose }: { reminder: Reminder; onClose: ()
         <TextField label={t('markDone.date')} type="date" value={date} onChange={setDate} error={fe.done_on} />
         <NumberField
           label={t('markDone.odometer')}
-          unit={t('common:units.km')}
+          unit={t(`common:units.${unit}`)}
           decimal={false}
           value={km}
           onChange={setKm}
-          placeholder={current !== undefined ? String(current) : ''}
+          placeholder={current !== undefined ? String(kmIn(current, unit)) : ''}
           error={local ?? fe.odometer_km}
           optional
         />

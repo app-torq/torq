@@ -11,7 +11,7 @@ import { vehicleName, type ListResponse, type ServiceLog } from '../../lib/types
 import { Button } from '../../components/Button'
 import { inputClass } from '../../components/Field'
 import { Badge, EmptyState, ErrorBanner, Loading, PageHeader, Table } from '../../components/ui'
-import { useVehicles } from '../vehicles/hooks'
+import { useOdometerUnit, useVehicles } from '../vehicles/hooks'
 import { categoryLabel, useCategories } from './hooks'
 
 const PAGE = 50
@@ -20,6 +20,7 @@ const PAGE = 50
 export function ServiceLogListPage({ vehicleId }: { vehicleId?: number }) {
   const { t } = useTranslation('service')
   const fmt = useFormat()
+  const odometerUnit = useOdometerUnit()
   const errorText = useErrorText()
   const [params, setParams] = useSearchParams()
   const vehicles = useVehicles('all')
@@ -118,7 +119,7 @@ export function ServiceLogListPage({ vehicleId }: { vehicleId?: number }) {
                     <Link to={`/service/${l.id}`} className="focus-ring text-sky-300 hover:underline">{fmt.date(l.service_date)}</Link>
                   </td>
                   {vehicleId === undefined && <td className="text-zinc-300">{v ? vehicleName(v) : ''}</td>}
-                  <td className="tabular-nums text-zinc-300">{fmt.km(l.odometer_km)}</td>
+                  <td className="tabular-nums text-zinc-300">{fmt.distance(l.odometer_km, odometerUnit(l.vehicle_id))}</td>
                   <td>
                     <div className="flex max-w-md flex-wrap gap-1">
                       {l.items.map((it) => <Badge key={it.id}>{categoryLabel(catById.get(it.category_id), t)}</Badge>)}

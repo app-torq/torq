@@ -109,7 +109,7 @@ export function HsnTsnQuickFill({ hsn, tsn, onChange, onFill, canUndo, onUndo, h
       v.model && v.model.toUpperCase() !== v.trade_name.toUpperCase() ? v.model : null,
       v.body_code ? t(`body.${v.body_code}`, { defaultValue: v.body_code }) : null,
       v.year_from ? String(v.year_from) : null,
-      v.power_kw != null ? fmt.power(v.power_kw) : null,
+      v.power_kw != null ? fmt.power(v.power_kw * 1000) : null,
       v.displacement_cc != null ? fmt.displacement(v.displacement_cc) : null,
       v.fuel_type ? t(`fuel.${v.fuel_type}`) : null,
     ]

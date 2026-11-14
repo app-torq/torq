@@ -29,7 +29,9 @@
     "notSet": "Not set",
     "engineTrim": "Engine / trim",
     "engineTrimHint": "Pick an engine to fill engine code, power, displacement and fuel.",
-    "hsnTsn": "HSN / TSN"
+    "hsnTsn": "HSN / TSN",
+    "odometerUnit": "Odometer unit",
+    "odometerUnitHint": "What the odometer shows. This vehicle's distances are shown and entered in this unit."
   },
   "tabs": {
     "overview": "Overview",
@@ -132,5 +134,9 @@
   "vinWarning": {
     "nonStandard": "Not a standard 17-character VIN. Fine for chassis numbers of older or JDM vehicles; check for typos otherwise.",
     "checkDigit": "The check digit (9th character) does not match. Check for typos."
+  },
+  "odometerUnits": {
+    "km": "Kilometres (km)",
+    "mi": "Miles (mi)"
   }
 }
