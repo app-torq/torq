@@ -17,7 +17,8 @@
     "closeMenu": "Close menu",
     "main": "Main navigation",
     "about": "About & data sources",
-    "home": "{{brand}} – go to dashboard"
+    "home": "{{brand}} – go to dashboard",
+    "priorities": "Project priorities"
   },
   "actions": {
     "save": "Save",

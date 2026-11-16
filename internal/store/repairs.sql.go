@@ -16,23 +16,31 @@ SELECT COUNT(*) FROM repair_logs r
 WHERE (CAST(?1 AS INTEGER) = 0 OR r.vehicle_id = ?1)
   AND instr(',' || CAST(?2 AS TEXT) || ',', ',' || r.status || ',') > 0
   AND (CAST(?3 AS TEXT) = ''
-       OR r.title LIKE '%' || ?3 || '%'
-       OR r.symptom LIKE '%' || ?3 || '%'
-       OR r.root_cause LIKE '%' || ?3 || '%'
-       OR EXISTS (SELECT 1 FROM repair_fault_codes f WHERE f.repair_log_id = r.id AND f.code LIKE '%' || ?3 || '%')
+       OR instr(',' || CAST(?3 AS TEXT) || ',', ',' || COALESCE(CAST(r.priority_id AS TEXT), 'none') || ',') > 0)
+  AND (CAST(?4 AS TEXT) = ''
+       OR r.title LIKE '%' || ?4 || '%'
+       OR r.symptom LIKE '%' || ?4 || '%'
+       OR r.root_cause LIKE '%' || ?4 || '%'
+       OR EXISTS (SELECT 1 FROM repair_fault_codes f WHERE f.repair_log_id = r.id AND f.code LIKE '%' || ?4 || '%')
        OR EXISTS (SELECT 1 FROM repair_parts p WHERE p.repair_log_id = r.id
-                  AND (p.name LIKE '%' || ?3 || '%' OR p.oem_part_number LIKE '%' || ?3 || '%'
-                       OR p.aftermarket_part_number LIKE '%' || ?3 || '%')))
+                  AND (p.name LIKE '%' || ?4 || '%' OR p.oem_part_number LIKE '%' || ?4 || '%'
+                       OR p.aftermarket_part_number LIKE '%' || ?4 || '%')))
 `
 
 type CountRepairsParams struct {
-	VehicleID int64
-	Statuses  string
-	Q         string
+	VehicleID  int64
+	Statuses   string
+	Priorities string
+	Q          string
 }
 
 func (q *Queries) CountRepairs(ctx context.Context, arg CountRepairsParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countRepairs, arg.VehicleID, arg.Statuses, arg.Q)
+	row := q.db.QueryRowContext(ctx, countRepairs,
+		arg.VehicleID,
+		arg.Statuses,
+		arg.Priorities,
+		arg.Q,
+	)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -93,9 +101,9 @@ func (q *Queries) CreatePart(ctx context.Context, arg CreatePartParams) (RepairP
 
 const createRepair = `-- name: CreateRepair :one
 INSERT INTO repair_logs (vehicle_id, title, status, symptom, root_cause, procedure_notes, special_tools,
-                         started_on, created_by, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-RETURNING id, vehicle_id, title, status, symptom, root_cause, procedure_notes, special_tools, started_on, completed_on, completion_odometer_km, created_by, created_at, updated_at
+                         started_on, priority_id, created_by, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+RETURNING id, vehicle_id, title, status, symptom, root_cause, procedure_notes, special_tools, started_on, completed_on, completion_odometer_km, created_by, created_at, updated_at, priority_id
 `
 
 type CreateRepairParams struct {
@@ -107,6 +115,7 @@ type CreateRepairParams struct {
 	ProcedureNotes string
 	SpecialTools   string
 	StartedOn      sql.NullString
+	PriorityID     sql.NullInt64
 	CreatedBy      sql.NullInt64
 	CreatedAt      string
 	UpdatedAt      string
@@ -122,6 +131,7 @@ func (q *Queries) CreateRepair(ctx context.Context, arg CreateRepairParams) (Rep
 		arg.ProcedureNotes,
 		arg.SpecialTools,
 		arg.StartedOn,
+		arg.PriorityID,
 		arg.CreatedBy,
 		arg.CreatedAt,
 		arg.UpdatedAt,
@@ -142,6 +152,7 @@ func (q *Queries) CreateRepair(ctx context.Context, arg CreateRepairParams) (Rep
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PriorityID,
 	)
 	return i, err
 }
@@ -216,7 +227,7 @@ func (q *Queries) GetPart(ctx context.Context, id int64) (RepairPart, error) {
 }
 
 const getRepair = `-- name: GetRepair :one
-SELECT id, vehicle_id, title, status, symptom, root_cause, procedure_notes, special_tools, started_on, completed_on, completion_odometer_km, created_by, created_at, updated_at FROM repair_logs WHERE id = ?
+SELECT id, vehicle_id, title, status, symptom, root_cause, procedure_notes, special_tools, started_on, completed_on, completion_odometer_km, created_by, created_at, updated_at, priority_id FROM repair_logs WHERE id = ?
 `
 
 func (q *Queries) GetRepair(ctx context.Context, id int64) (RepairLog, error) {
@@ -237,6 +248,7 @@ func (q *Queries) GetRepair(ctx context.Context, id int64) (RepairLog, error) {
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PriorityID,
 	)
 	return i, err
 }
@@ -370,34 +382,46 @@ func (q *Queries) ListParts(ctx context.Context, repairLogID int64) ([]RepairPar
 }
 
 const listRepairs = `-- name: ListRepairs :many
-SELECT r.id, r.vehicle_id, r.title, r.status, r.symptom, r.root_cause, r.procedure_notes, r.special_tools, r.started_on, r.completed_on, r.completion_odometer_km, r.created_by, r.created_at, r.updated_at FROM repair_logs r
-WHERE (CAST(?1 AS INTEGER) = 0 OR r.vehicle_id = ?1)
-  AND instr(',' || CAST(?2 AS TEXT) || ',', ',' || r.status || ',') > 0
-  AND (CAST(?3 AS TEXT) = ''
-       OR r.title LIKE '%' || ?3 || '%'
-       OR r.symptom LIKE '%' || ?3 || '%'
-       OR r.root_cause LIKE '%' || ?3 || '%'
-       OR EXISTS (SELECT 1 FROM repair_fault_codes f WHERE f.repair_log_id = r.id AND f.code LIKE '%' || ?3 || '%')
+SELECT r.id, r.vehicle_id, r.title, r.status, r.symptom, r.root_cause, r.procedure_notes, r.special_tools, r.started_on, r.completed_on, r.completion_odometer_km, r.created_by, r.created_at, r.updated_at, r.priority_id FROM repair_logs r
+LEFT JOIN repair_priorities pr ON pr.id = r.priority_id
+JOIN (SELECT CAST(?1 AS TEXT) AS mode) o
+WHERE (CAST(?2 AS INTEGER) = 0 OR r.vehicle_id = ?2)
+  AND instr(',' || CAST(?3 AS TEXT) || ',', ',' || r.status || ',') > 0
+  AND (CAST(?4 AS TEXT) = ''
+       OR instr(',' || CAST(?4 AS TEXT) || ',', ',' || COALESCE(CAST(r.priority_id AS TEXT), 'none') || ',') > 0)
+  AND (CAST(?5 AS TEXT) = ''
+       OR r.title LIKE '%' || ?5 || '%'
+       OR r.symptom LIKE '%' || ?5 || '%'
+       OR r.root_cause LIKE '%' || ?5 || '%'
+       OR EXISTS (SELECT 1 FROM repair_fault_codes f WHERE f.repair_log_id = r.id AND f.code LIKE '%' || ?5 || '%')
        OR EXISTS (SELECT 1 FROM repair_parts p WHERE p.repair_log_id = r.id
-                  AND (p.name LIKE '%' || ?3 || '%' OR p.oem_part_number LIKE '%' || ?3 || '%'
-                       OR p.aftermarket_part_number LIKE '%' || ?3 || '%')))
-ORDER BY CASE r.status WHEN 'in_progress' THEN 0 WHEN 'waiting_on_parts' THEN 1 WHEN 'planned' THEN 2 ELSE 3 END,
+                  AND (p.name LIKE '%' || ?5 || '%' OR p.oem_part_number LIKE '%' || ?5 || '%'
+                       OR p.aftermarket_part_number LIKE '%' || ?5 || '%')))
+ORDER BY CASE o.mode WHEN 'priority' THEN COALESCE(pr.sort_order, 1000000000) ELSE 0 END,
+         CASE o.mode WHEN 'updated' THEN 0
+              ELSE CASE r.status WHEN 'in_progress' THEN 0 WHEN 'waiting_on_parts' THEN 1 WHEN 'planned' THEN 2 ELSE 3 END END,
+         CASE o.mode WHEN 'status_priority' THEN COALESCE(pr.sort_order, 1000000000) ELSE 0 END,
          COALESCE(r.completed_on, r.updated_at) DESC, r.id DESC
-LIMIT ?5 OFFSET ?4
+LIMIT ?7 OFFSET ?6
 `
 
 type ListRepairsParams struct {
-	VehicleID int64
-	Statuses  string
-	Q         string
-	Off       int64
-	Lim       int64
+	Sort       string
+	VehicleID  int64
+	Statuses   string
+	Priorities string
+	Q          string
+	Off        int64
+	Lim        int64
 }
 
+// sort: status (default), priority, updated, or status_priority (dashboard).
 func (q *Queries) ListRepairs(ctx context.Context, arg ListRepairsParams) ([]RepairLog, error) {
 	rows, err := q.db.QueryContext(ctx, listRepairs,
+		arg.Sort,
 		arg.VehicleID,
 		arg.Statuses,
+		arg.Priorities,
 		arg.Q,
 		arg.Off,
 		arg.Lim,
@@ -424,6 +448,7 @@ func (q *Queries) ListRepairs(ctx context.Context, arg ListRepairsParams) ([]Rep
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.PriorityID,
 		); err != nil {
 			return nil, err
 		}
@@ -552,7 +577,7 @@ const setRepairStatus = `-- name: SetRepairStatus :one
 UPDATE repair_logs
 SET status = ?, started_on = ?, completed_on = ?, completion_odometer_km = ?, updated_at = ?
 WHERE id = ?
-RETURNING id, vehicle_id, title, status, symptom, root_cause, procedure_notes, special_tools, started_on, completed_on, completion_odometer_km, created_by, created_at, updated_at
+RETURNING id, vehicle_id, title, status, symptom, root_cause, procedure_notes, special_tools, started_on, completed_on, completion_odometer_km, created_by, created_at, updated_at, priority_id
 `
 
 type SetRepairStatusParams struct {
@@ -589,6 +614,7 @@ func (q *Queries) SetRepairStatus(ctx context.Context, arg SetRepairStatusParams
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PriorityID,
 	)
 	return i, err
 }
@@ -648,9 +674,9 @@ func (q *Queries) UpdatePart(ctx context.Context, arg UpdatePartParams) (RepairP
 const updateRepair = `-- name: UpdateRepair :one
 UPDATE repair_logs
 SET title = ?, symptom = ?, root_cause = ?, procedure_notes = ?, special_tools = ?, started_on = ?,
-    completed_on = ?, completion_odometer_km = ?, updated_at = ?
+    completed_on = ?, completion_odometer_km = ?, priority_id = ?, updated_at = ?
 WHERE id = ?
-RETURNING id, vehicle_id, title, status, symptom, root_cause, procedure_notes, special_tools, started_on, completed_on, completion_odometer_km, created_by, created_at, updated_at
+RETURNING id, vehicle_id, title, status, symptom, root_cause, procedure_notes, special_tools, started_on, completed_on, completion_odometer_km, created_by, created_at, updated_at, priority_id
 `
 
 type UpdateRepairParams struct {
@@ -662,6 +688,7 @@ type UpdateRepairParams struct {
 	StartedOn            sql.NullString
 	CompletedOn          sql.NullString
 	CompletionOdometerKm sql.NullInt64
+	PriorityID           sql.NullInt64
 	UpdatedAt            string
 	ID                   int64
 }
@@ -676,6 +703,7 @@ func (q *Queries) UpdateRepair(ctx context.Context, arg UpdateRepairParams) (Rep
 		arg.StartedOn,
 		arg.CompletedOn,
 		arg.CompletionOdometerKm,
+		arg.PriorityID,
 		arg.UpdatedAt,
 		arg.ID,
 	)
@@ -695,6 +723,7 @@ func (q *Queries) UpdateRepair(ctx context.Context, arg UpdateRepairParams) (Rep
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PriorityID,
 	)
 	return i, err
 }

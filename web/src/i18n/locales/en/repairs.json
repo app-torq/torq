@@ -34,7 +34,8 @@
     "torqueLabel": "Fastener",
     "torqueValue": "Torque",
     "torqueNote": "Note",
-    "addTorque": "Add torque spec"
+    "addTorque": "Add torque spec",
+    "priority": "Priority"
   },
   "sections": {
     "diagnostics": "Diagnostics",
@@ -78,10 +79,62 @@
   "deleteBody": "Delete \"{{title}}\" with its parts list and attachments?",
   "filters": {
     "allStatuses": "All statuses",
-    "search": "Search titles, fault codes, part numbers"
+    "search": "Search titles, fault codes, part numbers",
+    "allPriorities": "All",
+    "priorityCount_one": "{{count}} selected",
+    "priorityCount_other": "{{count}} selected",
+    "clear": "Clear"
   },
   "quick": {
     "newRepair": "New repair project"
   },
-  "partsCount": "{{count}} parts"
+  "partsCount": "{{count}} parts",
+  "sort": {
+    "label": "Sort by",
+    "priority": "Priority",
+    "status": "Status",
+    "updated": "Last updated"
+  },
+  "priorities": {
+    "title": "Project priorities",
+    "intro": "How urgent a project is. Projects are sorted by this order on the board and in the list; new projects get the default.",
+    "add": "Add priority",
+    "editTitle": "Edit priority",
+    "name": "Name",
+    "color": "Color",
+    "projects": "Projects",
+    "default": "Default",
+    "makeDefault": "Default for new projects",
+    "defaultHint": "Only one priority can be the default. Without one, new projects get no priority.",
+    "builtinHint": "Clear the field or type \"{{name}}\" to use the translated name again.",
+    "none": "No priority",
+    "label": "Priority: {{name}}",
+    "moveUp": "Move {{name}} up",
+    "moveDown": "Move {{name}} down",
+    "deleteTitle": "Delete {{name}}",
+    "moveProjects_one": "Move its project to",
+    "moveProjects_other": "Move its {{count}} projects to",
+    "deleteUnused": "No project uses this priority.",
+    "deleteDefault": "This is the default for new projects. Afterwards, new projects get no priority until you choose another default.",
+    "builtin": {
+      "urgent": "Urgent",
+      "high": "High",
+      "normal": "Normal",
+      "low": "Low"
+    },
+    "colors": {
+      "red": "Red",
+      "orange": "Orange",
+      "amber": "Amber",
+      "yellow": "Yellow",
+      "lime": "Lime",
+      "green": "Green",
+      "teal": "Teal",
+      "sky": "Sky blue",
+      "blue": "Blue",
+      "violet": "Violet",
+      "pink": "Pink",
+      "zinc": "Gray"
+    }
+  }
 }

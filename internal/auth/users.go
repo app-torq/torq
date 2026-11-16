@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"regexp"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -356,13 +357,17 @@ func (u *Users) ChangeOwnPassword(ctx context.Context, userID, keepSessionID int
 	})
 }
 
+// priorityDisplays are how a user can have project priorities shown.
+var priorityDisplays = []string{"both", "color", "name"}
+
 // PreferencesPatch updates the caller's own display settings. Formats holds
 // the format and unit choices; empty fields stay unchanged.
 type PreferencesPatch struct {
-	DisplayName    *string
-	Locale         *string
-	CurrencySymbol *string // "" clears the override
-	Formats        Formats
+	DisplayName     *string
+	Locale          *string
+	CurrencySymbol  *string // "" clears the override
+	PriorityDisplay *string
+	Formats         Formats
 }
 
 func preferencesParams(u store.User) store.UpdateUserPreferencesParams {
@@ -370,7 +375,7 @@ func preferencesParams(u store.User) store.UpdateUserPreferencesParams {
 		DisplayName: u.DisplayName, Locale: u.Locale, DateFormat: u.DateFormat, NumberFormat: u.NumberFormat,
 		TimeFormat: u.TimeFormat, CurrencyCode: u.CurrencyCode, CurrencySymbol: u.CurrencySymbol,
 		PowerUnit: u.PowerUnit, DistanceUnit: u.DistanceUnit, VolumeUnit: u.VolumeUnit, TorqueUnit: u.TorqueUnit,
-		PressureUnit: u.PressureUnit, DisplacementUnit: u.DisplacementUnit, ID: u.ID,
+		PressureUnit: u.PressureUnit, DisplacementUnit: u.DisplacementUnit, PriorityDisplay: u.PriorityDisplay, ID: u.ID,
 	}
 }
 
@@ -395,6 +400,10 @@ func (u *Users) UpdatePreferences(ctx context.Context, userID int64, p Preferenc
 		sym := strings.TrimSpace(*p.CurrencySymbol)
 		v.Check(utf8.RuneCountInString(sym) > 5, "currency_symbol", "validation.length")
 		next.CurrencySymbol = sql.NullString{String: sym, Valid: sym != ""}
+	}
+	if p.PriorityDisplay != nil {
+		v.Check(!slices.Contains(priorityDisplays, *p.PriorityDisplay), "priority_display", "validation.invalid_choice")
+		next.PriorityDisplay = *p.PriorityDisplay
 	}
 	f := OverlayFormats(FromStore(cur).Prefs.Formats, p.Formats)
 	f.Validate(&v, "")

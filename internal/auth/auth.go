@@ -21,6 +21,8 @@ const (
 type Preferences struct {
 	Locale         string
 	CurrencySymbol string // empty when not overridden
+	// PriorityDisplay is how project priorities are shown: both, color or name.
+	PriorityDisplay string
 	Formats
 }
 
@@ -96,8 +98,9 @@ func FromStore(u store.User) User {
 		Role:        Role(u.Role),
 		Disabled:    u.DisabledAt.Valid,
 		Prefs: Preferences{
-			Locale:         u.Locale,
-			CurrencySymbol: u.CurrencySymbol.String,
+			Locale:          u.Locale,
+			CurrencySymbol:  u.CurrencySymbol.String,
+			PriorityDisplay: u.PriorityDisplay,
 			Formats: Formats{
 				DateFormat: u.DateFormat, NumberFormat: u.NumberFormat, TimeFormat: u.TimeFormat,
 				CurrencyCode: u.CurrencyCode, PowerUnit: u.PowerUnit, DistanceUnit: u.DistanceUnit,

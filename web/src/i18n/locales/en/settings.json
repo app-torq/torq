@@ -79,6 +79,13 @@
         "ps": "PS (metric horsepower)",
         "hp": "hp (horsepower)"
       }
+    },
+    "priorityDisplay": "Show project priorities as",
+    "priorityDisplayHint": "With color only, the name appears when you point at it.",
+    "priorityDisplays": {
+      "both": "Color and name",
+      "color": "Color only",
+      "name": "Name only"
     }
   },
   "users": {

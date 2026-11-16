@@ -79,6 +79,13 @@
         "ps": "PS (Pferdestärke)",
         "hp": "hp (Horsepower)"
       }
+    },
+    "priorityDisplay": "Projektprioritäten anzeigen als",
+    "priorityDisplayHint": "Bei „Nur Farbe“ erscheint der Name, wenn du darauf zeigst.",
+    "priorityDisplays": {
+      "both": "Farbe und Name",
+      "color": "Nur Farbe",
+      "name": "Nur Name"
     }
   },
   "users": {

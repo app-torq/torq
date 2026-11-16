@@ -18,6 +18,8 @@ import { AttachmentGallery } from '../../components/AttachmentGallery'
 import { FileDrop } from '../../components/FileDrop'
 import { Badge, Card, DefinitionList, ErrorBanner, Loading, Notice, PageHeader, Table } from '../../components/ui'
 import { invalidateOdometerDependents, useOdometerUnit, useVehicle } from '../vehicles/hooks'
+import { ProjectPriority } from './priorities'
+import { PrioritySelect, priorityBody } from './PrioritySelect'
 import { invalidateRepairs, statusTone, useRepair } from './hooks'
 import { StatusMenu } from './RepairBoardPage'
 import { CompleteRepairDialog } from './CompleteRepairDialog'
@@ -77,7 +79,10 @@ export function RepairDetailPage() {
       <Card>
         <div className="flex flex-wrap items-start gap-6">
           <div className="space-y-2">
-            <Badge tone={statusTone[r.status]}>{t(`statuses.${r.status}`)}</Badge>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge tone={statusTone[r.status]}>{t(`statuses.${r.status}`)}</Badge>
+              <ProjectPriority id={r.priority_id} />
+            </div>
             <div className="w-48"><StatusMenu repair={r} onComplete={() => { setCompleting(true) }} /></div>
           </div>
           <div className="min-w-0 flex-1">
@@ -198,6 +203,7 @@ function EditRepairDialog({ repair, unit, onClose }: { repair: Repair; unit: Dis
   const qc = useQueryClient()
   const errorText = useErrorText()
   const [title, setTitle] = useState(repair.title)
+  const [priority, setPriority] = useState(repair.priority_id === null ? '' : String(repair.priority_id))
   const [startedOn, setStartedOn] = useState(repair.started_on ?? '')
   const [symptom, setSymptom] = useState(repair.symptom)
   const [codes, setCodes] = useState(repair.fault_codes)
@@ -237,7 +243,7 @@ function EditRepairDialog({ repair, unit, onClose }: { repair: Repair; unit: Dis
     }
     const body: Record<string, unknown> = {
       title, started_on: startedOn || null, symptom, fault_codes: codes, root_cause: rootCause,
-      procedure_notes: procedure, special_tools: tools, torque_specs: specs,
+      procedure_notes: procedure, special_tools: tools, torque_specs: specs, ...priorityBody(priority),
     }
     if (repair.status === 'completed') {
       body.completed_on = completedOn
@@ -267,6 +273,7 @@ function EditRepairDialog({ repair, unit, onClose }: { repair: Repair; unit: Dis
       <div className="space-y-4">
         {save.isError && Object.keys(fieldErrors(save.error)).length === 0 && <ErrorBanner message={errorText(save.error)} />}
         <TextField label={t('fields.title')} value={title} onChange={setTitle} error={fe.title} maxLength={120} />
+        <PrioritySelect value={priority} onChange={setPriority} error={fe.priority_id} />
         <div className="form-grid grid grid-cols-1 gap-4 sm:grid-cols-3">
           <TextField label={t('fields.startedOn')} type="date" value={startedOn} onChange={setStartedOn} error={fe.started_on} optional />
           {repair.status === 'completed' && (

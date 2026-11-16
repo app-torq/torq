@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../lib/api'
 import { queryKeys } from '../../lib/queryKeys'
-import type { Formats, Locale, MeResponse, User } from '../../lib/types'
+import type { Formats, Locale, MeResponse, PriorityDisplay, User } from '../../lib/types'
 import { createFormatter } from '../../lib/format'
 import { fieldErrors, useErrorText } from '../../lib/errors'
 import { useSession } from '../../app/session'
@@ -31,11 +31,12 @@ export function PreferencesPage() {
   const [locale, setLocale] = useState<Locale>(user.locale)
   const [formats, setFormats] = useState<Formats>(() => formatsOf(user))
   const [currencySymbol, setCurrencySymbol] = useState(user.currency_symbol ?? '')
+  const [priorityDisplay, setPriorityDisplay] = useState<PriorityDisplay>(user.priority_display)
   const patch = (p: Partial<Formats>) => { setFormats((prev) => ({ ...prev, ...p })) }
 
   const save = useMutation({
     mutationFn: () =>
-      api.patch<{ user: User }>('/me/preferences', { display_name: displayName, locale, currency_symbol: currencySymbol, ...formats }),
+      api.patch<{ user: User }>('/me/preferences', { display_name: displayName, locale, currency_symbol: currencySymbol, priority_display: priorityDisplay, ...formats }),
     onSuccess: ({ user: updated }) => {
       qc.setQueryData<MeResponse | null>(queryKeys.me, (prev) => (prev ? { ...prev, user: updated } : prev))
       void i18n.changeLanguage(updated.locale)
@@ -92,6 +93,14 @@ export function PreferencesPage() {
             optional
             hint={t('preferences.currencySymbolHint')}
             error={fe.currency_symbol}
+          />
+          <SelectField
+            label={t('preferences.priorityDisplay')}
+            value={priorityDisplay}
+            onChange={(v) => { setPriorityDisplay(v as PriorityDisplay) }}
+            options={(['both', 'color', 'name'] as const).map((d) => ({ value: d, label: t(`preferences.priorityDisplays.${d}`) }))}
+            hint={t('preferences.priorityDisplayHint')}
+            error={fe.priority_display}
           />
           <fieldset className="space-y-2 border-t border-zinc-800 pt-4">
             <legend className="text-sm font-semibold text-zinc-200">{t('preferences.units')}</legend>

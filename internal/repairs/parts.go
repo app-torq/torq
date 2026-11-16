@@ -180,8 +180,8 @@ func (s *Service) ReorderParts(ctx context.Context, repairID int64, ids []int64)
 	return out, err
 }
 
-// OpenProjects returns up to 10 projects that are not completed.
+// OpenProjects returns up to 10 projects that are not completed, by status and then priority.
 func (s *Service) OpenProjects(ctx context.Context) ([]Repair, error) {
-	rows, _, err := s.List(ctx, Filter{Statuses: []string{StatusInProgress, StatusWaitingOnParts, StatusPlanned}, Limit: 10})
+	rows, _, err := s.List(ctx, Filter{Statuses: []string{StatusInProgress, StatusWaitingOnParts, StatusPlanned}, Sort: SortStatusPriority, Limit: 10})
 	return rows, err
 }

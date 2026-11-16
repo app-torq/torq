@@ -34,7 +34,8 @@
     "torqueLabel": "Verschraubung",
     "torqueValue": "Drehmoment",
     "torqueNote": "Hinweis",
-    "addTorque": "Anzugsmoment hinzufügen"
+    "addTorque": "Anzugsmoment hinzufügen",
+    "priority": "Priorität"
   },
   "sections": {
     "diagnostics": "Diagnose",
@@ -78,10 +79,62 @@
   "deleteBody": "„{{title}}“ mit Stückliste und Anhängen löschen?",
   "filters": {
     "allStatuses": "Alle Status",
-    "search": "Titel, Fehlercodes, Teilenummern durchsuchen"
+    "search": "Titel, Fehlercodes, Teilenummern durchsuchen",
+    "allPriorities": "Alle",
+    "priorityCount_one": "{{count}} ausgewählt",
+    "priorityCount_other": "{{count}} ausgewählt",
+    "clear": "Zurücksetzen"
   },
   "quick": {
     "newRepair": "Neues Reparaturprojekt"
   },
-  "partsCount": "{{count}} Teile"
+  "partsCount": "{{count}} Teile",
+  "sort": {
+    "label": "Sortieren nach",
+    "priority": "Priorität",
+    "status": "Status",
+    "updated": "Zuletzt geändert"
+  },
+  "priorities": {
+    "title": "Projektprioritäten",
+    "intro": "Wie dringend ein Projekt ist. Board und Liste sortieren Projekte in dieser Reihenfolge; neue Projekte erhalten die Vorgabe.",
+    "add": "Priorität hinzufügen",
+    "editTitle": "Priorität bearbeiten",
+    "name": "Name",
+    "color": "Farbe",
+    "projects": "Projekte",
+    "default": "Vorgabe",
+    "makeDefault": "Vorgabe für neue Projekte",
+    "defaultHint": "Nur eine Priorität kann die Vorgabe sein. Ohne Vorgabe erhalten neue Projekte keine Priorität.",
+    "builtinHint": "Leer lassen oder „{{name}}“ eingeben, um wieder den übersetzten Namen zu verwenden.",
+    "none": "Keine Priorität",
+    "label": "Priorität: {{name}}",
+    "moveUp": "{{name}} nach oben",
+    "moveDown": "{{name}} nach unten",
+    "deleteTitle": "{{name}} löschen",
+    "moveProjects_one": "Sein Projekt verschieben nach",
+    "moveProjects_other": "Seine {{count}} Projekte verschieben nach",
+    "deleteUnused": "Kein Projekt verwendet diese Priorität.",
+    "deleteDefault": "Dies ist die Vorgabe für neue Projekte. Danach erhalten neue Projekte keine Priorität, bis du eine andere Vorgabe wählst.",
+    "builtin": {
+      "urgent": "Dringend",
+      "high": "Hoch",
+      "normal": "Normal",
+      "low": "Niedrig"
+    },
+    "colors": {
+      "red": "Rot",
+      "orange": "Orange",
+      "amber": "Bernstein",
+      "yellow": "Gelb",
+      "lime": "Hellgrün",
+      "green": "Grün",
+      "teal": "Petrol",
+      "sky": "Himmelblau",
+      "blue": "Blau",
+      "violet": "Violett",
+      "pink": "Pink",
+      "zinc": "Grau"
+    }
+  }
 }
