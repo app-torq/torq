@@ -90,6 +90,8 @@ torque in Nm, pressure in bar, displacement in cm³ and power in kW (`power_kw`,
 
 - A vehicle's distances (odometer, service and repair entries, reminder intervals) use its
   `odometer_unit` (`km` or `mi`), since that is what its odometer shows.
+- A vehicle's displacement and power use its `displacement_unit` and `power_unit` when they are set
+  (API level 4); `null` means the user's preference.
 - Everything else uses the signed-in user's preferences from `GET /auth/me`: `distance_unit`, `volume_unit`,
   `torque_unit`, `pressure_unit`, `displacement_unit` and `power_unit`, plus `date_format` and `time_format`.
 - A service item's `quantity_unit` is the unit the amount was typed in (`L`, `mL`, `qt`, `gal`, `fl_oz`);

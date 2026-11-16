@@ -5,10 +5,10 @@ import { useTranslation } from 'react-i18next'
 import { api } from '../../lib/api'
 import { queryKeys } from '../../lib/queryKeys'
 import { metricField, metricToInput, parseDistance, powerW, readMetricField } from '../../lib/format'
-import { DISPLACEMENT, POWER, type DistanceUnit } from '../../lib/units'
+import { DISPLACEMENT, POWER, type DisplacementUnit, type DistanceUnit, type PowerUnit, type UnitSpec } from '../../lib/units'
 import { vinWarning } from '../../lib/vin'
 import { fieldErrors, useErrorText } from '../../lib/errors'
-import { FUEL_TYPES, type CatalogEngine, type CatalogGeneration, type CatalogModel, type KbaVariant, type User, type Vehicle } from '../../lib/types'
+import { FUEL_TYPES, type CatalogEngine, type CatalogGeneration, type CatalogModel, type KbaVariant, type NumberFormat, type User, type Vehicle } from '../../lib/types'
 import { useSession } from '../../app/session'
 import { Button } from '../../components/Button'
 import { SelectField, TextField } from '../../components/Field'
@@ -55,25 +55,43 @@ export interface VehicleFormValues extends Record<string, string> {
   fuel: string
   odometer: string
   odometerUnit: DistanceUnit
+  /** '' follows the user's preference. */
+  displacementUnit: DisplacementUnit | ''
+  powerUnit: PowerUnit | ''
 }
+
+const DISPLACEMENT_UNITS: DisplacementUnit[] = ['cc', 'l', 'ci']
+const POWER_UNITS: PowerUnit[] = ['kw', 'ps', 'hp']
 
 const num = (n: number | null | undefined) => (n == null ? '' : String(n))
 
-/** Converts catalog and stored metric values to input text in the user's units. */
+/** Converts catalog and stored metric values to input text in the units the form shows. */
 interface ValueText {
   displacement: (cc: number | null) => string
   power: (w: number | null) => string
 }
 
-function valueText(user: User): ValueText {
+interface Specs {
+  displacement: UnitSpec
+  power: UnitSpec
+}
+
+/** The input units: the vehicle's when set, otherwise the user's preference. */
+function specsFor(user: User, displacementUnit: DisplacementUnit | '', powerUnit: PowerUnit | ''): Specs {
+  return { displacement: DISPLACEMENT[displacementUnit || user.displacement_unit], power: POWER[powerUnit || user.power_unit] }
+}
+
+function valueText(specs: Specs, nf: NumberFormat): ValueText {
   return {
-    displacement: (cc) => metricToInput(cc, DISPLACEMENT[user.displacement_unit], user.number_format),
-    power: (w) => metricToInput(w, POWER[user.power_unit], user.number_format),
+    displacement: (cc) => metricToInput(cc, specs.displacement, nf),
+    power: (w) => metricToInput(w, specs.power, nf),
   }
 }
 
 function initialValues(user: User, v?: Vehicle): VehicleFormValues {
-  const text = valueText(user)
+  const displacementUnit = v?.displacement_unit ?? ''
+  const powerUnit = v?.power_unit ?? ''
+  const text = valueText(specsFor(user, displacementUnit, powerUnit), user.number_format)
   return {
     make: v?.make ?? '',
     model: v?.model ?? '',
@@ -90,6 +108,8 @@ function initialValues(user: User, v?: Vehicle): VehicleFormValues {
     fuel: v?.fuel_type ?? '',
     odometer: '',
     odometerUnit: v?.odometer_unit ?? user.distance_unit,
+    displacementUnit,
+    powerUnit,
   }
 }
 
@@ -125,12 +145,13 @@ function VehicleForm({ vehicle }: { vehicle?: Vehicle }) {
   const qc = useQueryClient()
   const errorText = useErrorText()
   const nf = user.number_format
-  const text = valueText(user)
-  const displacementSpec = DISPLACEMENT[user.displacement_unit]
-  const powerSpec = POWER[user.power_unit]
   const [values, setValues] = useState(() => initialValues(user, vehicle))
+  const specs = specsFor(user, values.displacementUnit, values.powerUnit)
+  const text = valueText(specs, nf)
+  const displacementSpec = specs.displacement
+  const powerSpec = specs.power
   // The stored values behind the converted texts, so an untouched field keeps its exact value.
-  const [stored] = useState(() => ({
+  const [stored, setStored] = useState(() => ({
     displacement: metricField(vehicle?.displacement_cc, displacementSpec, nf),
     power: metricField(vehicle ? powerW(vehicle) : null, powerSpec, nf),
   }))
@@ -147,6 +168,27 @@ function VehicleForm({ vehicle }: { vehicle?: Vehicle }) {
     [touch],
   )
   const onKbaFill = (v: KbaVariant) => { fill(kbaFill(v, text)) }
+
+  /** Switching a vehicle's unit converts the typed value so it keeps its meaning. */
+  const switchUnit = (field: 'displacement' | 'power', unitField: 'displacementUnit' | 'powerUnit', unit: string, to: UnitSpec) => {
+    const value = readMetricField(values[field], stored[field], specs[field], nf, true)
+    touch(unitField)
+    if (value === undefined) {
+      setValues((prev) => ({ ...prev, [unitField]: unit }))
+      return
+    }
+    const next = metricField(value, to, nf)
+    setStored((prev) => ({ ...prev, [field]: next }))
+    setValues((prev) => ({ ...prev, [unitField]: unit, [field]: next.text }))
+    touch(field)
+  }
+  const setDisplacementUnit = (u: string) => {
+    switchUnit('displacement', 'displacementUnit', u, DISPLACEMENT[(u as DisplacementUnit | '') || user.displacement_unit])
+  }
+  const setPowerUnit = (u: string) => {
+    switchUnit('power', 'powerUnit', u, POWER[(u as PowerUnit | '') || user.power_unit])
+  }
+  const unitLabel = (spec: UnitSpec) => t(`common:units.${spec.label}`)
 
   // Cascading catalog suggestions (US2). Each level queries only while its
   // field has focus; parents are matched by normalized text on the server.
@@ -193,9 +235,9 @@ function VehicleForm({ vehicle }: { vehicle?: Vehicle }) {
   }
   const vinIssue = vinWarning(values.vin)
   const vinHint = vinIssue ? <span className="text-amber-300">{t(`vinWarning.${vinIssue}`)}</span> : undefined
-  // Power is entered in the preferred unit; the hint shows kW (or PS when kW is preferred).
+  // Power is entered in the vehicle's or preferred unit; the hint shows kW (or PS when that is kW).
   const enteredW = readMetricField(values.power, stored.power, powerSpec, nf, true)
-  const otherSpec = POWER[user.power_unit === 'kw' ? 'ps' : 'kw']
+  const otherSpec = POWER[powerSpec === POWER.kw ? 'ps' : 'kw']
   const powerHint = enteredW != null && enteredW > 0 ? `≈ ${fmt.number(Math.round(enteredW / otherSpec.factor))} ${t(`common:units.${otherSpec.label}`)}` : undefined
   const modelLabel = (m: CatalogModel) => {
     const y = years(m.year_from, m.year_to)
@@ -233,6 +275,8 @@ function VehicleForm({ vehicle }: { vehicle?: Vehicle }) {
       // power_w is the precise value; power_kw (whole kW) is sent too so that clearing works on update.
       displacement_cc: cc ?? null, power_w: w ?? null, power_kw: w == null ? null : Math.max(1, Math.round(w / 1000)),
       fuel_type: v.fuel === '' ? null : v.fuel, odometer_unit: v.odometerUnit,
+      displacement_unit: v.displacementUnit === '' ? null : v.displacementUnit,
+      power_unit: v.powerUnit === '' ? null : v.powerUnit,
     }
     if (!vehicle) {
       const km = parseDistance(v.odometer, v.odometerUnit, nf)
@@ -326,8 +370,29 @@ function VehicleForm({ vehicle }: { vehicle?: Vehicle }) {
               optional
             />
             <TextField label={t('fields.engineCode')} value={values.engine} onChange={set('engine')} error={fe.engine_code} hint={t('fields.engineCodeHint')} highlighted={hi('engine')} optional />
-            <NumberField label={t('fields.displacement')} value={values.displacement} onChange={set('displacement')} error={fe.displacement_cc} unit={t(`common:units.${displacementSpec.label}`)} decimal={displacementSpec.decimals > 0} highlighted={hi('displacement')} optional />
-            <NumberField label={t('fields.power')} value={values.power} onChange={set('power')} error={fe.power_kw ?? fe.power_w} unit={t(`common:units.${powerSpec.label}`)} decimal={false} hint={powerHint} highlighted={hi('power')} optional />
+            <NumberField label={t('fields.displacement')} value={values.displacement} onChange={set('displacement')} error={fe.displacement_cc} unit={unitLabel(displacementSpec)} decimal={displacementSpec.decimals > 0} highlighted={hi('displacement')} optional />
+            <NumberField label={t('fields.power')} value={values.power} onChange={set('power')} error={fe.power_kw ?? fe.power_w} unit={unitLabel(powerSpec)} decimal={false} hint={powerHint} highlighted={hi('power')} optional />
+            <SelectField
+              label={t('fields.displacementUnit')}
+              value={values.displacementUnit}
+              onChange={setDisplacementUnit}
+              options={[
+                { value: '', label: t('fields.unitPreference', { unit: unitLabel(DISPLACEMENT[user.displacement_unit]) }) },
+                ...DISPLACEMENT_UNITS.map((u) => ({ value: u, label: t(`settings:preferences.displacement_unit.options.${u}`) })),
+              ]}
+              hint={t('fields.vehicleUnitHint')}
+              error={fe.displacement_unit}
+            />
+            <SelectField
+              label={t('fields.powerUnit')}
+              value={values.powerUnit}
+              onChange={setPowerUnit}
+              options={[
+                { value: '', label: t('fields.unitPreference', { unit: unitLabel(POWER[user.power_unit]) }) },
+                ...POWER_UNITS.map((u) => ({ value: u, label: t(`settings:preferences.power_unit.options.${u}`) })),
+              ]}
+              error={fe.power_unit}
+            />
             <SelectField
               label={t('fields.fuelType')}
               value={values.fuel}

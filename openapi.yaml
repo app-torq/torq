@@ -5,7 +5,7 @@
 openapi: "3.1.0"
 info:
   title: torq API
-  version: "3"
+  version: "4"
   description: |-
     The REST API of torq, a self-hosted vehicle maintenance and DIY repair tracker. It is used by the web app and the torq mobile app.
 
@@ -3743,6 +3743,7 @@ components:
         - chassis_code
         - current_odometer_km
         - displacement_cc
+        - displacement_unit
         - engine_code
         - fuel_type
         - hsn
@@ -3753,6 +3754,7 @@ components:
         - model_year
         - odometer_unit
         - power_kw
+        - power_unit
         - power_w
         - tsn
         - vin
@@ -3765,6 +3767,11 @@ components:
           type:
             - integer
             - "null"
+        displacement_unit:
+          type:
+            - string
+            - "null"
+          description: "cc, l or ci: the unit the vehicle's displacement is shown in. Null means the user's displacement_unit."
         engine_code:
           type: string
         fuel_type:
@@ -3801,6 +3808,11 @@ components:
           type:
             - integer
             - "null"
+        power_unit:
+          type:
+            - string
+            - "null"
+          description: "kw, ps or hp: the unit the vehicle's power is shown in. Null means the user's power_unit."
         tsn:
           type:
             - string
@@ -4817,6 +4829,7 @@ components:
         - created_at
         - current_odometer_km
         - displacement_cc
+        - displacement_unit
         - engine_code
         - fuel_type
         - hsn
@@ -4827,6 +4840,7 @@ components:
         - model_year
         - odometer_unit
         - power_kw
+        - power_unit
         - power_w
         - reminder_counts
         - tsn
@@ -4849,6 +4863,11 @@ components:
           type:
             - integer
             - "null"
+        displacement_unit:
+          type:
+            - string
+            - "null"
+          description: "cc, l or ci: the unit this vehicle's displacement is shown in. Null means the user's displacement_unit."
         engine_code:
           type: string
         fuel_type:
@@ -4887,6 +4906,11 @@ components:
             - integer
             - "null"
           description: Power in watts, the precise value behind power_kw.
+        power_unit:
+          type:
+            - string
+            - "null"
+          description: "kw, ps or hp: the unit this vehicle's power is shown in. Null means the user's power_unit."
         reminder_counts:
           $ref: "#/components/schemas/ReminderCounts"
         tsn:
@@ -4913,6 +4937,11 @@ components:
           type:
             - integer
             - "null"
+        displacement_unit:
+          type:
+            - string
+            - "null"
+          description: "cc, l or ci, or null to follow each user's displacement_unit."
         engine_code:
           type: string
         fuel_type:
@@ -4949,6 +4978,11 @@ components:
             - integer
             - "null"
           description: Power in watts (1–2,000,000). Takes precedence over power_kw.
+        power_unit:
+          type:
+            - string
+            - "null"
+          description: "kw, ps or hp, or null to follow each user's power_unit."
         tsn:
           type:
             - string

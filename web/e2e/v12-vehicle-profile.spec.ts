@@ -10,8 +10,8 @@ test('V12: technical profile shows kW (PS), cm³ and fuel; invalid values are re
   const id = await createVehicle(page.request, 150000, 'Profile')
 
   await page.goto(`/vehicles/${String(id)}/edit`)
-  await page.getByLabel('Displacement').fill('2148')
-  await page.getByLabel('Power').fill('110')
+  await page.getByRole('textbox', { name: /^Displacement/ }).fill('2148')
+  await page.getByRole('textbox', { name: /^Power/ }).fill('110')
   await page.getByLabel('Fuel type').selectOption('diesel')
   await page.getByRole('button', { name: 'Save' }).click()
   await expect(page.getByText('110 kW (150 PS)')).toBeVisible()

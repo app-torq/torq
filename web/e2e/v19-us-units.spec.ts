@@ -13,7 +13,7 @@ test.afterEach(async ({ page }) => {
   expect(back.ok()).toBeTruthy()
 })
 
-// Issues #10 and #11: US units are display only (the API stays metric), a JDM
+// Issues #10, #11 and #18: US units are display only (the API stays metric), a JDM
 // chassis number is accepted with a warning, and a reminder whose last
 // service is unknown is due right away.
 test('V19: US units, a JDM chassis number and a never-done reminder', async ({ page }) => {
@@ -31,8 +31,8 @@ test('V19: US units, a JDM chassis number and a never-done reminder', async ({ p
   const id = vehicle.id
   await page.goto(`/vehicles/${String(id)}/edit`)
   await expect(page.getByLabel('Odometer unit')).toHaveValue('mi')
-  await page.getByLabel('Power').fill('321')
-  await page.getByLabel('Displacement').fill('3.0')
+  await page.getByRole('textbox', { name: /^Power/ }).fill('321')
+  await page.getByRole('textbox', { name: /^Displacement/ }).fill('3.0')
   await page.getByLabel('VIN').fill('jza80-0012345')
   await expect(page.getByText('Not a standard 17-character VIN')).toBeVisible()
   await page.getByRole('button', { name: 'Save' }).click()
@@ -42,6 +42,19 @@ test('V19: US units, a JDM chassis number and a never-done reminder', async ({ p
   const res = await page.request.get(`/api/v1/vehicles/${String(id)}`)
   const saved = ((await res.json()) as { vehicle: Record<string, unknown> }).vehicle
   expect(saved).toMatchObject({ vin: 'JZA80-0012345', odometer_unit: 'mi', current_odometer_km: 80467, displacement_cc: 3000, power_w: 239370, power_kw: 239 })
+
+  // Issue #18: this car shows PS and cm³ whatever the user prefers. Switching
+  // the unit converts the typed values, and the stored values stay exact.
+  await page.goto(`/vehicles/${String(id)}/edit`)
+  await page.getByLabel('Power unit').selectOption('ps')
+  await expect(page.getByRole('textbox', { name: /^Power/ })).toHaveValue('325')
+  await page.getByLabel('Displacement unit').selectOption('cc')
+  await expect(page.getByRole('textbox', { name: /^Displacement/ })).toHaveValue('3000')
+  await page.getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByText('325 PS (239 kW)')).toBeVisible()
+  await expect(page.getByText(/^3,000\scm³$/).first()).toBeVisible()
+  const after = ((await (await page.request.get(`/api/v1/vehicles/${String(id)}`)).json()) as { vehicle: Record<string, unknown> }).vehicle
+  expect(after).toMatchObject({ displacement_cc: 3000, power_w: 239370, displacement_unit: 'cc', power_unit: 'ps' })
 
   // Brake fluid with no known last service: overdue as soon as it exists.
   await page.goto(`/vehicles/${String(id)}/reminders`)

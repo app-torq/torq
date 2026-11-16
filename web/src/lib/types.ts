@@ -95,6 +95,9 @@ export interface Vehicle {
   current_odometer_km: number
   /** How the odometer reads; distances are always sent in km. */
   odometer_unit: DistanceUnit
+  /** Display units for this vehicle; null follows the user's preference. */
+  displacement_unit: DisplacementUnit | null
+  power_unit: PowerUnit | null
   avatar_url: string | null
   archived: boolean
   reminder_counts: ReminderCounts
@@ -476,6 +479,7 @@ export interface VehicleHistory {
     id: number; make: string; model: string; chassis_code: string; model_year: number | null; engine_code: string; vin: string | null
     license_plate: string | null; current_odometer_km: number; hsn: string | null; tsn: string | null
     displacement_cc: number | null; power_kw: number | null; power_w: number | null; fuel_type: FuelType | null; odometer_unit: DistanceUnit
+    displacement_unit: DisplacementUnit | null; power_unit: PowerUnit | null
   }
   specs: Record<string, string | number | null>
   spec_entries: { label: string; value: string }[]

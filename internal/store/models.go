@@ -296,6 +296,8 @@ type Vehicle struct {
 	FuelType          sql.NullString
 	OdometerUnit      string
 	PowerW            sql.NullInt64
+	DisplacementUnit  sql.NullString
+	PowerUnit         sql.NullString
 }
 
 type VehicleSpec struct {

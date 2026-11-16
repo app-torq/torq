@@ -74,10 +74,13 @@ export interface Formatter {
   pressure: (bar: number) => string
   /** A pressure or a pressure range, e.g. "2,2–2,4 bar". */
   pressureRange: (lo: number, hi: number | null) => string
-  /** Engine displacement, e.g. "2.148 cm³", "2.1 L" or "131 ci". */
-  displacement: (cc: number) => string
-  /** Power in watts in the preferred unit with kW or PS as secondary info, e.g. "110 kW (150 PS)" or "301 hp (224 kW)". */
-  power: (w: number) => string
+  /** Engine displacement, e.g. "2.148 cm³", "2.1 L" or "131 ci"; unit (a vehicle's) overrides the preference. */
+  displacement: (cc: number, unit?: DisplacementUnit | null) => string
+  /**
+   * Power in watts in the preferred unit with kW or PS as secondary info, e.g. "110 kW (150 PS)" or
+   * "301 hp (224 kW)"; unit (a vehicle's) overrides the preference.
+   */
+  power: (w: number, unit?: PowerUnit | null) => string
   /** Power in watts in the preferred unit only, e.g. "150 PS". */
   powerShort: (w: number) => string
 }
@@ -187,9 +190,9 @@ export function createFormatter(prefs: FormatPrefs, unit: UnitLabel): Formatter 
       const v = (n: number) => number(fromMetric(n, spec), { maxDecimals: spec.decimals })
       return hi === null || hi === lo ? `${v(lo)} ${unit(spec.label)}` : `${v(lo)}–${v(hi)} ${unit(spec.label)}`
     },
-    displacement: (cc) => inUnit(cc, DISPLACEMENT[prefs.displacementUnit ?? 'cc']),
-    power: (w) => {
-      const primary = prefs.powerUnit ?? 'kw'
+    displacement: (cc, u) => inUnit(cc, DISPLACEMENT[u ?? prefs.displacementUnit ?? 'cc']),
+    power: (w, u) => {
+      const primary = u ?? prefs.powerUnit ?? 'kw'
       const secondary = primary === 'kw' ? 'ps' : 'kw'
       return `${inUnit(w, POWER[primary])} (${inUnit(w, POWER[secondary])})`
     },

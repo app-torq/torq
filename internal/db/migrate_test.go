@@ -154,7 +154,7 @@ func TestVehicleRebuildMigrationKeepsData(t *testing.T) {
 	if _, err := d.Writer.ExecContext(ctx, "UPDATE vehicles SET vin = 'JZA80-0012345' WHERE id = 2"); err != nil {
 		t.Fatalf("short VIN rejected: %v", err)
 	}
-	for _, set := range []string{"vin = ''", "vin = '" + strings.Repeat("A", 33) + "'", "odometer_unit = 'nm'", "power_w = 0"} {
+	for _, set := range []string{"vin = ''", "vin = '" + strings.Repeat("A", 33) + "'", "odometer_unit = 'nm'", "power_w = 0", "displacement_unit = 'm3'", "power_unit = 'bhp'"} {
 		if _, err := d.Writer.ExecContext(ctx, "UPDATE vehicles SET "+set+" WHERE id = 2"); err == nil {
 			t.Errorf("CHECK accepted %s", set)
 		}
