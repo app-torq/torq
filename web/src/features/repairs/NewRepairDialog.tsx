@@ -11,6 +11,7 @@ import { Dialog } from '../../components/Dialog'
 import { ErrorBanner } from '../../components/ui'
 import { useVehicles } from '../vehicles/hooks'
 import { FaultCodeInput } from './FaultCodeInput'
+import { PrioritySelect, priorityBody } from './PrioritySelect'
 import { invalidateRepairs } from './hooks'
 
 export function NewRepairDialog({ vehicleId, onClose }: { vehicleId?: number | undefined; onClose: () => void }) {
@@ -23,8 +24,9 @@ export function NewRepairDialog({ vehicleId, onClose }: { vehicleId?: number | u
   const [title, setTitle] = useState('')
   const [symptom, setSymptom] = useState('')
   const [codes, setCodes] = useState<string[]>([])
+  const [priority, setPriority] = useState<string | null>(null)
   const create = useMutation({
-    mutationFn: () => api.post<{ repair: Repair }>('/repairs', { vehicle_id: Number(vehicle), title, symptom, fault_codes: codes }),
+    mutationFn: () => api.post<{ repair: Repair }>('/repairs', { vehicle_id: Number(vehicle), title, symptom, fault_codes: codes, ...priorityBody(priority) }),
     onSuccess: async ({ repair }) => {
       await invalidateRepairs(qc)
       onClose()
@@ -56,6 +58,7 @@ export function NewRepairDialog({ vehicleId, onClose }: { vehicleId?: number | u
           options={[{ value: '', label: '—' }, ...(vehicles.data?.items ?? []).map((v) => ({ value: String(v.id), label: vehicleName(v) }))]}
         />
         <TextField label={t('fields.title')} value={title} onChange={setTitle} error={fe.title} maxLength={120} autoFocus />
+        <PrioritySelect value={priority} onChange={setPriority} error={fe.priority_id} />
         <TextAreaField label={t('fields.symptom')} value={symptom} onChange={setSymptom} error={fe.symptom} rows={3} optional />
         <FaultCodeInput value={codes} onChange={setCodes} />
       </div>

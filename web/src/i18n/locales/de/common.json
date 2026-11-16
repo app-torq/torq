@@ -17,7 +17,8 @@
     "closeMenu": "Menü schließen",
     "main": "Hauptnavigation",
     "about": "Über & Datenquellen",
-    "home": "{{brand}} – zur Startseite"
+    "home": "{{brand}} – zur Startseite",
+    "priorities": "Projektprioritäten"
   },
   "actions": {
     "save": "Speichern",

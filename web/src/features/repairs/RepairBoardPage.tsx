@@ -11,11 +11,23 @@ import { Button } from '../../components/Button'
 import { inputClass } from '../../components/Field'
 import { Badge, EmptyState, ErrorBanner, Loading, PageHeader, Table } from '../../components/ui'
 import { useVehicles } from '../vehicles/hooks'
-import { invalidateRepairs, repairStatuses, statusTone, useRepairs } from './hooks'
+import { invalidateRepairs, repairSorts, repairStatuses, statusTone, useRepairs, type RepairSort } from './hooks'
+import { ProjectPriority } from './priorities'
+import { PriorityFilter } from './PriorityFilter'
 import { NewRepairDialog } from './NewRepairDialog'
 import { CompleteRepairDialog } from './CompleteRepairDialog'
 
 const VIEW_KEY = 'torq.repairs.view'
+const SORT_KEY = 'torq.repairs.sort'
+
+function readSort(): RepairSort {
+  try {
+    const s = localStorage.getItem(SORT_KEY)
+    return (repairSorts as readonly string[]).includes(s ?? '') ? (s as RepairSort) : 'priority'
+  } catch {
+    return 'priority'
+  }
+}
 
 function readView(): 'board' | 'list' {
   try {
@@ -35,13 +47,35 @@ export function RepairBoardPage({ vehicleId }: { vehicleId?: number }) {
   const [search, setSearch] = useState('')
   const [params, setParams] = useSearchParams()
   const [creating, setCreating] = useState(params.get('new') === '1')
+  const [sort, setSort] = useState(readSort)
+  // The priority filter is mirrored into the URL, so a filtered view can be bookmarked.
+  const [priorityFilter, setPriorityFilterState] = useState(() => params.getAll('priority'))
+  const setPriorityFilter = (values: string[]) => {
+    setPriorityFilterState(values)
+    const next = new URLSearchParams(params)
+    next.delete('priority')
+    for (const v of values) next.append('priority', v)
+    setParams(next, { replace: true })
+  }
   const vehicles = useVehicles('all')
   const repairs = useRepairs({
     vehicle_id: vehicleId ?? (Number(vehicleFilter) || undefined),
     ...(statusFilter ? { status: [statusFilter] } : {}),
+    ...(priorityFilter.length > 0 ? { priority: priorityFilter } : {}),
+    // The board always orders each column by priority.
+    sort: view === 'board' ? 'priority' : sort,
     q: search,
   })
   const vehicleById = new Map(vehicles.data?.items.map((v) => [v.id, v]))
+
+  const changeSort = (s: RepairSort) => {
+    setSort(s)
+    try {
+      localStorage.setItem(SORT_KEY, s)
+    } catch {
+      // Storage unavailable; the choice just isn't remembered.
+    }
+  }
 
   const changeView = (v: 'board' | 'list') => {
     setView(v)
@@ -101,6 +135,12 @@ export function RepairBoardPage({ vehicleId }: { vehicleId?: number }) {
             {repairStatuses.map((s) => <option key={s} value={s}>{t(`statuses.${s}`)}</option>)}
           </select>
         )}
+        <PriorityFilter value={priorityFilter} onChange={setPriorityFilter} />
+        {view === 'list' && (
+          <select aria-label={t('sort.label')} className={`${inputClass} w-auto`} value={sort} onChange={(e) => { changeSort(e.target.value as RepairSort) }}>
+            {repairSorts.map((s) => <option key={s} value={s}>{t(`sort.${s}`)}</option>)}
+          </select>
+        )}
         <form className="min-w-[12rem] flex-1" onSubmit={(e) => { e.preventDefault(); setSearch(q.trim()) }}>
           <input type="search" aria-label={t('filters.search')} placeholder={t('filters.search')} className={inputClass} value={q} onChange={(e) => { setQ(e.target.value) }} onBlur={() => { setSearch(q.trim()) }} />
         </form>
@@ -110,7 +150,14 @@ export function RepairBoardPage({ vehicleId }: { vehicleId?: number }) {
       {repairs.isSuccess && items.length === 0 && <EmptyState title={t('empty')} />}
       {items.length > 0 && view === 'board' && <Board items={items} vehicleById={vehicleById} showVehicle={vehicleId === undefined} />}
       {items.length > 0 && view === 'list' && <RepairTable items={items} vehicleById={vehicleById} showVehicle={vehicleId === undefined} />}
-      {creating && <NewRepairDialog vehicleId={vehicleId ?? (Number(vehicleFilter) || undefined)} onClose={() => { setCreating(false); if (params.has('new')) setParams({}, { replace: true }) }} />}
+      {creating && <NewRepairDialog vehicleId={vehicleId ?? (Number(vehicleFilter) || undefined)} onClose={() => {
+            setCreating(false)
+            if (params.has('new')) {
+              const next = new URLSearchParams(params)
+              next.delete('new')
+              setParams(next, { replace: true })
+            }
+          }} />}
     </div>
   )
 }
@@ -147,7 +194,10 @@ function RepairCard({ repair: r, vehicle }: { repair: RepairSummary; vehicle: Ve
   const [completing, setCompleting] = useState(false)
   return (
     <div className="rounded-md border border-zinc-800 bg-zinc-900 p-3">
-      <Link to={`/repairs/${r.id}`} className="focus-ring block font-medium text-zinc-100 hover:text-sky-300">{r.title}</Link>
+      <div className="flex items-start justify-between gap-2">
+        <Link to={`/repairs/${r.id}`} className="focus-ring block font-medium text-zinc-100 hover:text-sky-300">{r.title}</Link>
+        <ProjectPriority id={r.priority_id} />
+      </div>
       {vehicle && <div className="text-xs text-zinc-400">{vehicleName(vehicle)}</div>}
       {r.fault_codes.length > 0 && (
         <div className="mt-1.5 flex flex-wrap gap-1">
@@ -202,6 +252,7 @@ function RepairTable({ items, vehicleById, showVehicle }: { items: RepairSummary
         <tr>
           <th>{t('fields.title')}</th>
           {showVehicle && <th>{t('fields.vehicle')}</th>}
+          <th>{t('fields.priority')}</th>
           <th>{t('fields.status')}</th>
           <th>{t('fields.faultCodes')}</th>
           <th>{t('fields.completedOn')}</th>
@@ -215,6 +266,7 @@ function RepairTable({ items, vehicleById, showVehicle }: { items: RepairSummary
             <tr key={r.id}>
               <td><Link to={`/repairs/${r.id}`} className="text-sky-300 hover:underline">{r.title}</Link></td>
               {showVehicle && <td className="text-zinc-300">{v ? vehicleName(v) : ''}</td>}
+              <td><ProjectPriority id={r.priority_id} /></td>
               <td><Badge tone={statusTone[r.status]}>{t(`statuses.${r.status}`)}</Badge></td>
               <td className="font-mono text-xs text-amber-200">{r.fault_codes.join(', ')}</td>
               <td className="tabular-nums text-zinc-400">{r.completed_on && r.status === 'completed' ? fmt.date(r.completed_on) : ''}</td>

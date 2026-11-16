@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useFormat } from '../../lib/useFormat'
 import { Badge, Card } from '../../components/ui'
 import { statusTone } from '../repairs/hooks'
+import { ProjectPriority } from '../repairs/priorities'
 import { useDashboard } from './AttentionList'
 
 export function OpenRepairs() {
@@ -17,6 +18,7 @@ export function OpenRepairs() {
         {items.map((r) => (
           <li key={r.id} className="flex flex-wrap items-center gap-2 py-2">
             <Link to={`/repairs/${r.id}`} className="focus-ring min-w-0 flex-1 truncate text-sm text-zinc-100 hover:text-sky-300">{r.title}</Link>
+            <ProjectPriority id={r.priority_id} />
             <Badge tone={statusTone[r.status]}>{t(`repairs:statuses.${r.status}`)}</Badge>
             {r.part_status_counts.needed + r.part_status_counts.ordered > 0 && (
               <span className="text-xs text-zinc-400">{t('repairs:parts.countSummary', r.part_status_counts)}</span>

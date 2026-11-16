@@ -7,6 +7,8 @@ export type { DisplacementUnit, DistanceUnit, PowerUnit, PressureUnit, QuantityU
 export type DateFormat = 'DD.MM.YYYY' | 'YYYY-MM-DD' | 'MM/DD/YYYY'
 export type NumberFormat = 'point' | 'comma'
 export type TimeFormat = '24h' | '12h'
+/** How project priorities are shown. */
+export type PriorityDisplay = 'both' | 'color' | 'name'
 export type Role = 'admin' | 'member'
 
 /** Format and unit preferences; also the instance defaults for new users. */
@@ -31,6 +33,7 @@ export interface User extends Formats {
   role: Role
   locale: Locale
   currency_symbol: string | null
+  priority_display: PriorityDisplay
   disabled: boolean
 }
 
@@ -330,6 +333,8 @@ export interface RepairSummary {
   vehicle_id: number
   title: string
   status: RepairStatus
+  /** null: no priority. */
+  priority_id: number | null
   started_on: string | null
   completed_on: string | null
   completion_odometer_km: number | null
@@ -337,6 +342,18 @@ export interface RepairSummary {
   parts_total_cents: number
   part_status_counts: Record<PartStatus, number>
   updated_at: string
+}
+
+/** A project priority of the garage, in list order. */
+export interface RepairPriority {
+  id: number
+  /** urgent, high, normal or low for the built-ins; shown translated unless renamed. */
+  builtin_key: string | null
+  custom_name: string | null
+  color: string
+  sort_order: number
+  is_default: boolean
+  project_count: number
 }
 
 export interface TorqueSpec {

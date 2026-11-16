@@ -6,10 +6,17 @@ import type { ListResponse, Repair, RepairStatus, RepairSummary } from '../../li
 export const repairStatuses: RepairStatus[] = ['planned', 'in_progress', 'waiting_on_parts', 'completed']
 export const statusTone = { planned: 'zinc', in_progress: 'sky', waiting_on_parts: 'amber', completed: 'emerald' } as const
 
-export function useRepairs(filters: { vehicle_id?: number | undefined; status?: string[]; q?: string }) {
+/** List orders offered in the project list; the board always sorts by priority. */
+export const repairSorts = ['priority', 'status', 'updated'] as const
+export type RepairSort = (typeof repairSorts)[number]
+
+export function useRepairs(filters: { vehicle_id?: number | undefined; status?: string[]; priority?: string[]; sort?: RepairSort; q?: string }) {
   return useQuery({
     queryKey: queryKeys.repairList(filters),
-    queryFn: () => api.get<ListResponse<RepairSummary>>('/repairs', { vehicle_id: filters.vehicle_id, status: filters.status, q: filters.q, limit: 200 }),
+    queryFn: () =>
+      api.get<ListResponse<RepairSummary>>('/repairs', {
+        vehicle_id: filters.vehicle_id, status: filters.status, priority: filters.priority, sort: filters.sort, q: filters.q, limit: 200,
+      }),
   })
 }
 

@@ -121,5 +121,8 @@
     "autofill_search_key_invalid": "Tavily hat den API-Key abgelehnt. Ein Administrator muss TAVILY_API_KEY prüfen.",
     "autofill_timeout": "Die Ermittlung hat länger als 3 Minuten gedauert und wurde abgebrochen. Vermutlich antwortet das Gemini-Modell gerade langsam; ein Administrator kann mit GEMINI_MODEL ein schnelleres einstellen (Standard: gemini-3.5-flash).",
     "autofill_busy": "Gemini ist gerade überlastet (Google meldet hohe Nachfrage). Versuche es in einer Minute erneut."
+  },
+  "priority": {
+    "order_mismatch": "Die Prioritätenliste wurde inzwischen geändert. Neu laden und erneut versuchen."
   }
 }

@@ -23,6 +23,7 @@ import { ServiceLogFormPage } from '../features/service-log/ServiceLogForm'
 import { ServiceLogDetailPage } from '../features/service-log/ServiceLogDetailPage'
 import { ReminderListPage } from '../features/reminders/ReminderListPage'
 import { CategoriesPage } from '../features/settings/CategoriesPage'
+import { PrioritiesPage } from '../features/settings/PrioritiesPage'
 import { RepairBoardPage } from '../features/repairs/RepairBoardPage'
 import { RepairDetailPage } from '../features/repairs/RepairDetailPage'
 import { ReportsPage } from '../features/reports/ReportsPage'
@@ -68,6 +69,7 @@ const router = createBrowserRouter([
           { path: 'password', element: <ChangePasswordPage /> },
           { path: 'devices', element: <DevicesPage /> },
           { path: 'categories', element: <CategoriesPage /> },
+          { path: 'priorities', element: <PrioritiesPage /> },
           { path: 'users', element: <RequireAdmin><UsersPage /></RequireAdmin> },
           { path: 'webhooks', element: <RequireAdmin><WebhooksPage /></RequireAdmin> },
           { path: 'instance', element: <RequireAdmin><InstanceSettingsPage /></RequireAdmin> },
