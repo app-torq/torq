@@ -152,6 +152,7 @@ type RepairLog struct {
 	CreatedBy            sql.NullInt64
 	CreatedAt            string
 	UpdatedAt            string
+	PriorityID           sql.NullInt64
 }
 
 type RepairPart struct {
@@ -167,6 +168,17 @@ type RepairPart struct {
 	CostType              string
 	Status                string
 	SortOrder             int64
+}
+
+type RepairPriority struct {
+	ID         int64
+	BuiltinKey sql.NullString
+	CustomName sql.NullString
+	Color      string
+	SortOrder  int64
+	IsDefault  int64
+	CreatedAt  string
+	UpdatedAt  string
 }
 
 type RepairTorqueSpec struct {
@@ -249,6 +261,7 @@ type User struct {
 	TorqueUnit       string
 	PressureUnit     string
 	DisplacementUnit string
+	PriorityDisplay  string
 }
 
 type UserIdentity struct {

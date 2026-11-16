@@ -1,16 +1,21 @@
 -- name: CreateRepair :one
 INSERT INTO repair_logs (vehicle_id, title, status, symptom, root_cause, procedure_notes, special_tools,
-                         started_on, created_by, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                         started_on, priority_id, created_by, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING *;
 
 -- name: GetRepair :one
 SELECT * FROM repair_logs WHERE id = ?;
 
 -- name: ListRepairs :many
+-- sort: status (default), priority, updated, or status_priority (dashboard).
 SELECT r.* FROM repair_logs r
+LEFT JOIN repair_priorities pr ON pr.id = r.priority_id
+JOIN (SELECT CAST(sqlc.arg(sort) AS TEXT) AS mode) o
 WHERE (CAST(sqlc.arg(vehicle_id) AS INTEGER) = 0 OR r.vehicle_id = sqlc.arg(vehicle_id))
   AND instr(',' || CAST(sqlc.arg(statuses) AS TEXT) || ',', ',' || r.status || ',') > 0
+  AND (CAST(sqlc.arg(priorities) AS TEXT) = ''
+       OR instr(',' || CAST(sqlc.arg(priorities) AS TEXT) || ',', ',' || COALESCE(CAST(r.priority_id AS TEXT), 'none') || ',') > 0)
   AND (CAST(sqlc.arg(q) AS TEXT) = ''
        OR r.title LIKE '%' || sqlc.arg(q) || '%'
        OR r.symptom LIKE '%' || sqlc.arg(q) || '%'
@@ -19,7 +24,10 @@ WHERE (CAST(sqlc.arg(vehicle_id) AS INTEGER) = 0 OR r.vehicle_id = sqlc.arg(vehi
        OR EXISTS (SELECT 1 FROM repair_parts p WHERE p.repair_log_id = r.id
                   AND (p.name LIKE '%' || sqlc.arg(q) || '%' OR p.oem_part_number LIKE '%' || sqlc.arg(q) || '%'
                        OR p.aftermarket_part_number LIKE '%' || sqlc.arg(q) || '%')))
-ORDER BY CASE r.status WHEN 'in_progress' THEN 0 WHEN 'waiting_on_parts' THEN 1 WHEN 'planned' THEN 2 ELSE 3 END,
+ORDER BY CASE o.mode WHEN 'priority' THEN COALESCE(pr.sort_order, 1000000000) ELSE 0 END,
+         CASE o.mode WHEN 'updated' THEN 0
+              ELSE CASE r.status WHEN 'in_progress' THEN 0 WHEN 'waiting_on_parts' THEN 1 WHEN 'planned' THEN 2 ELSE 3 END END,
+         CASE o.mode WHEN 'status_priority' THEN COALESCE(pr.sort_order, 1000000000) ELSE 0 END,
          COALESCE(r.completed_on, r.updated_at) DESC, r.id DESC
 LIMIT sqlc.arg(lim) OFFSET sqlc.arg(off);
 
@@ -27,6 +35,8 @@ LIMIT sqlc.arg(lim) OFFSET sqlc.arg(off);
 SELECT COUNT(*) FROM repair_logs r
 WHERE (CAST(sqlc.arg(vehicle_id) AS INTEGER) = 0 OR r.vehicle_id = sqlc.arg(vehicle_id))
   AND instr(',' || CAST(sqlc.arg(statuses) AS TEXT) || ',', ',' || r.status || ',') > 0
+  AND (CAST(sqlc.arg(priorities) AS TEXT) = ''
+       OR instr(',' || CAST(sqlc.arg(priorities) AS TEXT) || ',', ',' || COALESCE(CAST(r.priority_id AS TEXT), 'none') || ',') > 0)
   AND (CAST(sqlc.arg(q) AS TEXT) = ''
        OR r.title LIKE '%' || sqlc.arg(q) || '%'
        OR r.symptom LIKE '%' || sqlc.arg(q) || '%'
@@ -39,7 +49,7 @@ WHERE (CAST(sqlc.arg(vehicle_id) AS INTEGER) = 0 OR r.vehicle_id = sqlc.arg(vehi
 -- name: UpdateRepair :one
 UPDATE repair_logs
 SET title = ?, symptom = ?, root_cause = ?, procedure_notes = ?, special_tools = ?, started_on = ?,
-    completed_on = ?, completion_odometer_km = ?, updated_at = ?
+    completed_on = ?, completion_odometer_km = ?, priority_id = ?, updated_at = ?
 WHERE id = ?
 RETURNING *;
 

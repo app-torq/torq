@@ -62,6 +62,10 @@ type Input struct {
 	CompletionKm   *int64 // edit only, for completed projects
 	FaultCodes     []string
 	TorqueSpecs    []TorqueSpec
+	// PriorityID is the project's priority (nil: none). On create,
+	// DefaultPriority gives the project the garage's default instead.
+	PriorityID      *int64
+	DefaultPriority bool
 }
 
 // Totals summarizes the BOM.
@@ -186,11 +190,15 @@ func (s *Service) Create(ctx context.Context, in Input, createdBy int64) (Repair
 			}
 			return err
 		}
+		priority, err := resolvePriority(ctx, q, in.PriorityID, in.DefaultPriority)
+		if err != nil {
+			return err
+		}
 		now := clock.Timestamp(s.Clock.Now())
 		r, err := q.CreateRepair(ctx, store.CreateRepairParams{
 			VehicleID: in.VehicleID, Title: in.Title, Status: in.Status, Symptom: in.Symptom, RootCause: in.RootCause,
 			ProcedureNotes: in.ProcedureNotes, SpecialTools: in.SpecialTools, StartedOn: nullStr(in.StartedOn),
-			CreatedBy: sql.NullInt64{Int64: createdBy, Valid: createdBy > 0}, CreatedAt: now, UpdatedAt: now,
+			PriorityID: priority, CreatedBy: sql.NullInt64{Int64: createdBy, Valid: createdBy > 0}, CreatedAt: now, UpdatedAt: now,
 		})
 		if err != nil {
 			return err
@@ -228,6 +236,10 @@ func (s *Service) Update(ctx context.Context, id int64, in Input) (Repair, error
 		if err != nil {
 			return err
 		}
+		priority, err := resolvePriority(ctx, q, in.PriorityID, false)
+		if err != nil {
+			return err
+		}
 		completedOn, completionKm := cur.CompletedOn, cur.CompletionOdometerKm
 		if cur.Status == StatusCompleted {
 			if in.CompletedOn != "" {
@@ -240,7 +252,7 @@ func (s *Service) Update(ctx context.Context, id int64, in Input) (Repair, error
 		if _, err := q.UpdateRepair(ctx, store.UpdateRepairParams{
 			Title: in.Title, Symptom: in.Symptom, RootCause: in.RootCause, ProcedureNotes: in.ProcedureNotes,
 			SpecialTools: in.SpecialTools, StartedOn: nullStr(in.StartedOn), CompletedOn: completedOn,
-			CompletionOdometerKm: completionKm, UpdatedAt: clock.Timestamp(s.Clock.Now()), ID: id,
+			CompletionOdometerKm: completionKm, PriorityID: priority, UpdatedAt: clock.Timestamp(s.Clock.Now()), ID: id,
 		}); err != nil {
 			if strings.Contains(err.Error(), "CHECK constraint failed") {
 				return apperr.Unprocessable("repair.completed_before_started", nil)
@@ -436,10 +448,26 @@ func totalsFor(ctx context.Context, q *store.Queries, ids []int64) (map[int64]To
 type Filter struct {
 	VehicleID int64
 	Statuses  []string
-	Q         string
-	Limit     int64
-	Offset    int64
+	// Priorities are priority ids as text, or "none" for projects without one.
+	Priorities []string
+	// Sort is one of Sorts; empty means SortStatus.
+	Sort   string
+	Q      string
+	Limit  int64
+	Offset int64
 }
+
+// Sort orders for List. SortStatusPriority (status, then priority) is used
+// by the dashboard and not offered by the API.
+const (
+	SortStatus         = "status"
+	SortPriority       = "priority"
+	SortUpdated        = "updated"
+	SortStatusPriority = "status_priority"
+)
+
+// Sorts are the orders clients may request.
+var Sorts = []string{SortStatus, SortPriority, SortUpdated}
 
 // List returns projects (active first) with fault codes and BOM totals, plus the total count.
 func (s *Service) List(ctx context.Context, f Filter) ([]Repair, int64, error) {
@@ -452,13 +480,23 @@ func (s *Service) List(ctx context.Context, f Filter) ([]Repair, int64, error) {
 			return nil, 0, apperr.BadRequest("request.malformed")
 		}
 	}
+	for _, p := range f.Priorities {
+		if p != "none" && !isID(p) {
+			return nil, 0, apperr.BadRequest("request.malformed")
+		}
+	}
+	if f.Sort == "" {
+		f.Sort = SortStatus
+	}
 	q := store.New(s.DB.Reader)
-	joined, query := strings.Join(statuses, ","), strings.TrimSpace(f.Q)
-	rows, err := q.ListRepairs(ctx, store.ListRepairsParams{VehicleID: f.VehicleID, Statuses: joined, Q: query, Lim: f.Limit, Off: f.Offset})
+	joined, query, prios := strings.Join(statuses, ","), strings.TrimSpace(f.Q), strings.Join(f.Priorities, ",")
+	rows, err := q.ListRepairs(ctx, store.ListRepairsParams{
+		VehicleID: f.VehicleID, Statuses: joined, Priorities: prios, Q: query, Sort: f.Sort, Lim: f.Limit, Off: f.Offset,
+	})
 	if err != nil {
 		return nil, 0, err
 	}
-	total, err := q.CountRepairs(ctx, store.CountRepairsParams{VehicleID: f.VehicleID, Statuses: joined, Q: query})
+	total, err := q.CountRepairs(ctx, store.CountRepairsParams{VehicleID: f.VehicleID, Statuses: joined, Priorities: prios, Q: query})
 	if err != nil {
 		return nil, 0, err
 	}
@@ -495,4 +533,17 @@ func ValidURL(s string) bool {
 	}
 	u, err := url.Parse(s)
 	return err == nil && (u.Scheme == "http" || u.Scheme == "https") && u.Host != ""
+}
+
+// isID reports whether s is a positive decimal id.
+func isID(s string) bool {
+	if s == "" || len(s) > 18 || s[0] == '0' {
+		return false
+	}
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
 }

@@ -24,7 +24,7 @@ UPDATE users SET username = ?, display_name = ?, updated_at = ? WHERE id = ? RET
 UPDATE users
 SET display_name = ?, locale = ?, date_format = ?, number_format = ?, time_format = ?,
     currency_code = ?, currency_symbol = ?, power_unit = ?, distance_unit = ?, volume_unit = ?,
-    torque_unit = ?, pressure_unit = ?, displacement_unit = ?, updated_at = ?
+    torque_unit = ?, pressure_unit = ?, displacement_unit = ?, priority_display = ?, updated_at = ?
 WHERE id = ?
 RETURNING *;
 

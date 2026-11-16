@@ -43,20 +43,22 @@ func (f formatsJSON) formats() auth.Formats {
 }
 
 type userJSON struct {
-	ID             int64   `json:"id"`
-	Username       string  `json:"username"`
-	DisplayName    string  `json:"display_name"`
-	Role           string  `json:"role"`
-	Locale         string  `json:"locale"`
-	CurrencySymbol *string `json:"currency_symbol"`
-	Disabled       bool    `json:"disabled"`
+	ID              int64   `json:"id"`
+	Username        string  `json:"username"`
+	DisplayName     string  `json:"display_name"`
+	Role            string  `json:"role"`
+	Locale          string  `json:"locale"`
+	CurrencySymbol  *string `json:"currency_symbol"`
+	PriorityDisplay string  `json:"priority_display"`
+	Disabled        bool    `json:"disabled"`
 	formatsJSON
 }
 
 func toUserJSON(u auth.User) userJSON {
 	out := userJSON{
 		ID: u.ID, Username: u.Username, DisplayName: u.DisplayName, Role: string(u.Role),
-		Locale: u.Prefs.Locale, Disabled: u.Disabled, formatsJSON: toFormatsJSON(u.Prefs.Formats),
+		Locale: u.Prefs.Locale, PriorityDisplay: u.Prefs.PriorityDisplay, Disabled: u.Disabled,
+		formatsJSON: toFormatsJSON(u.Prefs.Formats),
 	}
 	if u.Prefs.CurrencySymbol != "" {
 		sym := u.Prefs.CurrencySymbol
@@ -249,16 +251,18 @@ func (s *Server) changePassword(w http.ResponseWriter, r *http.Request) error {
 
 func (s *Server) updatePreferences(w http.ResponseWriter, r *http.Request) error {
 	var in struct {
-		DisplayName    *string `json:"display_name"`
-		Locale         *string `json:"locale"`
-		CurrencySymbol *string `json:"currency_symbol"`
+		DisplayName     *string `json:"display_name"`
+		Locale          *string `json:"locale"`
+		CurrencySymbol  *string `json:"currency_symbol"`
+		PriorityDisplay *string `json:"priority_display"`
 		formatsJSON
 	}
 	if err := decodeJSON(w, r, &in); err != nil {
 		return err
 	}
 	user, err := s.users.UpdatePreferences(r.Context(), currentUser(r).ID, auth.PreferencesPatch{
-		DisplayName: in.DisplayName, Locale: in.Locale, CurrencySymbol: in.CurrencySymbol, Formats: in.formats(),
+		DisplayName: in.DisplayName, Locale: in.Locale, CurrencySymbol: in.CurrencySymbol,
+		PriorityDisplay: in.PriorityDisplay, Formats: in.formats(),
 	})
 	if err != nil {
 		return err

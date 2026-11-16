@@ -194,7 +194,7 @@ func (q *Queries) ServiceExtraCosts(ctx context.Context, arg ServiceExtraCostsPa
 }
 
 const timelineRepairs = `-- name: TimelineRepairs :many
-SELECT id, vehicle_id, title, status, symptom, root_cause, procedure_notes, special_tools, started_on, completed_on, completion_odometer_km, created_by, created_at, updated_at FROM repair_logs
+SELECT id, vehicle_id, title, status, symptom, root_cause, procedure_notes, special_tools, started_on, completed_on, completion_odometer_km, created_by, created_at, updated_at, priority_id FROM repair_logs
 WHERE vehicle_id = ?1 AND status = 'completed'
   AND completed_on >= ?2 AND completed_on <= ?3
 ORDER BY completed_on DESC, completion_odometer_km DESC, id DESC
@@ -230,6 +230,7 @@ func (q *Queries) TimelineRepairs(ctx context.Context, arg TimelineRepairsParams
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.PriorityID,
 		); err != nil {
 			return nil, err
 		}

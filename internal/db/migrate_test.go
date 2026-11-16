@@ -264,3 +264,74 @@ func TestUnitPreferencesMigrationKeepsData(t *testing.T) {
 		t.Fatalf("after user delete: %d sessions, created_by %v", sessions, createdBy)
 	}
 }
+
+// TestRepairPrioritiesMigration covers migration 00014: the built-in
+// priorities exist, existing projects and users keep working without a
+// priority, and deleting a priority unsets it on its projects.
+func TestRepairPrioritiesMigration(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	d, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	sub, err := fs.Sub(migrationsFS, "migrations")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := goose.NewProvider(goose.DialectSQLite3, d.Writer, sub)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.UpTo(ctx, 13); err != nil {
+		t.Fatal(err)
+	}
+	for _, stmt := range []string{
+		`INSERT INTO users (id, username, display_name, role, created_at, updated_at) VALUES (1, 'marek', 'Marek', 'admin', 'x', 'x')`,
+		`INSERT INTO vehicles (id, make, model, current_odometer_km, created_at, updated_at) VALUES (1, 'BMW', '330d', 1, 'x', 'x')`,
+		`INSERT INTO repair_logs (id, vehicle_id, title, created_at, updated_at) VALUES (1, 1, 'Rust', 'x', 'x')`,
+	} {
+		if _, err := d.Writer.ExecContext(ctx, stmt); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := Migrate(ctx, d, dir); err != nil {
+		t.Fatal(err)
+	}
+
+	var keys string
+	if err := d.Reader.QueryRowContext(ctx, `SELECT group_concat(builtin_key || ':' || color || ':' || is_default, ',')
+		FROM (SELECT * FROM repair_priorities ORDER BY sort_order)`).Scan(&keys); err != nil {
+		t.Fatal(err)
+	}
+	if keys != "urgent:red:0,high:amber:0,normal:sky:1,low:zinc:0" {
+		t.Fatalf("built-ins %q", keys)
+	}
+	var prio sql.NullInt64
+	var display string
+	if err := d.Reader.QueryRowContext(ctx, "SELECT (SELECT priority_id FROM repair_logs WHERE id = 1), (SELECT priority_display FROM users WHERE id = 1)").Scan(&prio, &display); err != nil {
+		t.Fatal(err)
+	}
+	if prio.Valid || display != "both" {
+		t.Fatalf("existing rows: priority %v, display %q", prio, display)
+	}
+	for _, stmt := range []string{
+		"UPDATE repair_priorities SET is_default = 1 WHERE builtin_key = 'low'",
+		"INSERT INTO repair_priorities (custom_name, color, sort_order, created_at, updated_at) VALUES ('URGENT', 'red', 9, 'x', 'x'), ('urgent', 'red', 10, 'x', 'x')",
+		"UPDATE users SET priority_display = 'icon'",
+	} {
+		if _, err := d.Writer.ExecContext(ctx, stmt); err == nil {
+			t.Errorf("accepted %s", stmt)
+		}
+	}
+	if _, err := d.Writer.ExecContext(ctx, "UPDATE repair_logs SET priority_id = (SELECT id FROM repair_priorities WHERE builtin_key = 'high')"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.Writer.ExecContext(ctx, "DELETE FROM repair_priorities WHERE builtin_key = 'high'"); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.Reader.QueryRowContext(ctx, "SELECT priority_id FROM repair_logs WHERE id = 1").Scan(&prio); err != nil || prio.Valid {
+		t.Fatalf("priority after delete %v (%v)", prio, err)
+	}
+}

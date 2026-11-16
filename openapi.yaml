@@ -5,7 +5,7 @@
 openapi: "3.1.0"
 info:
   title: torq API
-  version: "2"
+  version: "3"
   description: |-
     The REST API of torq, a self-hosted vehicle maintenance and DIY repair tracker. It is used by the web app and the torq mobile app.
 
@@ -279,6 +279,11 @@ paths:
                     - string
                     - "null"
                   description: "kw, ps or hp. Display preference only; power is always sent in kW and W."
+                priority_display:
+                  type:
+                    - string
+                    - "null"
+                  description: "both, color or name."
                 pressure_unit:
                   type:
                     - string
@@ -1992,6 +1997,19 @@ paths:
                 - waiting_on_parts
                 - completed
           explode: true
+        - name: priority
+          in: query
+          description: "Only these priorities: priority ids, or none for projects without one; repeat for several."
+          schema:
+            type: array
+            items:
+              type: string
+          explode: true
+        - name: sort
+          in: query
+          description: "status (default: status, then most recent), priority (priority, then status, then most recent; projects without a priority last) or updated (most recent first)."
+          schema:
+            type: string
         - name: q
           in: query
           description: Search text.
@@ -2271,6 +2289,165 @@ paths:
         - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/id"
+      responses:
+        "204":
+          description: "Done; no body."
+        default:
+          $ref: "#/components/responses/Error"
+  /repair-priorities:
+    get:
+      operationId: listRepairPriorities
+      summary: Project priorities in order
+      x-torq-access: member
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                  - total
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/RepairPriority"
+                  total:
+                    type: integer
+        default:
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: createRepairPriority
+      summary: Add a project priority at the end of the list
+      x-torq-access: member
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RepairPriorityInput"
+      x-torq-error-codes:
+        - validation.failed
+        - validation.duplicate
+        - validation.invalid_choice
+        - validation.length
+        - validation.required
+      responses:
+        "201":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - priority
+                properties:
+                  priority:
+                    $ref: "#/components/schemas/RepairPriority"
+        default:
+          $ref: "#/components/responses/Error"
+  /repair-priorities/order:
+    put:
+      operationId: reorderRepairPriorities
+      summary: Set the order of all project priorities
+      x-torq-access: member
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ids:
+                  type: array
+                  description: Every priority id once, most urgent first.
+                  items:
+                    type: integer
+              additionalProperties: false
+      x-torq-error-codes:
+        - priority.order_mismatch
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                  - total
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/RepairPriority"
+                  total:
+                    type: integer
+        default:
+          $ref: "#/components/responses/Error"
+  "/repair-priorities/{id}":
+    patch:
+      operationId: updateRepairPriority
+      summary: Rename, recolor or set a project priority as the default
+      x-torq-access: member
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RepairPriorityInput"
+      x-torq-error-codes:
+        - validation.failed
+        - validation.duplicate
+        - validation.invalid_choice
+        - validation.length
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - priority
+                properties:
+                  priority:
+                    $ref: "#/components/schemas/RepairPriority"
+        default:
+          $ref: "#/components/responses/Error"
+    delete:
+      operationId: deleteRepairPriority
+      summary: Delete a project priority
+      x-torq-access: member
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+        - name: move_to
+          in: query
+          description: Move the priority's projects to this priority first; without it they lose their priority.
+          schema:
+            type: integer
+      x-torq-error-codes:
+        - validation.failed
+        - validation.invalid_choice
       responses:
         "204":
           description: "Done; no body."
@@ -3941,6 +4118,7 @@ components:
         - root_cause
         - special_tools
         - started_on
+        - priority_id
         - status
         - symptom
         - title
@@ -3984,6 +4162,11 @@ components:
           type: string
         special_tools:
           type: string
+        priority_id:
+          type:
+            - integer
+            - "null"
+          description: The project's priority (see /repair-priorities), or null for none.
         started_on:
           type:
             - string
@@ -4006,6 +4189,11 @@ components:
     RepairInput:
       type: object
       properties:
+        priority_id:
+          type:
+            - integer
+            - "null"
+          description: "The project's priority, or null for none. Omitted on create: the garage's default priority. Omitted on update: unchanged."
         completed_on:
           type:
             - string
@@ -4112,6 +4300,59 @@ components:
             - integer
             - "null"
       additionalProperties: false
+    RepairPriority:
+      type: object
+      required:
+        - builtin_key
+        - color
+        - custom_name
+        - id
+        - is_default
+        - project_count
+        - sort_order
+      properties:
+        builtin_key:
+          type:
+            - string
+            - "null"
+          description: "urgent, high, normal or low for the priorities torq ships with; null for custom ones. Show custom_name if set, otherwise the translated built-in name."
+        color:
+          type: string
+          description: "Palette color: red, orange, amber, yellow, lime, green, teal, sky, blue, violet, pink or zinc."
+        custom_name:
+          type:
+            - string
+            - "null"
+          description: The name a user gave it; null for an unrenamed built-in.
+        id:
+          type: integer
+        is_default:
+          type: boolean
+          description: New projects get this priority unless they choose another. At most one priority is the default.
+        project_count:
+          type: integer
+        sort_order:
+          type: integer
+          description: 1 is the most urgent.
+    RepairPriorityInput:
+      type: object
+      properties:
+        color:
+          type:
+            - string
+            - "null"
+          description: A palette color (see RepairPriority.color). Required on create.
+        is_default:
+          type:
+            - boolean
+            - "null"
+          description: Make this the default for new projects, or (false) stop it being the default.
+        name:
+          type:
+            - string
+            - "null"
+          description: "1–40 characters, unique. Required on create. On update, an empty string resets a built-in to its translated name; null or omitted keeps the name."
+      additionalProperties: false
     RepairSummary:
       type: object
       required:
@@ -4122,6 +4363,7 @@ components:
         - part_status_counts
         - parts_total_cents
         - started_on
+        - priority_id
         - status
         - title
         - updated_at
@@ -4147,6 +4389,11 @@ components:
             type: integer
         parts_total_cents:
           type: integer
+        priority_id:
+          type:
+            - integer
+            - "null"
+          description: The project's priority (see /repair-priorities), or null for none.
         started_on:
           type:
             - string
@@ -4504,6 +4751,7 @@ components:
         - number_format
         - power_unit
         - pressure_unit
+        - priority_display
         - role
         - time_format
         - torque_unit
@@ -4540,6 +4788,9 @@ components:
         power_unit:
           type: string
           description: "kw, ps or hp. Display preference only; power is always sent in kW and W."
+        priority_display:
+          type: string
+          description: "How project priorities are shown: both (color and name), color or name."
         pressure_unit:
           type: string
           description: "bar, psi or kpa. Pressure is always sent in bar."
