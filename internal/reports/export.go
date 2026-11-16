@@ -52,6 +52,10 @@ type HistoryVehicle struct {
 	FuelType          *string `json:"fuel_type"`
 	// OdometerUnit is how the vehicle's odometer reads; distances stay in km.
 	OdometerUnit string `json:"odometer_unit"`
+	// DisplacementUnit and PowerUnit are the vehicle's display units; null
+	// means the user's preference.
+	DisplacementUnit *string `json:"displacement_unit"`
+	PowerUnit        *string `json:"power_unit"`
 }
 
 type HistoryEntry struct {
@@ -171,7 +175,7 @@ func (s *Service) History(ctx context.Context, vehicleID int64, opt ExportOption
 		Vehicle: HistoryVehicle{ID: v.ID, Make: v.Make, Model: v.Model, ChassisCode: v.ChassisCode, ModelYear: ptrI(v.ModelYear),
 			EngineCode: v.EngineCode, VIN: ptrS(v.Vin), LicensePlate: ptrS(v.LicensePlate), CurrentOdometerKm: v.CurrentOdometerKm,
 			HSN: ptrS(v.Hsn), TSN: ptrS(v.Tsn), DisplacementCC: ptrI(v.DisplacementCc), PowerKW: ptrI(v.PowerKw), PowerW: ptrI(v.PowerW), FuelType: ptrS(v.FuelType),
-			OdometerUnit: v.OdometerUnit},
+			OdometerUnit: v.OdometerUnit, DisplacementUnit: ptrS(v.DisplacementUnit), PowerUnit: ptrS(v.PowerUnit)},
 		Specs: map[string]any{
 			"engine_oil_viscosity": spec.EngineOilViscosity, "engine_oil_spec": spec.EngineOilSpec, "engine_oil_capacity_ml": ptrI(spec.EngineOilCapacityMl),
 			"transmission_fluid_spec": spec.TransmissionFluidSpec, "transmission_fluid_capacity_ml": ptrI(spec.TransmissionFluidCapacityMl),

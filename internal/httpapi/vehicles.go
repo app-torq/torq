@@ -31,6 +31,8 @@ type vehicleJSON struct {
 	FuelType          *string        `json:"fuel_type"`
 	CurrentOdometerKm int64          `json:"current_odometer_km"`
 	OdometerUnit      string         `json:"odometer_unit"`
+	DisplacementUnit  *string        `json:"displacement_unit"`
+	PowerUnit         *string        `json:"power_unit"`
 	AvatarURL         *string        `json:"avatar_url"`
 	Archived          bool           `json:"archived"`
 	ReminderCounts    reminderCounts `json:"reminder_counts"`
@@ -50,7 +52,7 @@ func (s *Server) toVehicleJSON(v store.Vehicle, x vehicleExtras) vehicleJSON {
 		EngineCode: v.EngineCode, VIN: strPtr(v.Vin), LicensePlate: strPtr(v.LicensePlate),
 		HSN: strPtr(v.Hsn), TSN: strPtr(v.Tsn), DisplacementCC: intPtr(v.DisplacementCc), PowerKW: intPtr(v.PowerKw),
 		PowerW: intPtr(v.PowerW), FuelType: strPtr(v.FuelType), CurrentOdometerKm: v.CurrentOdometerKm,
-		OdometerUnit: v.OdometerUnit, Archived: v.ArchivedAt.Valid,
+		OdometerUnit: v.OdometerUnit, DisplacementUnit: strPtr(v.DisplacementUnit), PowerUnit: strPtr(v.PowerUnit), Archived: v.ArchivedAt.Valid,
 		ReminderCounts: x.counts[v.ID], CreatedAt: v.CreatedAt, UpdatedAt: v.UpdatedAt,
 	}
 	if url, ok := x.avatar[v.ID]; ok {
@@ -99,13 +101,15 @@ type vehicleInput struct {
 	FuelType          *string `json:"fuel_type"`
 	CurrentOdometerKm *int64  `json:"current_odometer_km"`
 	OdometerUnit      *string `json:"odometer_unit"`
+	DisplacementUnit  *string `json:"displacement_unit"`
+	PowerUnit         *string `json:"power_unit"`
 }
 
 func (in vehicleInput) profile() vehicles.Profile {
 	p := vehicles.Profile{
 		Make: in.Make, Model: in.Model, ChassisCode: in.ChassisCode, ModelYear: in.ModelYear, EngineCode: in.EngineCode,
 		HSN: in.HSN, TSN: in.TSN, DisplacementCC: in.DisplacementCC, PowerKW: in.PowerKW, PowerW: in.PowerW,
-		FuelType: in.FuelType,
+		FuelType: in.FuelType, DisplacementUnit: in.DisplacementUnit, PowerUnit: in.PowerUnit,
 	}
 	if in.OdometerUnit != nil {
 		p.OdometerUnit = *in.OdometerUnit
@@ -204,6 +208,7 @@ func (s *Server) updateVehicle(w http.ResponseWriter, r *http.Request) error {
 		EngineCode: cur.EngineCode, VIN: strPtr(cur.Vin), LicensePlate: strPtr(cur.LicensePlate),
 		HSN: strPtr(cur.Hsn), TSN: strPtr(cur.Tsn), DisplacementCC: intPtr(cur.DisplacementCc),
 		PowerKW: intPtr(cur.PowerKw), FuelType: strPtr(cur.FuelType), OdometerUnit: &cur.OdometerUnit,
+		DisplacementUnit: strPtr(cur.DisplacementUnit), PowerUnit: strPtr(cur.PowerUnit),
 	}
 	if err := decodeJSON(w, r, &in); err != nil {
 		return err

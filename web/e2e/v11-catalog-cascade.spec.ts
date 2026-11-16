@@ -65,8 +65,8 @@ test('V11: keyboard-only cascade fills engine data; custom values save as typed'
   await pick('Model', model.slice(0, 3), model)
   await pick('Generation / chassis code', path.generation.slice(0, 4), path.generation)
   await pick('Engine / trim', path.engine.name.slice(0, 3), path.engine.name)
-  await expect(page.getByLabel('Power')).toHaveValue(String(path.engine.power_kw))
-  await expect(page.getByLabel('Power')).toHaveClass(/ring-amber-500/)
+  await expect(page.getByRole('textbox', { name: /^Power/ })).toHaveValue(String(path.engine.power_kw))
+  await expect(page.getByRole('textbox', { name: /^Power/ })).toHaveClass(/ring-amber-500/)
 
   // Changing the make clears the lower levels but keeps technical values.
   const makeBox = page.getByRole('combobox', { name: 'Make' })
@@ -74,7 +74,7 @@ test('V11: keyboard-only cascade fills engine data; custom values save as typed'
   await page.keyboard.press('Tab')
   await expect(page.getByRole('combobox', { name: 'Model' })).toHaveValue('')
   await expect(page.getByRole('combobox', { name: 'Engine / trim' })).toHaveValue('')
-  await expect(page.getByLabel('Power')).toHaveValue(String(path.engine.power_kw))
+  await expect(page.getByRole('textbox', { name: /^Power/ })).toHaveValue(String(path.engine.power_kw))
 
   // All-custom vehicle: every level accepts free text.
   await makeBox.fill('Trabbi Custom')

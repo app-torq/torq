@@ -73,8 +73,8 @@ export function SpecSheetPage() {
         <Pin title={t('groups.powertrain')}>
           <div className="space-y-0.5">
             <div>{t('vehicles:fields.engineCode')}: {v.engine_code || none}</div>
-            <div>{t('vehicles:fields.power')}: {v.power_kw != null ? fmt.power(powerW(v) ?? 0) : none}</div>
-            <div>{t('vehicles:fields.displacement')}: {v.displacement_cc != null ? fmt.displacement(v.displacement_cc) : none}</div>
+            <div>{t('vehicles:fields.power')}: {v.power_kw != null ? fmt.power(powerW(v) ?? 0, v.power_unit) : none}</div>
+            <div>{t('vehicles:fields.displacement')}: {v.displacement_cc != null ? fmt.displacement(v.displacement_cc, v.displacement_unit) : none}</div>
             <div>{t('vehicles:fields.fuelType')}: {v.fuel_type ? t(`vehicles:fuel.${v.fuel_type}`) : none}</div>
             <div>{t('vehicles:fields.hsnTsn')}: {v.hsn || v.tsn ? <span className="font-mono">{`${v.hsn ?? '—'} / ${v.tsn ?? '—'}`}</span> : none}</div>
           </div>

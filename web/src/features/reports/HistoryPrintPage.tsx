@@ -75,8 +75,8 @@ export function HistoryPrintPage() {
               {[
                 [t('vehicles:fields.chassisCode'), h.vehicle.chassis_code || none],
                 [t('vehicles:fields.engineCode'), h.vehicle.engine_code || none],
-                [t('vehicles:fields.displacement'), h.vehicle.displacement_cc != null ? fmt.displacement(h.vehicle.displacement_cc) : none],
-                [t('vehicles:fields.power'), h.vehicle.power_kw != null ? fmt.power(powerW(h.vehicle) ?? 0) : none],
+                [t('vehicles:fields.displacement'), h.vehicle.displacement_cc != null ? fmt.displacement(h.vehicle.displacement_cc, h.vehicle.displacement_unit) : none],
+                [t('vehicles:fields.power'), h.vehicle.power_kw != null ? fmt.power(powerW(h.vehicle) ?? 0, h.vehicle.power_unit) : none],
                 [t('vehicles:fields.fuelType'), h.vehicle.fuel_type ? t(`vehicles:fuel.${h.vehicle.fuel_type}`) : none],
                 [t('vehicles:fields.hsnTsn'), h.vehicle.hsn || h.vehicle.tsn ? `${h.vehicle.hsn ?? '—'} / ${h.vehicle.tsn ?? '—'}` : none],
                 [t('vehicles:fields.modelYear'), h.vehicle.model_year ?? none],

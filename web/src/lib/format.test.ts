@@ -75,6 +75,10 @@ describe('createFormatter', () => {
     expect(nbsp(us.pressureRange(2.2, 2.4))).toBe('31.9–34.8 psi')
     expect(nbsp(us.displacement(5735))).toBe('350 ci')
     expect(nbsp(us.power(224456))).toBe('301 hp (224 kW)')
+    // A vehicle's own units win over the preference (#18).
+    expect(nbsp(us.displacement(2998, 'cc'))).toBe('2,998 cm³')
+    expect(nbsp(us.power(239370, 'ps'))).toBe('325 PS (239 kW)')
+    expect(nbsp(us.power(224456, null))).toBe('301 hp (224 kW)')
     expect(nbsp(createFormatter({ ...point, displacementUnit: 'l', pressureUnit: 'kpa' }, units).displacement(1998))).toBe('2 L')
     expect(nbsp(createFormatter({ ...point, pressureUnit: 'kpa' }, units).pressure(2.3))).toBe('230 kPa')
   })

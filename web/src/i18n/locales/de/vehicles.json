@@ -31,7 +31,11 @@
     "engineTrimHint": "Motor wählen, um Motorcode, Leistung, Hubraum und Kraftstoff zu übernehmen.",
     "hsnTsn": "HSN / TSN",
     "odometerUnit": "Tachoeinheit",
-    "odometerUnitHint": "Was der Tacho anzeigt. Strecken dieses Fahrzeugs werden in dieser Einheit angezeigt und eingegeben."
+    "odometerUnitHint": "Was der Tacho anzeigt. Strecken dieses Fahrzeugs werden in dieser Einheit angezeigt und eingegeben.",
+    "displacementUnit": "Hubraumeinheit",
+    "powerUnit": "Leistungseinheit",
+    "unitPreference": "Meine Einstellung ({{unit}})",
+    "vehicleUnitHint": "Wird für alle in diesen Einheiten angezeigt und eingegeben. Auf „Meine Einstellung“ lassen, damit die Einstellungen jeder Person gelten."
   },
   "tabs": {
     "overview": "Übersicht",

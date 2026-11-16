@@ -129,6 +129,53 @@ func TestVehicleOdometerUnitAndPower(t *testing.T) {
 	}
 }
 
+// TestVehicleDisplayUnits checks the optional per-vehicle displacement and
+// power units (#18): null follows the user's preference, PATCH keeps them
+// unless sent, and null clears them.
+func TestVehicleDisplayUnits(t *testing.T) {
+	e := newEnv(t)
+	c := e.admin()
+	v := createVehicle(t, c, 1000)
+	if v.DisplacementUnit != nil || v.PowerUnit != nil {
+		t.Fatalf("defaults %+v", v)
+	}
+	var got vehicleResp
+	c.call(http.MethodPatch, "/vehicles/"+itoa(v.ID), map[string]any{"displacement_unit": "ci", "power_unit": "hp"}, http.StatusOK, &got)
+	if got.Vehicle.DisplacementUnit == nil || *got.Vehicle.DisplacementUnit != "ci" || got.Vehicle.PowerUnit == nil || *got.Vehicle.PowerUnit != "hp" {
+		t.Fatalf("patched %+v", got.Vehicle)
+	}
+	c.call(http.MethodPatch, "/vehicles/"+itoa(v.ID), map[string]any{"model": "C 220"}, http.StatusOK, &got)
+	if got.Vehicle.DisplacementUnit == nil || got.Vehicle.PowerUnit == nil {
+		t.Fatalf("units lost on unrelated patch: %+v", got.Vehicle)
+	}
+	c.call(http.MethodPatch, "/vehicles/"+itoa(v.ID), map[string]any{"displacement_unit": nil, "power_unit": ""}, http.StatusOK, &got)
+	if got.Vehicle.DisplacementUnit != nil || got.Vehicle.PowerUnit != nil {
+		t.Fatalf("units not cleared: %+v", got.Vehicle)
+	}
+	for _, body := range []map[string]any{{"displacement_unit": "m3"}, {"power_unit": "bhp"}} {
+		if code := c.errorCode(http.MethodPatch, "/vehicles/"+itoa(v.ID), body, http.StatusUnprocessableEntity); code != "validation.failed" {
+			t.Fatalf("%v: code %q", body, code)
+		}
+	}
+	var created vehicleResp
+	c.call(http.MethodPost, "/vehicles", map[string]any{
+		"make": "Toyota", "model": "Supra", "current_odometer_km": 80467, "displacement_unit": "cc", "power_unit": "ps",
+	}, http.StatusCreated, &created)
+	if *created.Vehicle.DisplacementUnit != "cc" || *created.Vehicle.PowerUnit != "ps" {
+		t.Fatalf("created %+v", created.Vehicle)
+	}
+	var h struct {
+		Vehicle struct {
+			DisplacementUnit *string `json:"displacement_unit"`
+			PowerUnit        *string `json:"power_unit"`
+		} `json:"vehicle"`
+	}
+	c.call(http.MethodGet, "/vehicles/"+itoa(created.Vehicle.ID)+"/history", nil, http.StatusOK, &h)
+	if h.Vehicle.DisplacementUnit == nil || *h.Vehicle.DisplacementUnit != "cc" || h.Vehicle.PowerUnit == nil || *h.Vehicle.PowerUnit != "ps" {
+		t.Fatalf("history %+v", h.Vehicle)
+	}
+}
+
 func TestOdometerEndpoint(t *testing.T) {
 	e := newEnv(t)
 	c := e.admin()

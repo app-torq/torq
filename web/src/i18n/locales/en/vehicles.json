@@ -31,7 +31,11 @@
     "engineTrimHint": "Pick an engine to fill engine code, power, displacement and fuel.",
     "hsnTsn": "HSN / TSN",
     "odometerUnit": "Odometer unit",
-    "odometerUnitHint": "What the odometer shows. This vehicle's distances are shown and entered in this unit."
+    "odometerUnitHint": "What the odometer shows. This vehicle's distances are shown and entered in this unit.",
+    "displacementUnit": "Displacement unit",
+    "powerUnit": "Power unit",
+    "unitPreference": "My preference ({{unit}})",
+    "vehicleUnitHint": "Shown and entered in these units for everyone. Leave on your preference to follow each person's settings."
   },
   "tabs": {
     "overview": "Overview",
