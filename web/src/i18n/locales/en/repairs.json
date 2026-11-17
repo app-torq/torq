@@ -35,7 +35,9 @@
     "torqueValue": "Torque",
     "torqueNote": "Note",
     "addTorque": "Add torque spec",
-    "priority": "Priority"
+    "priority": "Priority",
+    "tags": "Tags",
+    "tagsHint": "Press Enter or comma to add a tag. Existing tags are suggested."
   },
   "sections": {
     "diagnostics": "Diagnostics",
@@ -79,11 +81,16 @@
   "deleteBody": "Delete \"{{title}}\" with its parts list and attachments?",
   "filters": {
     "allStatuses": "All statuses",
-    "search": "Search titles, fault codes, part numbers",
+    "search": "Search titles, fault codes, part numbers, or tags:abs",
     "allPriorities": "All",
     "priorityCount_one": "{{count}} selected",
     "priorityCount_other": "{{count}} selected",
-    "clear": "Clear"
+    "clear": "Clear",
+    "allTags": "All",
+    "tagCount_one": "{{count}} selected",
+    "tagCount_other": "{{count}} selected",
+    "tagsHint": "Shows projects that have all selected tags.",
+    "searchHint": "Add tags:brake-fluid,abs to show only projects with these tags, e.g. tags:brake-fluid weak braking."
   },
   "quick": {
     "newRepair": "New repair project"
@@ -136,5 +143,19 @@
       "pink": "Pink",
       "zinc": "Gray"
     }
+  },
+  "tags": {
+    "more_one": "+ {{count}} more",
+    "more_other": "+ {{count}} more",
+    "title": "Project tags",
+    "intro": "Free-form labels for projects, such as type, subsystem or manufacturer. Tags are added on a project; here you can rename or delete them.",
+    "empty": "No tags yet. Add tags when you create or edit a project.",
+    "name": "Tag",
+    "rename": "Rename {{name}}",
+    "renameHint": "The new name applies to every project with this tag.",
+    "delete": "Delete {{name}}",
+    "deleteBody_one": "Remove this tag from its project?",
+    "deleteBody_other": "Remove this tag from its {{count}} projects?",
+    "deleteUnused": "No project uses this tag."
   }
 }

@@ -97,7 +97,9 @@
     "completed_before_started": "Completion cannot be before the start date.",
     "torque_spec_invalid": "Each torque spec needs a label and a value above 0 Nm.",
     "status_use_status_endpoint": "Change the status with the status menu.",
-    "vehicle_immutable": "A project cannot move to another vehicle."
+    "vehicle_immutable": "A project cannot move to another vehicle.",
+    "tag_invalid": "Tags cannot contain commas or double quotes.",
+    "too_many_tags": "A project can have at most 50 tags."
   },
   "parts": {
     "order_mismatch": "The parts list changed meanwhile. Reload and try again."

@@ -14,6 +14,9 @@ import { useVehicles } from '../vehicles/hooks'
 import { invalidateRepairs, repairSorts, repairStatuses, statusTone, useRepairs, type RepairSort } from './hooks'
 import { ProjectPriority } from './priorities'
 import { PriorityFilter } from './PriorityFilter'
+import { TagFilter } from './TagFilter'
+import { TagList } from './tags'
+import { useSession } from '../../app/session'
 import { NewRepairDialog } from './NewRepairDialog'
 import { CompleteRepairDialog } from './CompleteRepairDialog'
 
@@ -48,20 +51,29 @@ export function RepairBoardPage({ vehicleId }: { vehicleId?: number }) {
   const [params, setParams] = useSearchParams()
   const [creating, setCreating] = useState(params.get('new') === '1')
   const [sort, setSort] = useState(readSort)
-  // The priority filter is mirrored into the URL, so a filtered view can be bookmarked.
+  // The priority and tag filters are mirrored into the URL, so a filtered view can be bookmarked.
   const [priorityFilter, setPriorityFilterState] = useState(() => params.getAll('priority'))
+  const [tagFilter, setTagFilterState] = useState(() => params.getAll('tag'))
+  const mirror = (key: string, values: string[]) => {
+    const next = new URLSearchParams(params)
+    next.delete(key)
+    for (const v of values) next.append(key, v)
+    setParams(next, { replace: true })
+  }
   const setPriorityFilter = (values: string[]) => {
     setPriorityFilterState(values)
-    const next = new URLSearchParams(params)
-    next.delete('priority')
-    for (const v of values) next.append('priority', v)
-    setParams(next, { replace: true })
+    mirror('priority', values)
+  }
+  const setTagFilter = (values: string[]) => {
+    setTagFilterState(values)
+    mirror('tag', values)
   }
   const vehicles = useVehicles('all')
   const repairs = useRepairs({
     vehicle_id: vehicleId ?? (Number(vehicleFilter) || undefined),
     ...(statusFilter ? { status: [statusFilter] } : {}),
     ...(priorityFilter.length > 0 ? { priority: priorityFilter } : {}),
+    ...(tagFilter.length > 0 ? { tag: tagFilter } : {}),
     // The board always orders each column by priority.
     sort: view === 'board' ? 'priority' : sort,
     q: search,
@@ -136,13 +148,14 @@ export function RepairBoardPage({ vehicleId }: { vehicleId?: number }) {
           </select>
         )}
         <PriorityFilter value={priorityFilter} onChange={setPriorityFilter} />
+        <TagFilter value={tagFilter} onChange={setTagFilter} />
         {view === 'list' && (
           <select aria-label={t('sort.label')} className={`${inputClass} w-auto`} value={sort} onChange={(e) => { changeSort(e.target.value as RepairSort) }}>
             {repairSorts.map((s) => <option key={s} value={s}>{t(`sort.${s}`)}</option>)}
           </select>
         )}
         <form className="min-w-[12rem] flex-1" onSubmit={(e) => { e.preventDefault(); setSearch(q.trim()) }}>
-          <input type="search" aria-label={t('filters.search')} placeholder={t('filters.search')} className={inputClass} value={q} onChange={(e) => { setQ(e.target.value) }} onBlur={() => { setSearch(q.trim()) }} />
+          <input type="search" aria-label={t('filters.search')} placeholder={t('filters.search')} title={t('filters.searchHint')} className={inputClass} value={q} onChange={(e) => { setQ(e.target.value) }} onBlur={() => { setSearch(q.trim()) }} />
         </form>
       </div>
       {repairs.isPending && <Loading />}
@@ -191,6 +204,7 @@ function Board({ items, vehicleById, showVehicle }: { items: RepairSummary[]; ve
 function RepairCard({ repair: r, vehicle }: { repair: RepairSummary; vehicle: Vehicle | undefined }) {
   const { t } = useTranslation('repairs')
   const fmt = useFormat()
+  const { user } = useSession()
   const [completing, setCompleting] = useState(false)
   return (
     <div className="rounded-md border border-zinc-800 bg-zinc-900 p-3">
@@ -199,6 +213,7 @@ function RepairCard({ repair: r, vehicle }: { repair: RepairSummary; vehicle: Ve
         <ProjectPriority id={r.priority_id} />
       </div>
       {vehicle && <div className="text-xs text-zinc-400">{vehicleName(vehicle)}</div>}
+      {r.tags.length > 0 && <div className="mt-1.5"><TagList tags={r.tags} limit={user.card_tag_limit} /></div>}
       {r.fault_codes.length > 0 && (
         <div className="mt-1.5 flex flex-wrap gap-1">
           {r.fault_codes.map((c) => <span key={c} className="rounded bg-amber-500/15 px-1 font-mono text-[11px] text-amber-200">{c}</span>)}
@@ -246,6 +261,7 @@ export function StatusMenu({ repair, onComplete }: { repair: RepairSummary; onCo
 function RepairTable({ items, vehicleById, showVehicle }: { items: RepairSummary[]; vehicleById: Map<number, Vehicle>; showVehicle: boolean }) {
   const { t } = useTranslation('repairs')
   const fmt = useFormat()
+  const { user } = useSession()
   return (
     <Table>
       <thead>
@@ -264,7 +280,10 @@ function RepairTable({ items, vehicleById, showVehicle }: { items: RepairSummary
           const v = vehicleById.get(r.vehicle_id)
           return (
             <tr key={r.id}>
-              <td><Link to={`/repairs/${r.id}`} className="text-sky-300 hover:underline">{r.title}</Link></td>
+              <td>
+                <Link to={`/repairs/${r.id}`} className="text-sky-300 hover:underline">{r.title}</Link>
+                {r.tags.length > 0 && <div className="mt-1"><TagList tags={r.tags} limit={user.card_tag_limit} /></div>}
+              </td>
               {showVehicle && <td className="text-zinc-300">{v ? vehicleName(v) : ''}</td>}
               <td><ProjectPriority id={r.priority_id} /></td>
               <td><Badge tone={statusTone[r.status]}>{t(`statuses.${r.status}`)}</Badge></td>

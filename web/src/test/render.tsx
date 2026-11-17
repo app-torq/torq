@@ -9,7 +9,7 @@ export const testSession: Session = {
   user: {
     id: 1, username: 'marek', display_name: 'Marek', role: 'admin', locale: 'en', date_format: 'YYYY-MM-DD',
     number_format: 'point', time_format: '24h', currency_code: 'EUR', currency_symbol: null, power_unit: 'kw', distance_unit: 'km',
-    volume_unit: 'l', torque_unit: 'nm', pressure_unit: 'bar', displacement_unit: 'cc', priority_display: 'both', disabled: false,
+    volume_unit: 'l', torque_unit: 'nm', pressure_unit: 'bar', displacement_unit: 'cc', priority_display: 'both', card_tag_limit: 3, disabled: false,
   },
   instance: { api_version: 1, max_upload_mb: 25, version: 'test', demo_mode: false, token_auth: true, spec_autofill: false },
 }

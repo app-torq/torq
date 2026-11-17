@@ -155,6 +155,11 @@ type RepairLog struct {
 	PriorityID           sql.NullInt64
 }
 
+type RepairLogTag struct {
+	RepairLogID int64
+	TagID       int64
+}
+
 type RepairPart struct {
 	ID                    int64
 	RepairLogID           int64
@@ -179,6 +184,13 @@ type RepairPriority struct {
 	IsDefault  int64
 	CreatedAt  string
 	UpdatedAt  string
+}
+
+type RepairTag struct {
+	ID        int64
+	Name      string
+	CreatedAt string
+	UpdatedAt string
 }
 
 type RepairTorqueSpec struct {
@@ -262,6 +274,7 @@ type User struct {
 	PressureUnit     string
 	DisplacementUnit string
 	PriorityDisplay  string
+	CardTagLimit     int64
 }
 
 type UserIdentity struct {

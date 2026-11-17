@@ -32,11 +32,12 @@ export function PreferencesPage() {
   const [formats, setFormats] = useState<Formats>(() => formatsOf(user))
   const [currencySymbol, setCurrencySymbol] = useState(user.currency_symbol ?? '')
   const [priorityDisplay, setPriorityDisplay] = useState<PriorityDisplay>(user.priority_display)
+  const [cardTagLimit, setCardTagLimit] = useState(String(user.card_tag_limit))
   const patch = (p: Partial<Formats>) => { setFormats((prev) => ({ ...prev, ...p })) }
 
   const save = useMutation({
     mutationFn: () =>
-      api.patch<{ user: User }>('/me/preferences', { display_name: displayName, locale, currency_symbol: currencySymbol, priority_display: priorityDisplay, ...formats }),
+      api.patch<{ user: User }>('/me/preferences', { display_name: displayName, locale, currency_symbol: currencySymbol, priority_display: priorityDisplay, card_tag_limit: Number(cardTagLimit), ...formats }),
     onSuccess: ({ user: updated }) => {
       qc.setQueryData<MeResponse | null>(queryKeys.me, (prev) => (prev ? { ...prev, user: updated } : prev))
       void i18n.changeLanguage(updated.locale)
@@ -101,6 +102,14 @@ export function PreferencesPage() {
             options={(['both', 'color', 'name'] as const).map((d) => ({ value: d, label: t(`preferences.priorityDisplays.${d}`) }))}
             hint={t('preferences.priorityDisplayHint')}
             error={fe.priority_display}
+          />
+          <SelectField
+            label={t('preferences.cardTagLimit')}
+            value={cardTagLimit}
+            onChange={setCardTagLimit}
+            options={[1, 2, 3, 4, 5, 6, 8, 10, 0].map((n) => ({ value: String(n), label: n === 0 ? t('preferences.cardTagLimitAll') : String(n) }))}
+            hint={t('preferences.cardTagLimitHint')}
+            error={fe.card_tag_limit}
           />
           <fieldset className="space-y-2 border-t border-zinc-800 pt-4">
             <legend className="text-sm font-semibold text-zinc-200">{t('preferences.units')}</legend>

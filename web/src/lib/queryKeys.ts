@@ -17,6 +17,7 @@ export const queryKeys = {
   serviceLog: (id: number) => ['service-logs', 'detail', id] as const,
   repairs: ['repairs'] as const,
   priorities: ['repair-priorities'] as const,
+  tags: ['repair-tags'] as const,
   repairList: (filters: object) => ['repairs', 'list', filters] as const,
   repair: (id: number) => ['repairs', 'detail', id] as const,
   reminders: ['reminders'] as const,

@@ -17,20 +17,25 @@ WHERE (CAST(?1 AS INTEGER) = 0 OR r.vehicle_id = ?1)
   AND instr(',' || CAST(?2 AS TEXT) || ',', ',' || r.status || ',') > 0
   AND (CAST(?3 AS TEXT) = ''
        OR instr(',' || CAST(?3 AS TEXT) || ',', ',' || COALESCE(CAST(r.priority_id AS TEXT), 'none') || ',') > 0)
-  AND (CAST(?4 AS TEXT) = ''
-       OR r.title LIKE '%' || ?4 || '%'
-       OR r.symptom LIKE '%' || ?4 || '%'
-       OR r.root_cause LIKE '%' || ?4 || '%'
-       OR EXISTS (SELECT 1 FROM repair_fault_codes f WHERE f.repair_log_id = r.id AND f.code LIKE '%' || ?4 || '%')
+  AND (CAST(?4 AS INTEGER) = 0
+       OR (SELECT COUNT(*) FROM repair_log_tags rt WHERE rt.repair_log_id = r.id
+           AND instr(',' || CAST(?5 AS TEXT) || ',', ',' || rt.tag_id || ',') > 0) = ?4)
+  AND (CAST(?6 AS TEXT) = ''
+       OR r.title LIKE '%' || ?6 || '%'
+       OR r.symptom LIKE '%' || ?6 || '%'
+       OR r.root_cause LIKE '%' || ?6 || '%'
+       OR EXISTS (SELECT 1 FROM repair_fault_codes f WHERE f.repair_log_id = r.id AND f.code LIKE '%' || ?6 || '%')
        OR EXISTS (SELECT 1 FROM repair_parts p WHERE p.repair_log_id = r.id
-                  AND (p.name LIKE '%' || ?4 || '%' OR p.oem_part_number LIKE '%' || ?4 || '%'
-                       OR p.aftermarket_part_number LIKE '%' || ?4 || '%')))
+                  AND (p.name LIKE '%' || ?6 || '%' OR p.oem_part_number LIKE '%' || ?6 || '%'
+                       OR p.aftermarket_part_number LIKE '%' || ?6 || '%')))
 `
 
 type CountRepairsParams struct {
 	VehicleID  int64
 	Statuses   string
 	Priorities string
+	TagCount   int64
+	TagIds     string
 	Q          string
 }
 
@@ -39,6 +44,8 @@ func (q *Queries) CountRepairs(ctx context.Context, arg CountRepairsParams) (int
 		arg.VehicleID,
 		arg.Statuses,
 		arg.Priorities,
+		arg.TagCount,
+		arg.TagIds,
 		arg.Q,
 	)
 	var count int64
@@ -389,20 +396,23 @@ WHERE (CAST(?2 AS INTEGER) = 0 OR r.vehicle_id = ?2)
   AND instr(',' || CAST(?3 AS TEXT) || ',', ',' || r.status || ',') > 0
   AND (CAST(?4 AS TEXT) = ''
        OR instr(',' || CAST(?4 AS TEXT) || ',', ',' || COALESCE(CAST(r.priority_id AS TEXT), 'none') || ',') > 0)
-  AND (CAST(?5 AS TEXT) = ''
-       OR r.title LIKE '%' || ?5 || '%'
-       OR r.symptom LIKE '%' || ?5 || '%'
-       OR r.root_cause LIKE '%' || ?5 || '%'
-       OR EXISTS (SELECT 1 FROM repair_fault_codes f WHERE f.repair_log_id = r.id AND f.code LIKE '%' || ?5 || '%')
+  AND (CAST(?5 AS INTEGER) = 0
+       OR (SELECT COUNT(*) FROM repair_log_tags rt WHERE rt.repair_log_id = r.id
+           AND instr(',' || CAST(?6 AS TEXT) || ',', ',' || rt.tag_id || ',') > 0) = ?5)
+  AND (CAST(?7 AS TEXT) = ''
+       OR r.title LIKE '%' || ?7 || '%'
+       OR r.symptom LIKE '%' || ?7 || '%'
+       OR r.root_cause LIKE '%' || ?7 || '%'
+       OR EXISTS (SELECT 1 FROM repair_fault_codes f WHERE f.repair_log_id = r.id AND f.code LIKE '%' || ?7 || '%')
        OR EXISTS (SELECT 1 FROM repair_parts p WHERE p.repair_log_id = r.id
-                  AND (p.name LIKE '%' || ?5 || '%' OR p.oem_part_number LIKE '%' || ?5 || '%'
-                       OR p.aftermarket_part_number LIKE '%' || ?5 || '%')))
+                  AND (p.name LIKE '%' || ?7 || '%' OR p.oem_part_number LIKE '%' || ?7 || '%'
+                       OR p.aftermarket_part_number LIKE '%' || ?7 || '%')))
 ORDER BY CASE o.mode WHEN 'priority' THEN COALESCE(pr.sort_order, 1000000000) ELSE 0 END,
          CASE o.mode WHEN 'updated' THEN 0
               ELSE CASE r.status WHEN 'in_progress' THEN 0 WHEN 'waiting_on_parts' THEN 1 WHEN 'planned' THEN 2 ELSE 3 END END,
          CASE o.mode WHEN 'status_priority' THEN COALESCE(pr.sort_order, 1000000000) ELSE 0 END,
          COALESCE(r.completed_on, r.updated_at) DESC, r.id DESC
-LIMIT ?7 OFFSET ?6
+LIMIT ?9 OFFSET ?8
 `
 
 type ListRepairsParams struct {
@@ -410,18 +420,23 @@ type ListRepairsParams struct {
 	VehicleID  int64
 	Statuses   string
 	Priorities string
+	TagCount   int64
+	TagIds     string
 	Q          string
 	Off        int64
 	Lim        int64
 }
 
 // sort: status (default), priority, updated, or status_priority (dashboard).
+// tag_ids: projects must have all of them (tag_count distinct ids).
 func (q *Queries) ListRepairs(ctx context.Context, arg ListRepairsParams) ([]RepairLog, error) {
 	rows, err := q.db.QueryContext(ctx, listRepairs,
 		arg.Sort,
 		arg.VehicleID,
 		arg.Statuses,
 		arg.Priorities,
+		arg.TagCount,
+		arg.TagIds,
 		arg.Q,
 		arg.Off,
 		arg.Lim,

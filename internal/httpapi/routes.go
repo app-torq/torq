@@ -100,6 +100,9 @@ func (s *Server) routes() {
 	s.route("PUT /repair-priorities/order", member, s.reorderPriorities)
 	s.route("PATCH /repair-priorities/{id}", member, s.updatePriority)
 	s.route("DELETE /repair-priorities/{id}", member, s.deletePriority)
+	s.route("GET /repair-tags", member, s.listTags)
+	s.route("PATCH /repair-tags/{id}", member, s.renameTag)
+	s.route("DELETE /repair-tags/{id}", member, s.deleteTag)
 	s.route("DELETE /repair-parts/{id}", member, s.deletePart)
 
 	// Attachments

@@ -50,6 +50,7 @@ type userJSON struct {
 	Locale          string  `json:"locale"`
 	CurrencySymbol  *string `json:"currency_symbol"`
 	PriorityDisplay string  `json:"priority_display"`
+	CardTagLimit    int64   `json:"card_tag_limit"`
 	Disabled        bool    `json:"disabled"`
 	formatsJSON
 }
@@ -57,7 +58,7 @@ type userJSON struct {
 func toUserJSON(u auth.User) userJSON {
 	out := userJSON{
 		ID: u.ID, Username: u.Username, DisplayName: u.DisplayName, Role: string(u.Role),
-		Locale: u.Prefs.Locale, PriorityDisplay: u.Prefs.PriorityDisplay, Disabled: u.Disabled,
+		Locale: u.Prefs.Locale, PriorityDisplay: u.Prefs.PriorityDisplay, CardTagLimit: u.Prefs.CardTagLimit, Disabled: u.Disabled,
 		formatsJSON: toFormatsJSON(u.Prefs.Formats),
 	}
 	if u.Prefs.CurrencySymbol != "" {
@@ -255,6 +256,7 @@ func (s *Server) updatePreferences(w http.ResponseWriter, r *http.Request) error
 		Locale          *string `json:"locale"`
 		CurrencySymbol  *string `json:"currency_symbol"`
 		PriorityDisplay *string `json:"priority_display"`
+		CardTagLimit    *int64  `json:"card_tag_limit"`
 		formatsJSON
 	}
 	if err := decodeJSON(w, r, &in); err != nil {
@@ -262,7 +264,7 @@ func (s *Server) updatePreferences(w http.ResponseWriter, r *http.Request) error
 	}
 	user, err := s.users.UpdatePreferences(r.Context(), currentUser(r).ID, auth.PreferencesPatch{
 		DisplayName: in.DisplayName, Locale: in.Locale, CurrencySymbol: in.CurrencySymbol,
-		PriorityDisplay: in.PriorityDisplay, Formats: in.formats(),
+		PriorityDisplay: in.PriorityDisplay, CardTagLimit: in.CardTagLimit, Formats: in.formats(),
 	})
 	if err != nil {
 		return err

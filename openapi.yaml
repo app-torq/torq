@@ -5,7 +5,7 @@
 openapi: "3.1.0"
 info:
   title: torq API
-  version: "4"
+  version: "5"
   description: |-
     The REST API of torq, a self-hosted vehicle maintenance and DIY repair tracker. It is used by the web app and the torq mobile app.
 
@@ -284,6 +284,11 @@ paths:
                     - string
                     - "null"
                   description: "both, color or name."
+                card_tag_limit:
+                  type:
+                    - integer
+                    - "null"
+                  description: "How many tags a project card shows before \"+ n more\": 0–20, 0 shows all."
                 pressure_unit:
                   type:
                     - string
@@ -2005,6 +2010,14 @@ paths:
             items:
               type: string
           explode: true
+        - name: tag
+          in: query
+          description: "Only projects that have all of these tags (names, any case); repeat for several. Combined with tags: in q."
+          schema:
+            type: array
+            items:
+              type: string
+          explode: true
         - name: sort
           in: query
           description: "status (default: status, then most recent), priority (priority, then status, then most recent; projects without a priority last) or updated (most recent first)."
@@ -2012,7 +2025,7 @@ paths:
             type: string
         - name: q
           in: query
-          description: Search text.
+          description: "Search text, matched in titles, symptoms, root causes, fault codes and parts. A tags: prefix (also tag:) filters by tags instead, combined with the rest by AND: `tags:brake-fluid,\"brake discs\" weak braking` finds projects with both tags whose text mentions \"weak braking\". Plain text does not match tags."
           schema:
             type: string
       responses:
@@ -2048,6 +2061,9 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/RepairInput"
+      x-torq-error-codes:
+        - repair.tag_invalid
+        - repair.too_many_tags
       responses:
         "201":
           description: Success.
@@ -2103,6 +2119,8 @@ paths:
               $ref: "#/components/schemas/RepairInput"
       x-torq-error-codes:
         - repair.status_use_status_endpoint
+        - repair.tag_invalid
+        - repair.too_many_tags
       responses:
         "200":
           description: Success.
@@ -2448,6 +2466,89 @@ paths:
       x-torq-error-codes:
         - validation.failed
         - validation.invalid_choice
+      responses:
+        "204":
+          description: "Done; no body."
+        default:
+          $ref: "#/components/responses/Error"
+  /repair-tags:
+    get:
+      operationId: listRepairTags
+      summary: Project tags by name
+      description: Tags are created by giving them to a project; tags no project uses stay until deleted.
+      x-torq-access: member
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                  - total
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/RepairTag"
+                  total:
+                    type: integer
+        default:
+          $ref: "#/components/responses/Error"
+  "/repair-tags/{id}":
+    patch:
+      operationId: renameRepairTag
+      summary: Rename a project tag on every project
+      x-torq-access: member
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: "1–40 characters, no commas or double quotes; must not match another tag in any case."
+              additionalProperties: false
+      x-torq-error-codes:
+        - validation.failed
+        - validation.duplicate
+        - validation.length
+        - validation.required
+        - repair.tag_invalid
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - tag
+                properties:
+                  tag:
+                    $ref: "#/components/schemas/RepairTag"
+        default:
+          $ref: "#/components/responses/Error"
+    delete:
+      operationId: deleteRepairTag
+      summary: Delete a project tag from every project
+      x-torq-access: member
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
       responses:
         "204":
           description: "Done; no body."
@@ -4132,6 +4233,7 @@ components:
         - started_on
         - priority_id
         - status
+        - tags
         - symptom
         - title
         - torque_specs
@@ -4188,6 +4290,11 @@ components:
           description: planned, in_progress, waiting_on_parts or completed.
         symptom:
           type: string
+        tags:
+          type: array
+          description: Tag names, sorted by name.
+          items:
+            type: string
         title:
           type: string
         torque_specs:
@@ -4233,6 +4340,13 @@ components:
           description: planned, in_progress, waiting_on_parts or completed.
         symptom:
           type: string
+        tags:
+          type:
+            - array
+            - "null"
+          description: "Tag names (1–40 characters, no commas or double quotes, at most 50). A name matching an existing tag in any case uses that tag; others are created. Replaces the project's tags; omitted on update: unchanged."
+          items:
+            type: string
         title:
           type: string
         torque_specs:
@@ -4365,6 +4479,20 @@ components:
             - "null"
           description: "1–40 characters, unique. Required on create. On update, an empty string resets a built-in to its translated name; null or omitted keeps the name."
       additionalProperties: false
+    RepairTag:
+      type: object
+      required:
+        - id
+        - name
+        - project_count
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          description: Unique regardless of case.
+        project_count:
+          type: integer
     RepairSummary:
       type: object
       required:
@@ -4377,6 +4505,7 @@ components:
         - started_on
         - priority_id
         - status
+        - tags
         - title
         - updated_at
         - vehicle_id
@@ -4413,6 +4542,11 @@ components:
         status:
           type: string
           description: planned, in_progress, waiting_on_parts or completed.
+        tags:
+          type: array
+          description: Tag names, sorted by name.
+          items:
+            type: string
         title:
           type: string
         updated_at:
@@ -4764,6 +4898,7 @@ components:
         - power_unit
         - pressure_unit
         - priority_display
+        - card_tag_limit
         - role
         - time_format
         - torque_unit
@@ -4803,6 +4938,9 @@ components:
         priority_display:
           type: string
           description: "How project priorities are shown: both (color and name), color or name."
+        card_tag_limit:
+          type: integer
+          description: "How many tags a project card shows before \"+ n more\" (default 3); 0 shows all."
         pressure_unit:
           type: string
           description: "bar, psi or kpa. Pressure is always sent in bar."
