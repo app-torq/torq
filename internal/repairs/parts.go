@@ -55,20 +55,15 @@ func validatePart(in *PartInput) error {
 	return v.Err()
 }
 
+// touch marks a project as updated after a parts change. It sets only
+// updated_at, so it cannot reset fields such as the priority.
 func (s *Service) touch(ctx context.Context, q *store.Queries, repairID int64) error {
-	r, err := q.GetRepair(ctx, repairID)
-	if errors.Is(err, sql.ErrNoRows) {
+	if _, err := q.GetRepair(ctx, repairID); errors.Is(err, sql.ErrNoRows) {
 		return apperr.NotFound()
-	}
-	if err != nil {
+	} else if err != nil {
 		return err
 	}
-	_, err = q.UpdateRepair(ctx, store.UpdateRepairParams{
-		Title: r.Title, Symptom: r.Symptom, RootCause: r.RootCause, ProcedureNotes: r.ProcedureNotes,
-		SpecialTools: r.SpecialTools, StartedOn: r.StartedOn, CompletedOn: r.CompletedOn,
-		CompletionOdometerKm: r.CompletionOdometerKm, UpdatedAt: clock.Timestamp(s.Clock.Now()), ID: repairID,
-	})
-	return err
+	return q.TouchRepair(ctx, store.TouchRepairParams{UpdatedAt: clock.Timestamp(s.Clock.Now()), ID: repairID})
 }
 
 // CreatePart appends a BOM line.

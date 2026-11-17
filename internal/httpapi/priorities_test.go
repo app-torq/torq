@@ -153,6 +153,27 @@ func TestRepairPriorities(t *testing.T) {
 	}
 }
 
+// TestPartChangesKeepPriority guards against a parts change resetting the
+// project's priority (it did in v1.4.0–v1.6.0).
+func TestPartChangesKeepPriority(t *testing.T) {
+	e := newEnv(t)
+	c := e.admin()
+	v := createVehicle(t, c, 100000)
+	urgent := priorities(t, c)["urgent"].ID
+	r := newRepair(t, c, v.ID, "Brakes", map[string]any{"priority_id": urgent, "tags": []string{"brakes"}})
+	var part struct {
+		Part partJSON `json:"part"`
+	}
+	c.call(http.MethodPost, "/repairs/"+itoa(r.ID)+"/parts", map[string]any{"name": "Pads", "quantity": 1}, http.StatusCreated, &part)
+	c.call(http.MethodPatch, "/repair-parts/"+itoa(part.Part.ID), map[string]any{"status": "ordered"}, http.StatusOK, nil)
+	c.call(http.MethodDelete, "/repair-parts/"+itoa(part.Part.ID), nil, http.StatusNoContent, nil)
+	var got repairResp
+	c.call(http.MethodGet, "/repairs/"+itoa(r.ID), nil, http.StatusOK, &got)
+	if got.Repair.PriorityID == nil || *got.Repair.PriorityID != urgent || len(got.Repair.Tags) != 1 {
+		t.Fatalf("after part changes: priority %v, tags %v", got.Repair.PriorityID, got.Repair.Tags)
+	}
+}
+
 func TestPriorityDisplayPreference(t *testing.T) {
 	e := newEnv(t)
 	c := e.admin()
