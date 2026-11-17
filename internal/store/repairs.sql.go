@@ -634,6 +634,20 @@ func (q *Queries) SetRepairStatus(ctx context.Context, arg SetRepairStatusParams
 	return i, err
 }
 
+const touchRepair = `-- name: TouchRepair :exec
+UPDATE repair_logs SET updated_at = ? WHERE id = ?
+`
+
+type TouchRepairParams struct {
+	UpdatedAt string
+	ID        int64
+}
+
+func (q *Queries) TouchRepair(ctx context.Context, arg TouchRepairParams) error {
+	_, err := q.db.ExecContext(ctx, touchRepair, arg.UpdatedAt, arg.ID)
+	return err
+}
+
 const updatePart = `-- name: UpdatePart :one
 UPDATE repair_parts
 SET name = ?, oem_part_number = ?, aftermarket_brand = ?, aftermarket_part_number = ?, supplier_url = ?,

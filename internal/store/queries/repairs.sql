@@ -60,6 +60,9 @@ SET title = ?, symptom = ?, root_cause = ?, procedure_notes = ?, special_tools =
 WHERE id = ?
 RETURNING *;
 
+-- name: TouchRepair :exec
+UPDATE repair_logs SET updated_at = ? WHERE id = ?;
+
 -- name: SetRepairStatus :one
 UPDATE repair_logs
 SET status = ?, started_on = ?, completed_on = ?, completion_odometer_km = ?, updated_at = ?
