@@ -28,10 +28,11 @@ const (
 // seedDemo fills the database with sample data (development and validation
 // only; guarded by TORQ_ENABLE_SEED=true).
 //
-// Without flags it creates the quickstart V7 dataset: one vehicle with 2026
+// Without flags it creates the quickstart V7 dataset (one vehicle with 2026
 // services totalling €420, completed repairs totalling €1,180 and readings
-// from 205,000 to 225,000 km. With --vehicles/--years it generates bulk
-// history for footprint checks (quickstart V9).
+// from 205,000 to 225,000 km) plus showcase vehicles and projects for the
+// public demo. With --vehicles/--years it generates bulk history for
+// footprint checks (quickstart V9).
 func seedDemo(args []string) error {
 	if os.Getenv("TORQ_ENABLE_SEED") != "true" {
 		return errors.New("seed-demo is disabled; set TORQ_ENABLE_SEED=true")
@@ -77,12 +78,19 @@ func seedDemo(args []string) error {
 	if *nVehicles > 0 {
 		return seedBulk(ctx, veh, svc, rep, rem, *nVehicles, *years)
 	}
-	return seedQuickstart(ctx, clk, veh, svc, rep)
+	c220, err := seedQuickstart(ctx, clk, veh, svc, rep)
+	if err != nil {
+		return err
+	}
+	return seedShowcase(ctx, clk, veh, svc, rep, rem, c220)
 }
 
 func i64(v int64) *int64 { return &v }
 
-func seedQuickstart(ctx context.Context, clk *clock.Fixed, veh *vehicles.Service, svc *servicelog.Service, rep *repairs.Service) error {
+func str(v string) *string { return &v }
+
+// seedQuickstart creates the V7 vehicle and returns its id.
+func seedQuickstart(ctx context.Context, clk *clock.Fixed, veh *vehicles.Service, svc *servicelog.Service, rep *repairs.Service) (int64, error) {
 	year := int64(2006)
 	// Date the initial reading before 2026 so the 2026 report spans exactly 205,000 → 225,000 km.
 	end := clk.At
@@ -90,7 +98,7 @@ func seedQuickstart(ctx context.Context, clk *clock.Fixed, veh *vehicles.Service
 	defer func() { clk.At = end }()
 	v, err := veh.Create(ctx, vehicles.Profile{Make: "Mercedes-Benz", Model: "C 220 CDI", ChassisCode: "S203", ModelYear: &year, EngineCode: "OM646", LicensePlate: "B-TQ 646"}, 204000, 0)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	clk.At = end
 	logs := []servicelog.Input{
@@ -101,14 +109,14 @@ func seedQuickstart(ctx context.Context, clk *clock.Fixed, veh *vehicles.Service
 	}
 	for _, in := range logs {
 		if _, _, err := svc.Create(ctx, in, 0); err != nil {
-			return err
+			return 0, err
 		}
 	}
 	r, err := rep.Create(ctx, repairs.Input{VehicleID: v.ID, Title: "Injector seal replacement", Symptom: "Rough idle on cold start, black smoke",
 		RootCause: "Leaking copper seals on cylinders 1 and 3", FaultCodes: []string{"P0201", "P0300"}, SpecialTools: "E12 Torx\nInjector puller",
 		TorqueSpecs: []repairs.TorqueSpec{{Label: "Injector clamp bolt", ValueNm: 7, Note: "+ 90°"}}}, 0)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	for _, p := range []repairs.PartInput{
 		{Name: "Injector copper seal", OEMPartNumber: "A6110170060", Quantity: 4, UnitCostCents: i64(2500), Status: "installed"},
@@ -116,14 +124,14 @@ func seedQuickstart(ctx context.Context, clk *clock.Fixed, veh *vehicles.Service
 		{Name: "Return line", Quantity: 1, UnitCostCents: i64(28000), Status: "installed"},
 	} {
 		if _, err := rep.CreatePart(ctx, r.ID, p); err != nil {
-			return err
+			return 0, err
 		}
 	}
 	if _, err := rep.SetStatus(ctx, r.ID, repairs.StatusCompleted, "2026-11-20", i64(225000)); err != nil {
-		return err
+		return 0, err
 	}
 	fmt.Printf("seeded vehicle %d: services €420, repairs €1,180, readings 205,000 → 225,000 km\n", v.ID)
-	return nil
+	return v.ID, nil
 }
 
 var demoModels = []struct{ make, model, chassis, engine string }{
