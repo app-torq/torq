@@ -86,7 +86,10 @@
       "both": "Farbe und Name",
       "color": "Nur Farbe",
       "name": "Nur Name"
-    }
+    },
+    "cardTagLimit": "Tags auf Projektkarten",
+    "cardTagLimitAll": "Alle",
+    "cardTagLimitHint": "Weitere Tags erscheinen als „+ n weitere“."
   },
   "users": {
     "title": "Benutzer",

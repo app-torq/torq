@@ -23,6 +23,9 @@ type Preferences struct {
 	CurrencySymbol string // empty when not overridden
 	// PriorityDisplay is how project priorities are shown: both, color or name.
 	PriorityDisplay string
+	// CardTagLimit is how many tags a project card shows before "+ n more";
+	// 0 shows all.
+	CardTagLimit int64
 	Formats
 }
 
@@ -101,6 +104,7 @@ func FromStore(u store.User) User {
 			Locale:          u.Locale,
 			CurrencySymbol:  u.CurrencySymbol.String,
 			PriorityDisplay: u.PriorityDisplay,
+			CardTagLimit:    u.CardTagLimit,
 			Formats: Formats{
 				DateFormat: u.DateFormat, NumberFormat: u.NumberFormat, TimeFormat: u.TimeFormat,
 				CurrencyCode: u.CurrencyCode, PowerUnit: u.PowerUnit, DistanceUnit: u.DistanceUnit,

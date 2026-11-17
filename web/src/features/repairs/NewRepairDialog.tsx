@@ -11,6 +11,7 @@ import { Dialog } from '../../components/Dialog'
 import { ErrorBanner } from '../../components/ui'
 import { useVehicles } from '../vehicles/hooks'
 import { FaultCodeInput } from './FaultCodeInput'
+import { TagInput } from './TagInput'
 import { PrioritySelect, priorityBody } from './PrioritySelect'
 import { invalidateRepairs } from './hooks'
 
@@ -24,9 +25,10 @@ export function NewRepairDialog({ vehicleId, onClose }: { vehicleId?: number | u
   const [title, setTitle] = useState('')
   const [symptom, setSymptom] = useState('')
   const [codes, setCodes] = useState<string[]>([])
+  const [tags, setTags] = useState<string[]>([])
   const [priority, setPriority] = useState<string | null>(null)
   const create = useMutation({
-    mutationFn: () => api.post<{ repair: Repair }>('/repairs', { vehicle_id: Number(vehicle), title, symptom, fault_codes: codes, ...priorityBody(priority) }),
+    mutationFn: () => api.post<{ repair: Repair }>('/repairs', { vehicle_id: Number(vehicle), title, symptom, fault_codes: codes, tags, ...priorityBody(priority) }),
     onSuccess: async ({ repair }) => {
       await invalidateRepairs(qc)
       onClose()
@@ -59,6 +61,7 @@ export function NewRepairDialog({ vehicleId, onClose }: { vehicleId?: number | u
         />
         <TextField label={t('fields.title')} value={title} onChange={setTitle} error={fe.title} maxLength={120} autoFocus />
         <PrioritySelect value={priority} onChange={setPriority} error={fe.priority_id} />
+        <TagInput value={tags} onChange={setTags} error={fe.tags} />
         <TextAreaField label={t('fields.symptom')} value={symptom} onChange={setSymptom} error={fe.symptom} rows={3} optional />
         <FaultCodeInput value={codes} onChange={setCodes} />
       </div>

@@ -66,6 +66,8 @@ type Input struct {
 	// DefaultPriority gives the project the garage's default instead.
 	PriorityID      *int64
 	DefaultPriority bool
+	// Tags are tag names; unknown ones are created.
+	Tags []string
 }
 
 // Totals summarizes the BOM.
@@ -78,6 +80,7 @@ type Totals struct {
 type Repair struct {
 	store.RepairLog
 	FaultCodes  []string
+	Tags        []string
 	TorqueSpecs []store.RepairTorqueSpec
 	Parts       []store.RepairPart
 	Totals      Totals
@@ -128,6 +131,7 @@ func (s *Service) validate(in *Input) error {
 		codes = append(codes, c)
 	}
 	in.FaultCodes = codes
+	in.Tags = normalizeTags(in.Tags, &v)
 	for i := range in.TorqueSpecs {
 		ts := &in.TorqueSpecs[i]
 		ts.Label = strings.TrimSpace(ts.Label)
@@ -148,6 +152,9 @@ func (s *Service) writeChildren(ctx context.Context, q *store.Queries, id int64,
 		if err := q.InsertFaultCode(ctx, store.InsertFaultCodeParams{RepairLogID: id, Code: c}); err != nil {
 			return err
 		}
+	}
+	if err := s.writeTags(ctx, q, id, in.Tags); err != nil {
+		return err
 	}
 	if err := q.DeleteTorqueSpecs(ctx, id); err != nil {
 		return err
@@ -413,6 +420,11 @@ func load(ctx context.Context, q *store.Queries, id int64) (Repair, error) {
 	for _, c := range codes {
 		out.FaultCodes = append(out.FaultCodes, c.Code)
 	}
+	tags, err := tagsFor(ctx, q, []int64{id})
+	if err != nil {
+		return Repair{}, err
+	}
+	out.Tags = tags[id]
 	if out.TorqueSpecs, err = q.ListTorqueSpecs(ctx, id); err != nil {
 		return Repair{}, err
 	}
@@ -450,8 +462,12 @@ type Filter struct {
 	Statuses  []string
 	// Priorities are priority ids as text, or "none" for projects without one.
 	Priorities []string
+	// Tags are tag names a project must all have, in addition to any
+	// tags: in Q.
+	Tags []string
 	// Sort is one of Sorts; empty means SortStatus.
-	Sort   string
+	Sort string
+	// Q is a search box query, see ParseSearch.
 	Q      string
 	Limit  int64
 	Offset int64
@@ -489,14 +505,25 @@ func (s *Service) List(ctx context.Context, f Filter) ([]Repair, int64, error) {
 		f.Sort = SortStatus
 	}
 	q := store.New(s.DB.Reader)
-	joined, query, prios := strings.Join(statuses, ","), strings.TrimSpace(f.Q), strings.Join(f.Priorities, ",")
+	search := ParseSearch(f.Q)
+	tagIDs, known, err := resolveTags(ctx, q, append(f.Tags, search.Tags...))
+	if err != nil {
+		return nil, 0, err
+	}
+	if !known {
+		return []Repair{}, 0, nil
+	}
+	joined, prios := strings.Join(statuses, ","), strings.Join(f.Priorities, ",")
 	rows, err := q.ListRepairs(ctx, store.ListRepairsParams{
-		VehicleID: f.VehicleID, Statuses: joined, Priorities: prios, Q: query, Sort: f.Sort, Lim: f.Limit, Off: f.Offset,
+		VehicleID: f.VehicleID, Statuses: joined, Priorities: prios, TagIds: tagIDs.joined, TagCount: tagIDs.count,
+		Q: search.Text, Sort: f.Sort, Lim: f.Limit, Off: f.Offset,
 	})
 	if err != nil {
 		return nil, 0, err
 	}
-	total, err := q.CountRepairs(ctx, store.CountRepairsParams{VehicleID: f.VehicleID, Statuses: joined, Priorities: prios, Q: query})
+	total, err := q.CountRepairs(ctx, store.CountRepairsParams{
+		VehicleID: f.VehicleID, Statuses: joined, Priorities: prios, TagIds: tagIDs.joined, TagCount: tagIDs.count, Q: search.Text,
+	})
 	if err != nil {
 		return nil, 0, err
 	}
@@ -520,8 +547,12 @@ func (s *Service) List(ctx context.Context, f Filter) ([]Repair, int64, error) {
 	if err != nil {
 		return nil, 0, err
 	}
+	tags, err := tagsFor(ctx, q, ids)
+	if err != nil {
+		return nil, 0, err
+	}
 	for _, r := range rows {
-		out = append(out, Repair{RepairLog: r, FaultCodes: byRepair[r.ID], Totals: totals[r.ID]})
+		out = append(out, Repair{RepairLog: r, FaultCodes: byRepair[r.ID], Tags: tags[r.ID], Totals: totals[r.ID]})
 	}
 	return out, total, nil
 }

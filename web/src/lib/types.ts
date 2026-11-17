@@ -34,6 +34,8 @@ export interface User extends Formats {
   locale: Locale
   currency_symbol: string | null
   priority_display: PriorityDisplay
+  /** Tags a project card shows before "+ n more"; 0 shows all. */
+  card_tag_limit: number
   disabled: boolean
 }
 
@@ -342,6 +344,8 @@ export interface RepairSummary {
   completed_on: string | null
   completion_odometer_km: number | null
   fault_codes: string[]
+  /** Tag names, sorted by name. */
+  tags: string[]
   parts_total_cents: number
   part_status_counts: Record<PartStatus, number>
   updated_at: string
@@ -356,6 +360,13 @@ export interface RepairPriority {
   color: string
   sort_order: number
   is_default: boolean
+  project_count: number
+}
+
+/** A tag of the garage's shared tag list. */
+export interface RepairTag {
+  id: number
+  name: string
   project_count: number
 }
 

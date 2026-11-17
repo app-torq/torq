@@ -10,12 +10,12 @@ export const statusTone = { planned: 'zinc', in_progress: 'sky', waiting_on_part
 export const repairSorts = ['priority', 'status', 'updated'] as const
 export type RepairSort = (typeof repairSorts)[number]
 
-export function useRepairs(filters: { vehicle_id?: number | undefined; status?: string[]; priority?: string[]; sort?: RepairSort; q?: string }) {
+export function useRepairs(filters: { vehicle_id?: number | undefined; status?: string[]; priority?: string[]; tag?: string[]; sort?: RepairSort; q?: string }) {
   return useQuery({
     queryKey: queryKeys.repairList(filters),
     queryFn: () =>
       api.get<ListResponse<RepairSummary>>('/repairs', {
-        vehicle_id: filters.vehicle_id, status: filters.status, priority: filters.priority, sort: filters.sort, q: filters.q, limit: 200,
+        vehicle_id: filters.vehicle_id, status: filters.status, priority: filters.priority, tag: filters.tag, sort: filters.sort, q: filters.q, limit: 200,
       }),
   })
 }
@@ -30,6 +30,8 @@ export function useRepair(id: number) {
 export function invalidateRepairs(qc: QueryClient, id?: number): Promise<unknown> {
   return Promise.all([
     qc.invalidateQueries({ queryKey: queryKeys.repairs }),
+    // Saving a project can create tags.
+    qc.invalidateQueries({ queryKey: queryKeys.tags }),
     qc.invalidateQueries({ queryKey: queryKeys.dashboard }),
     qc.invalidateQueries({ queryKey: queryKeys.reports }),
     ...(id ? [qc.invalidateQueries({ queryKey: queryKeys.repair(id) })] : []),

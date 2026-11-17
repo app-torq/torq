@@ -53,6 +53,7 @@ type repairSummaryJSON struct {
 	CompletedOn          *string          `json:"completed_on"`
 	CompletionOdometerKm *int64           `json:"completion_odometer_km"`
 	FaultCodes           []string         `json:"fault_codes"`
+	Tags                 []string         `json:"tags"`
 	PartsTotalCents      int64            `json:"parts_total_cents"`
 	PartStatusCounts     map[string]int64 `json:"part_status_counts"`
 	UpdatedAt            string           `json:"updated_at"`
@@ -71,13 +72,16 @@ type repairJSON struct {
 }
 
 func toRepairSummary(r repairs.Repair) repairSummaryJSON {
-	codes := r.FaultCodes
+	codes, tags := r.FaultCodes, r.Tags
 	if codes == nil {
 		codes = []string{}
 	}
+	if tags == nil {
+		tags = []string{}
+	}
 	return repairSummaryJSON{
 		ID: r.ID, VehicleID: r.VehicleID, Title: r.Title, Status: r.Status, PriorityID: intPtr(r.PriorityID), StartedOn: strPtr(r.StartedOn),
-		CompletedOn: strPtr(r.CompletedOn), CompletionOdometerKm: intPtr(r.CompletionOdometerKm), FaultCodes: codes,
+		CompletedOn: strPtr(r.CompletedOn), CompletionOdometerKm: intPtr(r.CompletionOdometerKm), FaultCodes: codes, Tags: tags,
 		PartsTotalCents: r.Totals.TotalCents, PartStatusCounts: r.Totals.StatusCounts, UpdatedAt: r.UpdatedAt,
 	}
 }
@@ -123,6 +127,7 @@ type repairInput struct {
 	CompletedOn          *string          `json:"completed_on"`
 	CompletionOdometerKm *int64           `json:"completion_odometer_km"`
 	FaultCodes           []string         `json:"fault_codes"`
+	Tags                 []string         `json:"tags"`
 	TorqueSpecs          []torqueSpecJSON `json:"torque_specs"`
 	// PriorityID: omitted means the garage default on create and unchanged on update; null means none.
 	PriorityID optionalID `json:"priority_id"`
@@ -131,7 +136,7 @@ type repairInput struct {
 func (in repairInput) domain() repairs.Input {
 	out := repairs.Input{
 		VehicleID: in.VehicleID, Title: in.Title, Status: in.Status, Symptom: in.Symptom, RootCause: in.RootCause,
-		ProcedureNotes: in.ProcedureNotes, SpecialTools: in.SpecialTools, FaultCodes: in.FaultCodes,
+		ProcedureNotes: in.ProcedureNotes, SpecialTools: in.SpecialTools, FaultCodes: in.FaultCodes, Tags: in.Tags,
 		CompletionKm: in.CompletionOdometerKm, PriorityID: in.PriorityID.Value, DefaultPriority: !in.PriorityID.Set,
 	}
 	if in.StartedOn != nil {
@@ -170,7 +175,7 @@ func (s *Server) listRepairs(w http.ResponseWriter, r *http.Request) error {
 		return badQuery()
 	}
 	rows, total, err := s.repairs.List(r.Context(), repairs.Filter{
-		VehicleID: vehicleID, Statuses: q["status"], Priorities: q["priority"], Sort: sort, Q: q.Get("q"), Limit: limit, Offset: offset,
+		VehicleID: vehicleID, Statuses: q["status"], Priorities: q["priority"], Tags: q["tag"], Sort: sort, Q: q.Get("q"), Limit: limit, Offset: offset,
 	})
 	if err != nil {
 		return err
@@ -220,7 +225,7 @@ func (s *Server) updateRepair(w http.ResponseWriter, r *http.Request) error {
 	in := repairInput{
 		VehicleID: cur.VehicleID, Title: cur.Title, Symptom: cur.Symptom, RootCause: cur.RootCause,
 		ProcedureNotes: cur.ProcedureNotes, SpecialTools: cur.SpecialTools, StartedOn: strPtr(cur.StartedOn),
-		FaultCodes: cur.FaultCodes, PriorityID: optionalID{Set: true, Value: intPtr(cur.PriorityID)},
+		FaultCodes: cur.FaultCodes, Tags: cur.Tags, PriorityID: optionalID{Set: true, Value: intPtr(cur.PriorityID)},
 	}
 	for _, ts := range cur.TorqueSpecs {
 		in.TorqueSpecs = append(in.TorqueSpecs, torqueSpecJSON{Label: ts.Label, ValueNm: ts.ValueNm, Note: ts.Note})

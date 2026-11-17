@@ -35,7 +35,9 @@
     "torqueValue": "Drehmoment",
     "torqueNote": "Hinweis",
     "addTorque": "Anzugsmoment hinzufügen",
-    "priority": "Priorität"
+    "priority": "Priorität",
+    "tags": "Tags",
+    "tagsHint": "Mit Enter oder Komma einen Tag hinzufügen. Vorhandene Tags werden vorgeschlagen."
   },
   "sections": {
     "diagnostics": "Diagnose",
@@ -79,11 +81,16 @@
   "deleteBody": "„{{title}}“ mit Stückliste und Anhängen löschen?",
   "filters": {
     "allStatuses": "Alle Status",
-    "search": "Titel, Fehlercodes, Teilenummern durchsuchen",
+    "search": "Titel, Fehlercodes, Teilenummern oder tags:abs durchsuchen",
     "allPriorities": "Alle",
     "priorityCount_one": "{{count}} ausgewählt",
     "priorityCount_other": "{{count}} ausgewählt",
-    "clear": "Zurücksetzen"
+    "clear": "Zurücksetzen",
+    "allTags": "Alle",
+    "tagCount_one": "{{count}} ausgewählt",
+    "tagCount_other": "{{count}} ausgewählt",
+    "tagsHint": "Zeigt Projekte, die alle ausgewählten Tags haben.",
+    "searchHint": "Mit tags:bremsflüssigkeit,abs nur Projekte mit diesen Tags anzeigen, z. B. tags:bremsflüssigkeit schwache Bremswirkung."
   },
   "quick": {
     "newRepair": "Neues Reparaturprojekt"
@@ -136,5 +143,19 @@
       "pink": "Pink",
       "zinc": "Grau"
     }
+  },
+  "tags": {
+    "more_one": "+ {{count}} weiterer",
+    "more_other": "+ {{count}} weitere",
+    "title": "Projekt-Tags",
+    "intro": "Freie Schlagwörter für Projekte, etwa Art, Baugruppe oder Hersteller. Tags vergibst du am Projekt; hier kannst du sie umbenennen oder löschen.",
+    "empty": "Noch keine Tags. Vergib Tags, wenn du ein Projekt anlegst oder bearbeitest.",
+    "name": "Tag",
+    "rename": "{{name}} umbenennen",
+    "renameHint": "Der neue Name gilt für alle Projekte mit diesem Tag.",
+    "delete": "{{name}} löschen",
+    "deleteBody_one": "Diesen Tag von seinem Projekt entfernen?",
+    "deleteBody_other": "Diesen Tag von seinen {{count}} Projekten entfernen?",
+    "deleteUnused": "Kein Projekt verwendet diesen Tag."
   }
 }

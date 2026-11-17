@@ -18,7 +18,8 @@
     "main": "Hauptnavigation",
     "about": "Über & Datenquellen",
     "home": "{{brand}} – zur Startseite",
-    "priorities": "Projektprioritäten"
+    "priorities": "Projektprioritäten",
+    "tags": "Projekt-Tags"
   },
   "actions": {
     "save": "Speichern",

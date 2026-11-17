@@ -97,7 +97,9 @@
     "completed_before_started": "Der Abschluss darf nicht vor dem Beginn liegen.",
     "torque_spec_invalid": "Jedes Anzugsmoment braucht eine Bezeichnung und einen Wert über 0 Nm.",
     "status_use_status_endpoint": "Ändere den Status über das Statusmenü.",
-    "vehicle_immutable": "Ein Projekt kann nicht zu einem anderen Fahrzeug wechseln."
+    "vehicle_immutable": "Ein Projekt kann nicht zu einem anderen Fahrzeug wechseln.",
+    "tag_invalid": "Tags dürfen keine Kommas oder Anführungszeichen enthalten.",
+    "too_many_tags": "Ein Projekt kann höchstens 50 Tags haben."
   },
   "parts": {
     "order_mismatch": "Die Teileliste hat sich inzwischen geändert. Neu laden und erneut versuchen."

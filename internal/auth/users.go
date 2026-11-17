@@ -367,6 +367,7 @@ type PreferencesPatch struct {
 	Locale          *string
 	CurrencySymbol  *string // "" clears the override
 	PriorityDisplay *string
+	CardTagLimit    *int64
 	Formats         Formats
 }
 
@@ -375,7 +376,8 @@ func preferencesParams(u store.User) store.UpdateUserPreferencesParams {
 		DisplayName: u.DisplayName, Locale: u.Locale, DateFormat: u.DateFormat, NumberFormat: u.NumberFormat,
 		TimeFormat: u.TimeFormat, CurrencyCode: u.CurrencyCode, CurrencySymbol: u.CurrencySymbol,
 		PowerUnit: u.PowerUnit, DistanceUnit: u.DistanceUnit, VolumeUnit: u.VolumeUnit, TorqueUnit: u.TorqueUnit,
-		PressureUnit: u.PressureUnit, DisplacementUnit: u.DisplacementUnit, PriorityDisplay: u.PriorityDisplay, ID: u.ID,
+		PressureUnit: u.PressureUnit, DisplacementUnit: u.DisplacementUnit, PriorityDisplay: u.PriorityDisplay,
+		CardTagLimit: u.CardTagLimit, ID: u.ID,
 	}
 }
 
@@ -404,6 +406,10 @@ func (u *Users) UpdatePreferences(ctx context.Context, userID int64, p Preferenc
 	if p.PriorityDisplay != nil {
 		v.Check(!slices.Contains(priorityDisplays, *p.PriorityDisplay), "priority_display", "validation.invalid_choice")
 		next.PriorityDisplay = *p.PriorityDisplay
+	}
+	if p.CardTagLimit != nil {
+		v.Check(*p.CardTagLimit < 0 || *p.CardTagLimit > 20, "card_tag_limit", "validation.range")
+		next.CardTagLimit = *p.CardTagLimit
 	}
 	f := OverlayFormats(FromStore(cur).Prefs.Formats, p.Formats)
 	f.Validate(&v, "")

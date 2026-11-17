@@ -24,6 +24,8 @@ import { invalidateRepairs, statusTone, useRepair } from './hooks'
 import { StatusMenu } from './RepairBoardPage'
 import { CompleteRepairDialog } from './CompleteRepairDialog'
 import { FaultCodeInput } from './FaultCodeInput'
+import { TagInput } from './TagInput'
+import { TagList } from './tags'
 import { PartsTable } from './PartsTable'
 import { BackLink } from '../../components/BackLink'
 
@@ -83,6 +85,7 @@ export function RepairDetailPage() {
               <Badge tone={statusTone[r.status]}>{t(`statuses.${r.status}`)}</Badge>
               <ProjectPriority id={r.priority_id} />
             </div>
+            <TagList tags={r.tags} />
             <div className="w-48"><StatusMenu repair={r} onComplete={() => { setCompleting(true) }} /></div>
           </div>
           <div className="min-w-0 flex-1">
@@ -207,6 +210,7 @@ function EditRepairDialog({ repair, unit, onClose }: { repair: Repair; unit: Dis
   const [startedOn, setStartedOn] = useState(repair.started_on ?? '')
   const [symptom, setSymptom] = useState(repair.symptom)
   const [codes, setCodes] = useState(repair.fault_codes)
+  const [tags, setTags] = useState(repair.tags)
   const [rootCause, setRootCause] = useState(repair.root_cause)
   const [procedure, setProcedure] = useState(repair.procedure_notes)
   const [tools, setTools] = useState(repair.special_tools)
@@ -242,7 +246,7 @@ function EditRepairDialog({ repair, unit, onClose }: { repair: Repair; unit: Dis
       specs.push({ label: d.label, value_nm: v, note: d.note })
     }
     const body: Record<string, unknown> = {
-      title, started_on: startedOn || null, symptom, fault_codes: codes, root_cause: rootCause,
+      title, started_on: startedOn || null, symptom, fault_codes: codes, tags, root_cause: rootCause,
       procedure_notes: procedure, special_tools: tools, torque_specs: specs, ...priorityBody(priority),
     }
     if (repair.status === 'completed') {
@@ -274,6 +278,7 @@ function EditRepairDialog({ repair, unit, onClose }: { repair: Repair; unit: Dis
         {save.isError && Object.keys(fieldErrors(save.error)).length === 0 && <ErrorBanner message={errorText(save.error)} />}
         <TextField label={t('fields.title')} value={title} onChange={setTitle} error={fe.title} maxLength={120} />
         <PrioritySelect value={priority} onChange={setPriority} error={fe.priority_id} />
+        <TagInput value={tags} onChange={setTags} error={fe.tags} />
         <div className="form-grid grid grid-cols-1 gap-4 sm:grid-cols-3">
           <TextField label={t('fields.startedOn')} type="date" value={startedOn} onChange={setStartedOn} error={fe.started_on} optional />
           {repair.status === 'completed' && (

@@ -18,7 +18,8 @@
     "main": "Main navigation",
     "about": "About & data sources",
     "home": "{{brand}} – go to dashboard",
-    "priorities": "Project priorities"
+    "priorities": "Project priorities",
+    "tags": "Project tags"
   },
   "actions": {
     "save": "Save",

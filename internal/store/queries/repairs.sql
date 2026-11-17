@@ -9,6 +9,7 @@ SELECT * FROM repair_logs WHERE id = ?;
 
 -- name: ListRepairs :many
 -- sort: status (default), priority, updated, or status_priority (dashboard).
+-- tag_ids: projects must have all of them (tag_count distinct ids).
 SELECT r.* FROM repair_logs r
 LEFT JOIN repair_priorities pr ON pr.id = r.priority_id
 JOIN (SELECT CAST(sqlc.arg(sort) AS TEXT) AS mode) o
@@ -16,6 +17,9 @@ WHERE (CAST(sqlc.arg(vehicle_id) AS INTEGER) = 0 OR r.vehicle_id = sqlc.arg(vehi
   AND instr(',' || CAST(sqlc.arg(statuses) AS TEXT) || ',', ',' || r.status || ',') > 0
   AND (CAST(sqlc.arg(priorities) AS TEXT) = ''
        OR instr(',' || CAST(sqlc.arg(priorities) AS TEXT) || ',', ',' || COALESCE(CAST(r.priority_id AS TEXT), 'none') || ',') > 0)
+  AND (CAST(sqlc.arg(tag_count) AS INTEGER) = 0
+       OR (SELECT COUNT(*) FROM repair_log_tags rt WHERE rt.repair_log_id = r.id
+           AND instr(',' || CAST(sqlc.arg(tag_ids) AS TEXT) || ',', ',' || rt.tag_id || ',') > 0) = sqlc.arg(tag_count))
   AND (CAST(sqlc.arg(q) AS TEXT) = ''
        OR r.title LIKE '%' || sqlc.arg(q) || '%'
        OR r.symptom LIKE '%' || sqlc.arg(q) || '%'
@@ -37,6 +41,9 @@ WHERE (CAST(sqlc.arg(vehicle_id) AS INTEGER) = 0 OR r.vehicle_id = sqlc.arg(vehi
   AND instr(',' || CAST(sqlc.arg(statuses) AS TEXT) || ',', ',' || r.status || ',') > 0
   AND (CAST(sqlc.arg(priorities) AS TEXT) = ''
        OR instr(',' || CAST(sqlc.arg(priorities) AS TEXT) || ',', ',' || COALESCE(CAST(r.priority_id AS TEXT), 'none') || ',') > 0)
+  AND (CAST(sqlc.arg(tag_count) AS INTEGER) = 0
+       OR (SELECT COUNT(*) FROM repair_log_tags rt WHERE rt.repair_log_id = r.id
+           AND instr(',' || CAST(sqlc.arg(tag_ids) AS TEXT) || ',', ',' || rt.tag_id || ',') > 0) = sqlc.arg(tag_count))
   AND (CAST(sqlc.arg(q) AS TEXT) = ''
        OR r.title LIKE '%' || sqlc.arg(q) || '%'
        OR r.symptom LIKE '%' || sqlc.arg(q) || '%'
