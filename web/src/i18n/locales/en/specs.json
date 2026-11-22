@@ -33,7 +33,7 @@
     "deleteTitle": "Delete entry",
     "deleteBody": "Delete \"{{label}}\"?",
     "image": "Image",
-    "valueOrImage": "Enter a value or attach an image after saving."
+    "valueOrImage": "Enter a value or attach an image or PDF after saving."
   },
   "hint": "Spec: {{value}}",
   "autofill": {

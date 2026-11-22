@@ -137,7 +137,8 @@ func (s *Store) Save(ctx context.Context, r io.Reader, originalName string, owne
 		return store.Attachment{}, apperr.Unprocessable("attachment.empty", nil)
 	}
 	mt := Sniff(head)
-	if !allowed[mt] || ((purpose == PurposeAvatar || owner.SpecEntryID > 0) && !IsImage(mt)) {
+	// Only vehicle photos must be images; spec entries take PDFs too (#27).
+	if !allowed[mt] || (purpose == PurposeAvatar && !IsImage(mt)) {
 		return store.Attachment{}, apperr.Unsupported("attachment.type_not_allowed")
 	}
 	written, err := io.Copy(tmp, io.MultiReader(bytes.NewReader(head), io.LimitReader(r, s.MaxBytes+1-int64(n))))
