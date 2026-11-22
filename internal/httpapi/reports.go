@@ -17,6 +17,9 @@ type costsJSON struct {
 	ByCostType     map[string]int64 `json:"by_cost_type"`
 	DistanceKm     *int64           `json:"distance_km"`
 	CostPerKmCents *float64         `json:"cost_per_km_cents"`
+	// Hours and CostPerHourCents are set for vehicles tracked by hours only.
+	Hours            *float64 `json:"hours"`
+	CostPerHourCents *float64 `json:"cost_per_hour_cents"`
 }
 
 func toCostsJSON(c reports.Costs) costsJSON {
@@ -25,6 +28,7 @@ func toCostsJSON(c reports.Costs) costsJSON {
 		BySource:   map[string]int64{"routine_service_cents": c.RoutineServiceCents, "self_repair_cents": c.SelfRepairCents},
 		ByCostType: map[string]int64{"parts_cents": c.PartsCents, "fluids_cents": c.FluidsCents, "other_cents": c.OtherCents},
 		DistanceKm: c.DistanceKm, CostPerKmCents: c.CostPerKmCents(),
+		Hours: hoursOf(c.HoursTenths), CostPerHourCents: c.CostPerHourCents(),
 	}
 }
 
@@ -66,6 +70,9 @@ type timelineJSON struct {
 	Title       string  `json:"title,omitempty"`
 	CategoryIDs []int64 `json:"category_ids,omitempty"`
 	TotalCents  int64   `json:"total_cents"`
+	// OdometerRecorded is false for entries of a vehicle without an odometer.
+	OdometerRecorded bool               `json:"odometer_recorded"`
+	MeterReadings    []meterReadingJSON `json:"meter_readings"`
 }
 
 func (s *Server) timeline(w http.ResponseWriter, r *http.Request) error {
@@ -84,7 +91,8 @@ func (s *Server) timeline(w http.ResponseWriter, r *http.Request) error {
 	}
 	out := make([]timelineJSON, 0, len(items))
 	for _, it := range items {
-		out = append(out, timelineJSON{Kind: it.Kind, ID: it.ID, Date: it.Date, OdometerKm: it.OdometerKm, Title: it.Title, CategoryIDs: it.CategoryIDs, TotalCents: it.TotalCents})
+		out = append(out, timelineJSON{Kind: it.Kind, ID: it.ID, Date: it.Date, OdometerKm: it.OdometerKm, Title: it.Title, CategoryIDs: it.CategoryIDs,
+			TotalCents: it.TotalCents, OdometerRecorded: it.OdometerRecorded, MeterReadings: readingsOut(it.MeterReadings)})
 	}
 	writeJSON(w, http.StatusOK, newList(out, total))
 	return nil

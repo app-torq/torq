@@ -21,6 +21,11 @@ type Reminder struct {
 	NextDueDate   *string `json:"next_due_date"`
 	RemainingKm   *int64  `json:"remaining_km"`
 	RemainingDays *int64  `json:"remaining_days"`
+	// HourMeter, NextDueHours and RemainingHours are set for reminders by
+	// operating hours; remaining hours are negative when overdue.
+	HourMeter      *string  `json:"hour_meter"`
+	NextDueHours   *float64 `json:"next_due_hours"`
+	RemainingHours *float64 `json:"remaining_hours"`
 }
 
 // Vehicle describes the vehicle a notification is about.

@@ -13,6 +13,7 @@ import { Button } from '../../components/Button'
 import { Checkbox } from '../../components/Field'
 import { ErrorBanner, Loading } from '../../components/ui'
 import { BRAND } from '../../lib/brand'
+import { entryReading } from '../vehicles/readings'
 
 /**
  * Printable Vehicle History Report (FR-047). Rendered outside the app layout.
@@ -82,7 +83,8 @@ export function HistoryPrintPage() {
                 [t('vehicles:fields.modelYear'), h.vehicle.model_year ?? none],
                 [t('vehicles:fields.vin'), h.vehicle.vin ?? none],
                 [t('vehicles:fields.licensePlate'), h.vehicle.license_plate ?? none],
-                [t('vehicles:fields.odometer'), fmt.distance(h.vehicle.current_odometer_km, h.vehicle.odometer_unit)],
+                ...(h.vehicle.has_odometer ? [[t('vehicles:fields.odometer'), fmt.distance(h.vehicle.current_odometer_km, h.vehicle.odometer_unit)]] : []),
+                ...h.vehicle.hour_meters.map((m) => [m.name, fmt.hours(m.current_hours)]),
               ].map(([label, value]) => (
                 <div key={String(label)}>
                   <dt className="text-xs text-zinc-400 print:text-black">{label}</dt>
@@ -110,7 +112,7 @@ export function HistoryPrintPage() {
               {h.service_logs.map((l) => (
                 <div key={l.id} className="break-inside-avoid border-b border-zinc-800 pb-2 print:border-gray-400">
                   <div className="flex justify-between font-medium">
-                    <span>{fmt.date(l.service_date)} · {fmt.distance(l.odometer_km, h.vehicle.odometer_unit)}</span>
+                    <span>{[fmt.date(l.service_date), entryReading(fmt, h.vehicle.odometer_unit, l.odometer_km, l.odometer_recorded, l.meter_readings)].filter(Boolean).join(' · ')}</span>
                     {l.total_cents !== undefined && <span className="tabular-nums">{fmt.money(l.total_cents)}</span>}
                   </div>
                   <ul className="ml-4 list-disc">
@@ -134,7 +136,7 @@ export function HistoryPrintPage() {
               {h.repairs.map((r) => (
                 <div key={r.id} className="break-inside-avoid border-b border-zinc-800 pb-3 print:border-gray-400">
                   <div className="flex justify-between font-medium">
-                    <span>{fmt.date(r.completed_on)} · {fmt.distance(r.completion_odometer_km, h.vehicle.odometer_unit)} · {r.title}</span>
+                    <span>{[fmt.date(r.completed_on), entryReading(fmt, h.vehicle.odometer_unit, r.completion_odometer_km, r.completion_odometer_recorded, r.completion_meter_readings), r.title].filter(Boolean).join(' · ')}</span>
                     {r.parts_total_cents !== undefined && <span className="tabular-nums">{fmt.money(r.parts_total_cents)}</span>}
                   </div>
                   {r.fault_codes.length > 0 && <p className="font-mono text-xs">{r.fault_codes.join(', ')}</p>}

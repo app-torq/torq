@@ -32,7 +32,11 @@
     "startHint": "Leave empty to count from today. Used until a matching service entry exists.",
     "lastDoneUnknown": "Never done / unknown",
     "lastDoneUnknownHint": "The reminder is due right away until you log the work.",
-    "kind": "Type"
+    "kind": "Type",
+    "intervalHours": "Every ({{name}})",
+    "leadHours": "Due soon from",
+    "leadHoursHint": "Hours before the due point. Default: a tenth of the interval.",
+    "startHours": "Last done ({{name}})"
   },
   "due": {
     "km": "at {{km}}",
@@ -46,7 +50,8 @@
     "dueToday": "due today",
     "trigger": {
       "km": "by distance",
-      "time": "by time"
+      "time": "by time",
+      "hours": "by hours"
     },
     "interval": "Every {{value}}",
     "intervalMonths_one": "{{count}} month",
@@ -57,7 +62,10 @@
     "whicheverFirst": "whichever comes first",
     "baseline": "Last done {{date}} at {{km}}",
     "baselineStart": "Counting from {{date}} at {{km}}",
-    "neverDone": "Due now: no record of when this was last done"
+    "neverDone": "Due now: no record of when this was last done",
+    "hours": "at {{hours}}",
+    "remainingHours": "{{value}} left",
+    "overHours": "{{value}} over"
   },
   "actions": {
     "markDone": "Mark done",

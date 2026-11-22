@@ -35,9 +35,13 @@
     "aftermarketPart": "Zubehör-Teilenummer",
     "cost": "Kosten",
     "costType": "Kostenart",
-    "total": "Gesamt"
+    "total": "Gesamt",
+    "reading": "Stand"
   },
-  "costTypes": { "parts": "Teile", "fluids": "Flüssigkeiten & Verbrauchsmaterial" },
+  "costTypes": {
+    "parts": "Teile",
+    "fluids": "Flüssigkeiten & Verbrauchsmaterial"
+  },
   "items": {
     "title": "Durchgeführte Arbeiten",
     "add": "Position hinzufügen",
@@ -74,6 +78,8 @@
     "deleteBody": "Kategorie „{{name}}“ löschen?",
     "editTitle": "Kategorie bearbeiten"
   },
-  "quick": { "newService": "Neuer Wartungseintrag" },
+  "quick": {
+    "newService": "Neuer Wartungseintrag"
+  },
   "count": "{{count}} Einträge"
 }

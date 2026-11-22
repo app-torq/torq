@@ -15,6 +15,7 @@ import { invalidateOdometerDependents, useOdometerUnit, useVehicle } from '../ve
 import { categoryLabel, useCategories } from './hooks'
 import { ServiceLogAttachments } from './ServiceLogAttachments'
 import { BackLink } from '../../components/BackLink'
+import { entryReading } from '../vehicles/readings'
 
 export function ServiceLogDetailPage() {
   const { id } = useParams()
@@ -74,7 +75,7 @@ export function ServiceLogDetailPage() {
         <DefinitionList
           items={[
             { label: t('fields.date'), value: fmt.date(l.service_date) },
-            { label: t('fields.odometer'), value: <span className="tabular-nums">{fmt.distance(l.odometer_km, odometerUnit(l.vehicle_id))}</span> },
+            { label: l.odometer_recorded ? t('fields.odometer') : t('fields.reading'), value: <span className="tabular-nums">{entryReading(fmt, odometerUnit(l.vehicle_id), l.odometer_km, l.odometer_recorded, l.meter_readings)}</span> },
             { label: t('fields.total'), value: <span className="tabular-nums">{fmt.money(l.total_cents)}</span> },
             ...(l.extra_cost_cents > 0 ? [{ label: l.extra_cost_label || t('fields.extraCost'), value: <span className="tabular-nums">{fmt.money(l.extra_cost_cents)}</span> }] : []),
           ]}

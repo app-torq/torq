@@ -2,16 +2,38 @@ package httpapi
 
 import (
 	"context"
+	"database/sql"
 	"net/http"
 
+	"github.com/app-torq/torq/internal/apperr"
 	"github.com/app-torq/torq/internal/reminders"
 	"github.com/app-torq/torq/internal/reminders/engine"
+	"github.com/app-torq/torq/internal/vehicles"
 )
 
 type baselineJSON struct {
 	Date       string `json:"date"`
 	OdometerKm int64  `json:"odometer_km"`
-	Source     string `json:"source"`
+	// Hours is null for reminders without an hour meter.
+	Hours  *float64 `json:"hours"`
+	Source string   `json:"source"`
+}
+
+// hoursPtr converts stored tenths to hours for the API.
+func hoursPtr(n sql.NullInt64) *float64 {
+	if !n.Valid {
+		return nil
+	}
+	h := vehicles.TenthsToHours(n.Int64)
+	return &h
+}
+
+func hoursOf(tenths *int64) *float64 {
+	if tenths == nil {
+		return nil
+	}
+	h := vehicles.TenthsToHours(*tenths)
+	return &h
 }
 
 type reminderJSON struct {
@@ -35,6 +57,13 @@ type reminderJSON struct {
 	State             string       `json:"state"`
 	StateTrigger      *string      `json:"state_trigger"`
 	Paused            bool         `json:"paused"`
+	HourMeterID       *int64       `json:"hour_meter_id"`
+	IntervalHours     *int64       `json:"interval_hours"`
+	LeadHours         *int64       `json:"lead_hours"`
+	StartHours        *float64     `json:"start_hours"`
+	LastDoneHours     *float64     `json:"last_done_hours"`
+	NextDueHours      *float64     `json:"next_due_hours"`
+	RemainingHours    *float64     `json:"remaining_hours"`
 }
 
 // reminderSummaryJSON is the compact form returned after odometer/service writes.
@@ -49,6 +78,13 @@ func toReminderJSON(v reminders.View) reminderJSON {
 		NextDueKm: intPtr(v.NextDueKm), NextDueDate: strPtr(v.NextDueDate),
 		RemainingKm: v.Status.RemainingKm, RemainingDays: v.Status.RemainingDays,
 		State: v.Status.State, Paused: v.PausedAt.Valid, LastDoneUnknown: v.LastDoneUnknown == 1,
+		HourMeterID: intPtr(v.HourMeterID), IntervalHours: intPtr(v.IntervalHours), LeadHours: intPtr(v.LeadHours),
+		StartHours: hoursPtr(v.StartHoursTenths), LastDoneHours: hoursPtr(v.LastDoneHoursTenths),
+		NextDueHours: hoursPtr(v.NextDueHoursTenths), RemainingHours: hoursOf(v.Status.RemainingHoursTenths),
+	}
+	if v.HourMeterID.Valid {
+		h := vehicles.TenthsToHours(v.Baseline.HoursTenths)
+		out.Baseline.Hours = &h
 	}
 	if v.Status.Trigger != "" {
 		tr := v.Status.Trigger
@@ -110,15 +146,30 @@ type reminderInput struct {
 	StartDate         string `json:"start_date"`
 	StartOdometerKm   *int64 `json:"start_odometer_km"`
 	LastDoneUnknown   *bool  `json:"last_done_unknown"`
+	// HourMeterID: omitted keeps the hours settings on update (clients that
+	// don't know about hours must not clear them); null removes them.
+	HourMeterID   optionalID `json:"hour_meter_id"`
+	IntervalHours *int64     `json:"interval_hours"`
+	LeadHours     *int64     `json:"lead_hours"`
+	StartHours    *float64   `json:"start_hours"`
 }
 
-func (in reminderInput) domain() reminders.Input {
-	return reminders.Input{
+func (in reminderInput) domain() (reminders.Input, error) {
+	out := reminders.Input{
 		VehicleID: in.VehicleID, ServiceCategoryID: in.ServiceCategoryID, Title: in.Title,
 		IntervalKm: in.IntervalKm, IntervalMonths: in.IntervalMonths, IntervalDays: in.IntervalDays,
 		LeadKm: in.LeadKm, LeadDays: in.LeadDays, StartDate: in.StartDate, StartOdometerKm: in.StartOdometerKm,
-		LastDoneUnknown: in.LastDoneUnknown,
+		LastDoneUnknown: in.LastDoneUnknown, HourMeterID: in.HourMeterID.Value, IntervalHours: in.IntervalHours, LeadHours: in.LeadHours,
 	}
+	if in.StartHours != nil {
+		var v apperr.Validation
+		t := hoursField(*in.StartHours, "start_hours", &v)
+		if err := v.Err(); err != nil {
+			return reminders.Input{}, err
+		}
+		out.StartHoursTenths = &t
+	}
+	return out, nil
 }
 
 func (s *Server) writeReminder(w http.ResponseWriter, r *http.Request, status int, id int64) error {
@@ -139,7 +190,11 @@ func (s *Server) createReminder(w http.ResponseWriter, r *http.Request) error {
 	if err := decodeJSON(w, r, &in); err != nil {
 		return err
 	}
-	rem, err := s.reminders.Create(r.Context(), in.domain(), currentUser(r).ID)
+	d, err := in.domain()
+	if err != nil {
+		return err
+	}
+	rem, err := s.reminders.Create(r.Context(), d, currentUser(r).ID)
 	if err != nil {
 		return err
 	}
@@ -163,7 +218,19 @@ func (s *Server) updateReminder(w http.ResponseWriter, r *http.Request) error {
 	if err := decodeJSON(w, r, &in); err != nil {
 		return err
 	}
-	if _, err := s.reminders.Update(r.Context(), id, in.domain()); err != nil {
+	if !in.HourMeterID.Set {
+		cur, err := s.reminders.Get(r.Context(), id)
+		if err != nil {
+			return err
+		}
+		in.HourMeterID = optionalID{Set: true, Value: intPtr(cur.HourMeterID)}
+		in.IntervalHours, in.LeadHours = intPtr(cur.IntervalHours), intPtr(cur.LeadHours)
+	}
+	d, err := in.domain()
+	if err != nil {
+		return err
+	}
+	if _, err := s.reminders.Update(r.Context(), id, d); err != nil {
 		return err
 	}
 	return s.writeReminder(w, r, http.StatusOK, id)
@@ -200,13 +267,19 @@ func (s *Server) markReminderDone(w http.ResponseWriter, r *http.Request) error 
 		return err
 	}
 	var in struct {
-		DoneOn     string `json:"done_on"`
-		OdometerKm *int64 `json:"odometer_km"`
+		DoneOn        string             `json:"done_on"`
+		OdometerKm    *int64             `json:"odometer_km"`
+		MeterReadings []meterReadingJSON `json:"meter_readings"`
 	}
 	if err := decodeJSON(w, r, &in); err != nil {
 		return err
 	}
-	rem, err := s.reminders.MarkDone(r.Context(), id, in.DoneOn, in.OdometerKm)
+	var verr apperr.Validation
+	readings := readingsIn(in.MeterReadings, "meter_readings", &verr)
+	if err := verr.Err(); err != nil {
+		return err
+	}
+	rem, err := s.reminders.MarkDoneWithReadings(r.Context(), id, in.DoneOn, in.OdometerKm, readings)
 	if err != nil {
 		return err
 	}

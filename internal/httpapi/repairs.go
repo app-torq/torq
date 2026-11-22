@@ -44,19 +44,23 @@ func toPartJSON(p store.RepairPart) partJSON {
 }
 
 type repairSummaryJSON struct {
-	ID                   int64            `json:"id"`
-	VehicleID            int64            `json:"vehicle_id"`
-	Title                string           `json:"title"`
-	Status               string           `json:"status"`
-	PriorityID           *int64           `json:"priority_id"`
-	StartedOn            *string          `json:"started_on"`
-	CompletedOn          *string          `json:"completed_on"`
-	CompletionOdometerKm *int64           `json:"completion_odometer_km"`
-	FaultCodes           []string         `json:"fault_codes"`
-	Tags                 []string         `json:"tags"`
-	PartsTotalCents      int64            `json:"parts_total_cents"`
-	PartStatusCounts     map[string]int64 `json:"part_status_counts"`
-	UpdatedAt            string           `json:"updated_at"`
+	ID                   int64   `json:"id"`
+	VehicleID            int64   `json:"vehicle_id"`
+	Title                string  `json:"title"`
+	Status               string  `json:"status"`
+	PriorityID           *int64  `json:"priority_id"`
+	StartedOn            *string `json:"started_on"`
+	CompletedOn          *string `json:"completed_on"`
+	CompletionOdometerKm *int64  `json:"completion_odometer_km"`
+	// CompletionOdometerRecorded is false when the project was completed on a
+	// vehicle without an odometer; completion_odometer_km is then 0.
+	CompletionOdometerRecorded bool               `json:"completion_odometer_recorded"`
+	CompletionMeterReadings    []meterReadingJSON `json:"completion_meter_readings"`
+	FaultCodes                 []string           `json:"fault_codes"`
+	Tags                       []string           `json:"tags"`
+	PartsTotalCents            int64              `json:"parts_total_cents"`
+	PartStatusCounts           map[string]int64   `json:"part_status_counts"`
+	UpdatedAt                  string             `json:"updated_at"`
 }
 
 type repairJSON struct {
@@ -82,6 +86,7 @@ func toRepairSummary(r repairs.Repair) repairSummaryJSON {
 	return repairSummaryJSON{
 		ID: r.ID, VehicleID: r.VehicleID, Title: r.Title, Status: r.Status, PriorityID: intPtr(r.PriorityID), StartedOn: strPtr(r.StartedOn),
 		CompletedOn: strPtr(r.CompletedOn), CompletionOdometerKm: intPtr(r.CompletionOdometerKm), FaultCodes: codes, Tags: tags,
+		CompletionOdometerRecorded: r.CompletionOdometerRecorded == 1, CompletionMeterReadings: readingsOut(r.CompletionMeterReadings),
 		PartsTotalCents: r.Totals.TotalCents, PartStatusCounts: r.Totals.StatusCounts, UpdatedAt: r.UpdatedAt,
 	}
 }
@@ -129,11 +134,13 @@ type repairInput struct {
 	FaultCodes           []string         `json:"fault_codes"`
 	Tags                 []string         `json:"tags"`
 	TorqueSpecs          []torqueSpecJSON `json:"torque_specs"`
+	// CompletionMeterReadings replaces the hours of a completed project when sent.
+	CompletionMeterReadings *[]meterReadingJSON `json:"completion_meter_readings"`
 	// PriorityID: omitted means the garage default on create and unchanged on update; null means none.
 	PriorityID optionalID `json:"priority_id"`
 }
 
-func (in repairInput) domain() repairs.Input {
+func (in repairInput) domain() (repairs.Input, error) {
 	out := repairs.Input{
 		VehicleID: in.VehicleID, Title: in.Title, Status: in.Status, Symptom: in.Symptom, RootCause: in.RootCause,
 		ProcedureNotes: in.ProcedureNotes, SpecialTools: in.SpecialTools, FaultCodes: in.FaultCodes, Tags: in.Tags,
@@ -148,7 +155,14 @@ func (in repairInput) domain() repairs.Input {
 	for _, ts := range in.TorqueSpecs {
 		out.TorqueSpecs = append(out.TorqueSpecs, repairs.TorqueSpec{Label: ts.Label, ValueNm: ts.ValueNm, Note: ts.Note})
 	}
-	return out
+	if in.CompletionMeterReadings != nil {
+		var v apperr.Validation
+		out.CompletionMeterReadings = readingsIn(*in.CompletionMeterReadings, "completion_meter_readings", &v)
+		if err := v.Err(); err != nil {
+			return repairs.Input{}, err
+		}
+	}
+	return out, nil
 }
 
 func (s *Server) writeRepair(w http.ResponseWriter, r *http.Request, status int, rep repairs.Repair) error {
@@ -193,7 +207,11 @@ func (s *Server) createRepair(w http.ResponseWriter, r *http.Request) error {
 	if err := decodeJSON(w, r, &in); err != nil {
 		return err
 	}
-	rep, err := s.repairs.Create(r.Context(), in.domain(), currentUser(r).ID)
+	d, err := in.domain()
+	if err != nil {
+		return err
+	}
+	rep, err := s.repairs.Create(r.Context(), d, currentUser(r).ID)
 	if err != nil {
 		return err
 	}
@@ -239,7 +257,11 @@ func (s *Server) updateRepair(w http.ResponseWriter, r *http.Request) error {
 	if in.VehicleID != cur.VehicleID {
 		return apperr.BadRequest("repair.vehicle_immutable")
 	}
-	rep, err := s.repairs.Update(r.Context(), id, in.domain())
+	d, err := in.domain()
+	if err != nil {
+		return err
+	}
+	rep, err := s.repairs.Update(r.Context(), id, d)
 	if err != nil {
 		return err
 	}
@@ -252,14 +274,20 @@ func (s *Server) setRepairStatus(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	var in struct {
-		Status               string `json:"status"`
-		CompletedOn          string `json:"completed_on"`
-		CompletionOdometerKm *int64 `json:"completion_odometer_km"`
+		Status                  string             `json:"status"`
+		CompletedOn             string             `json:"completed_on"`
+		CompletionOdometerKm    *int64             `json:"completion_odometer_km"`
+		CompletionMeterReadings []meterReadingJSON `json:"completion_meter_readings"`
 	}
 	if err := decodeJSON(w, r, &in); err != nil {
 		return err
 	}
-	rep, err := s.repairs.SetStatus(r.Context(), id, in.Status, in.CompletedOn, in.CompletionOdometerKm)
+	var verr apperr.Validation
+	readings := readingsIn(in.CompletionMeterReadings, "completion_meter_readings", &verr)
+	if err := verr.Err(); err != nil {
+		return err
+	}
+	rep, err := s.repairs.SetStatusWithReadings(r.Context(), id, in.Status, in.CompletedOn, in.CompletionOdometerKm, readings)
 	if err != nil {
 		return err
 	}

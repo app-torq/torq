@@ -43,10 +43,25 @@ func seedShowcase(ctx context.Context, clk *clock.Fixed, veh *vehicles.Service, 
 		LicensePlate: "M-GT 4607", DisplacementCC: i64(4606), PowerW: i64(223710), FuelType: str("petrol"),
 		OdometerUnit: "mi", DisplacementUnit: str("ci"), PowerUnit: str("hp"),
 	}, 96561, 0)
+	if err != nil {
+		clk.At = end
+		return err
+	}
+	// A tractor without an odometer, maintained by operating hours (#24).
+	tractor, err := veh.Create(ctx, vehicles.Profile{
+		Make: "Deutz", Model: "D 6206", ModelYear: i64(1976), EngineCode: "F6L 912", DisplacementCC: i64(5655), PowerW: i64(46000),
+		FuelType: str("diesel"), NoOdometer: true,
+		InitialMeter: &vehicles.MeterInput{Name: "Engine hours", HoursTenths: 12504, ReadingDate: "2025-03-01"},
+	}, 0, 0)
 	clk.At = end
 	if err != nil {
 		return err
 	}
+	tractorMeters, err := veh.Meters(ctx, []int64{tractor.ID})
+	if err != nil {
+		return err
+	}
+	tractorMeter := tractorMeters[tractor.ID][0].ID
 
 	logs := []servicelog.Input{
 		{VehicleID: supra.ID, ServiceDate: "2025-04-12", OdometerKm: 143200, Notes: "Oil change after winter storage.",
@@ -64,6 +79,21 @@ func seedShowcase(ctx context.Context, clk *clock.Fixed, veh *vehicles.Service, 
 				{CategoryID: 6, Brand: "Motorcraft", AftermarketPartNumber: "FA-1883", CostCents: i64(2900)},
 			}},
 	}
+	tractorHours := func(tenths int64) []vehicles.HoursReading {
+		return []vehicles.HoursReading{{MeterID: tractorMeter, HoursTenths: tenths}}
+	}
+	logs = append(logs,
+		servicelog.Input{VehicleID: tractor.ID, ServiceDate: "2025-04-26", NoOdometerKm: true, MeterReadings: tractorHours(12620), Notes: "Oil change before the hay season.",
+			Items: []servicelog.ItemInput{
+				{CategoryID: 1, Brand: "Fuchs Titan", Specification: "15W-40", QuantityMl: i64(14000), QuantityUnit: "L", CostCents: i64(7800)},
+				{CategoryID: 8, OEMPartNumber: "01174421", CostCents: i64(2400)},
+			}},
+		servicelog.Input{VehicleID: tractor.ID, ServiceDate: "2025-12-06", NoOdometerKm: true, MeterReadings: tractorHours(14105),
+			Items: []servicelog.ItemInput{
+				{CategoryID: 1, Brand: "Fuchs Titan", Specification: "15W-40", QuantityMl: i64(14000), QuantityUnit: "L", CostCents: i64(7800)},
+				{CategoryID: 6, OEMPartNumber: "01182654", CostCents: i64(3900)},
+			}},
+	)
 	for _, in := range logs {
 		if _, _, err := svc.Create(ctx, in, 0); err != nil {
 			return err
@@ -74,10 +104,17 @@ func seedShowcase(ctx context.Context, clk *clock.Fixed, veh *vehicles.Service, 
 		{VehicleID: supra.ID, ServiceCategoryID: &oil, IntervalKm: i64(10000), IntervalMonths: i64(12)},
 		// 5,000 mi.
 		{VehicleID: mustang.ID, ServiceCategoryID: &oil, IntervalKm: i64(8047), IntervalMonths: i64(12)},
+		// Every 250 h or 12 months: last done at 1,410.5 h, due at 1,660.5 h.
+		{VehicleID: tractor.ID, ServiceCategoryID: &oil, HourMeterID: &tractorMeter, IntervalHours: i64(250), IntervalMonths: i64(12)},
+		{VehicleID: tractor.ID, Title: "Grease fittings", HourMeterID: &tractorMeter, IntervalHours: i64(50), LeadHours: i64(5)},
 	} {
 		if _, err := rem.Create(ctx, r, 0); err != nil {
 			return err
 		}
+	}
+	// This season's hours: oil due soon by hours (18 h left), greasing overdue.
+	if _, err := veh.QuickUpdateHours(ctx, tractorMeter, vehicles.HoursUpdate{HoursTenths: 16420, ReadingDate: "2026-11-01"}); err != nil {
+		return err
 	}
 
 	projects := []showcaseProject{
@@ -119,6 +156,10 @@ func seedShowcase(ctx context.Context, clk *clock.Fixed, veh *vehicles.Service, 
 			TorqueSpecs: []repairs.TorqueSpec{{Label: "Glow plug", ValueNm: 12}}},
 			priority: "default",
 			parts:    []repairs.PartInput{{Name: "Glow plug", OEMPartNumber: "A0011597101", AftermarketBrand: "Bosch", Quantity: 4, UnitCostCents: i64(2490), Status: "needed"}}},
+		{in: repairs.Input{VehicleID: tractor.ID, Title: "Hydraulic hose leak at the lift", Status: repairs.StatusPlanned,
+			Symptom: "Oil drips under the three-point lift after work.", Tags: []string{"hydraulics", "restoration"}},
+			priority: "normal",
+			parts:    []repairs.PartInput{{Name: "Hydraulic hose 3/8\"", Quantity: 1, UnitCostCents: i64(4200), Status: "needed"}}},
 		{in: repairs.Input{VehicleID: c220, Title: "Interior trim squeak", Status: repairs.StatusPlanned,
 			Symptom: "Squeak from the passenger-side dashboard over bumps.", Tags: []string{"interior", "cosmetic"}}},
 	}
@@ -153,6 +194,6 @@ func seedShowcase(ctx context.Context, clk *clock.Fixed, veh *vehicles.Service, 
 			}
 		}
 	}
-	fmt.Printf("seeded showcase: vehicles %d (JDM, cm³/PS) and %d (mi, ci/hp), %d projects with priorities and tags\n", supra.ID, mustang.ID, len(projects))
+	fmt.Printf("seeded showcase: vehicles %d (JDM, cm³/PS), %d (mi, ci/hp) and %d (hours only), %d projects with priorities and tags\n", supra.ID, mustang.ID, tractor.ID, len(projects))
 	return nil
 }

@@ -64,6 +64,18 @@ type Costs struct {
 	OtherCents          int64
 	// DistanceKm is nil when fewer than two readings exist or the distance is zero.
 	DistanceKm *int64
+	// HoursTenths is the operating hours of a vehicle tracked by hours only,
+	// nil like DistanceKm; garage totals never add hours up.
+	HoursTenths *int64
+}
+
+// CostPerHourCents returns fractional cents per operating hour, or nil without hours.
+func (c Costs) CostPerHourCents() *float64 {
+	if c.HoursTenths == nil {
+		return nil
+	}
+	v := float64(c.TotalCents) * 10 / float64(*c.HoursTenths)
+	return &v
 }
 
 // CostPerKmCents returns fractional cents per km, or nil without distance.
@@ -155,6 +167,17 @@ func (s *Service) CostReport(ctx context.Context, vehicleID int64, from, to stri
 		}
 	}
 
+	hours, err := q.HourReadingRange(ctx, store.HourReadingRangeParams{VehicleID: vehicleID, FromDate: lo, ToDate: hi})
+	if err != nil {
+		return CostReport{}, err
+	}
+	for _, r := range hours {
+		if r.Readings >= 2 && r.MaxTenths > r.MinTenths {
+			h := r.MaxTenths - r.MinTenths
+			get(r.VehicleID).HoursTenths = &h
+		}
+	}
+
 	out := CostReport{From: from, To: to}
 	ids := make([]int64, 0, len(per))
 	for id := range per {
@@ -182,6 +205,9 @@ func (s *Service) CostReport(ctx context.Context, vehicleID int64, from, to stri
 	}
 	if hasDistance {
 		out.DistanceKm = &distance
+	}
+	if vehicleID != 0 && per[vehicleID] != nil {
+		out.HoursTenths = per[vehicleID].HoursTenths
 	}
 	return out, nil
 }

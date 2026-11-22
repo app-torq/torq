@@ -13,6 +13,7 @@ import (
 	"github.com/app-torq/torq/internal/repairs"
 	"github.com/app-torq/torq/internal/servicelog"
 	"github.com/app-torq/torq/internal/store"
+	"github.com/app-torq/torq/internal/vehicles"
 )
 
 func sqlStr(s string) sql.NullString { return sql.NullString{String: s, Valid: true} }
@@ -56,6 +57,31 @@ type HistoryVehicle struct {
 	// means the user's preference.
 	DisplacementUnit *string `json:"displacement_unit"`
 	PowerUnit        *string `json:"power_unit"`
+	// HasOdometer is false for vehicles tracked by hours only; their
+	// distances are 0 and mean nothing.
+	HasOdometer bool               `json:"has_odometer"`
+	HourMeters  []HistoryHourMeter `json:"hour_meters"`
+}
+
+// HistoryHourMeter is a vehicle's hour meter with its current hours.
+type HistoryHourMeter struct {
+	ID           int64   `json:"id"`
+	Name         string  `json:"name"`
+	CurrentHours float64 `json:"current_hours"`
+}
+
+// HistoryReading is the hours of an hour meter recorded on an entry.
+type HistoryReading struct {
+	HourMeterID int64   `json:"hour_meter_id"`
+	Hours       float64 `json:"hours"`
+}
+
+func readingsOf(in []vehicles.HoursReading) []HistoryReading {
+	out := make([]HistoryReading, 0, len(in))
+	for _, r := range in {
+		out = append(out, HistoryReading{HourMeterID: r.MeterID, Hours: vehicles.TenthsToHours(r.HoursTenths)})
+	}
+	return out
 }
 
 type HistoryEntry struct {
@@ -83,15 +109,17 @@ type HistoryServiceItem struct {
 }
 
 type HistoryService struct {
-	ID             int64                `json:"id"`
-	Date           string               `json:"service_date"`
-	OdometerKm     int64                `json:"odometer_km"`
-	Notes          string               `json:"notes,omitempty"`
-	ExtraCostCents *int64               `json:"extra_cost_cents,omitempty"`
-	ExtraCostLabel string               `json:"extra_cost_label,omitempty"`
-	TotalCents     *int64               `json:"total_cents,omitempty"`
-	Items          []HistoryServiceItem `json:"items"`
-	Attachments    []HistoryAttachment  `json:"attachments"`
+	ID               int64                `json:"id"`
+	Date             string               `json:"service_date"`
+	OdometerKm       int64                `json:"odometer_km"`
+	OdometerRecorded bool                 `json:"odometer_recorded"`
+	MeterReadings    []HistoryReading     `json:"meter_readings"`
+	Notes            string               `json:"notes,omitempty"`
+	ExtraCostCents   *int64               `json:"extra_cost_cents,omitempty"`
+	ExtraCostLabel   string               `json:"extra_cost_label,omitempty"`
+	TotalCents       *int64               `json:"total_cents,omitempty"`
+	Items            []HistoryServiceItem `json:"items"`
+	Attachments      []HistoryAttachment  `json:"attachments"`
 }
 
 type HistoryTorque struct {
@@ -112,20 +140,22 @@ type HistoryPart struct {
 }
 
 type HistoryRepair struct {
-	ID           int64               `json:"id"`
-	Title        string              `json:"title"`
-	StartedOn    *string             `json:"started_on"`
-	CompletedOn  string              `json:"completed_on"`
-	OdometerKm   int64               `json:"completion_odometer_km"`
-	Symptom      string              `json:"symptom"`
-	RootCause    string              `json:"root_cause"`
-	Procedure    string              `json:"procedure_notes,omitempty"`
-	SpecialTools string              `json:"special_tools"`
-	FaultCodes   []string            `json:"fault_codes"`
-	TorqueSpecs  []HistoryTorque     `json:"torque_specs"`
-	Parts        []HistoryPart       `json:"parts"`
-	PartsTotal   *int64              `json:"parts_total_cents,omitempty"`
-	Attachments  []HistoryAttachment `json:"attachments"`
+	ID               int64               `json:"id"`
+	Title            string              `json:"title"`
+	StartedOn        *string             `json:"started_on"`
+	CompletedOn      string              `json:"completed_on"`
+	OdometerKm       int64               `json:"completion_odometer_km"`
+	OdometerRecorded bool                `json:"completion_odometer_recorded"`
+	MeterReadings    []HistoryReading    `json:"completion_meter_readings"`
+	Symptom          string              `json:"symptom"`
+	RootCause        string              `json:"root_cause"`
+	Procedure        string              `json:"procedure_notes,omitempty"`
+	SpecialTools     string              `json:"special_tools"`
+	FaultCodes       []string            `json:"fault_codes"`
+	TorqueSpecs      []HistoryTorque     `json:"torque_specs"`
+	Parts            []HistoryPart       `json:"parts"`
+	PartsTotal       *int64              `json:"parts_total_cents,omitempty"`
+	Attachments      []HistoryAttachment `json:"attachments"`
 }
 
 func ptrI(n sql.NullInt64) *int64 {
@@ -175,7 +205,8 @@ func (s *Service) History(ctx context.Context, vehicleID int64, opt ExportOption
 		Vehicle: HistoryVehicle{ID: v.ID, Make: v.Make, Model: v.Model, ChassisCode: v.ChassisCode, ModelYear: ptrI(v.ModelYear),
 			EngineCode: v.EngineCode, VIN: ptrS(v.Vin), LicensePlate: ptrS(v.LicensePlate), CurrentOdometerKm: v.CurrentOdometerKm,
 			HSN: ptrS(v.Hsn), TSN: ptrS(v.Tsn), DisplacementCC: ptrI(v.DisplacementCc), PowerKW: ptrI(v.PowerKw), PowerW: ptrI(v.PowerW), FuelType: ptrS(v.FuelType),
-			OdometerUnit: v.OdometerUnit, DisplacementUnit: ptrS(v.DisplacementUnit), PowerUnit: ptrS(v.PowerUnit)},
+			OdometerUnit: v.OdometerUnit, DisplacementUnit: ptrS(v.DisplacementUnit), PowerUnit: ptrS(v.PowerUnit),
+			HasOdometer: v.HasOdometer == 1, HourMeters: []HistoryHourMeter{}},
 		Specs: map[string]any{
 			"engine_oil_viscosity": spec.EngineOilViscosity, "engine_oil_spec": spec.EngineOilSpec, "engine_oil_capacity_ml": ptrI(spec.EngineOilCapacityMl),
 			"transmission_fluid_spec": spec.TransmissionFluidSpec, "transmission_fluid_capacity_ml": ptrI(spec.TransmissionFluidCapacityMl),
@@ -191,6 +222,13 @@ func (s *Service) History(ctx context.Context, vehicleID int64, opt ExportOption
 	for _, e := range entries {
 		h.Entries = append(h.Entries, HistoryEntry{Label: e.Label, Value: e.Value})
 	}
+	meters, err := vehicles.MetersFor(ctx, q, []int64{vehicleID})
+	if err != nil {
+		return History{}, err
+	}
+	for _, m := range meters[vehicleID] {
+		h.Vehicle.HourMeters = append(h.Vehicle.HourMeters, HistoryHourMeter{ID: m.ID, Name: m.Name, CurrentHours: vehicles.TenthsToHours(m.CurrentHoursTenths)})
+	}
 
 	cats, err := s.categoryNames(ctx, q, opt.Locale)
 	if err != nil {
@@ -205,7 +243,8 @@ func (s *Service) History(ctx context.Context, vehicleID int64, opt ExportOption
 		if err != nil {
 			return History{}, err
 		}
-		hs := HistoryService{ID: l.ID, Date: l.ServiceDate, OdometerKm: l.OdometerKm, Items: []HistoryServiceItem{}, Attachments: attachmentsOf(atts)}
+		hs := HistoryService{ID: l.ID, Date: l.ServiceDate, OdometerKm: l.OdometerKm, OdometerRecorded: l.OdometerRecorded == 1,
+			MeterReadings: readingsOf(l.MeterReadings), Items: []HistoryServiceItem{}, Attachments: attachmentsOf(atts)}
 		if opt.IncludeNotes {
 			hs.Notes = l.Notes
 		}
@@ -239,7 +278,8 @@ func (s *Service) History(ctx context.Context, vehicleID int64, opt ExportOption
 			return History{}, err
 		}
 		hr := HistoryRepair{ID: r.ID, Title: r.Title, StartedOn: ptrS(r.StartedOn), CompletedOn: r.CompletedOn.String,
-			OdometerKm: r.CompletionOdometerKm.Int64, Symptom: r.Symptom, RootCause: r.RootCause, SpecialTools: r.SpecialTools,
+			OdometerKm: r.CompletionOdometerKm.Int64, OdometerRecorded: r.CompletionOdometerRecorded == 1,
+			MeterReadings: readingsOf(r.CompletionMeterReadings), Symptom: r.Symptom, RootCause: r.RootCause, SpecialTools: r.SpecialTools,
 			FaultCodes: r.FaultCodes, TorqueSpecs: []HistoryTorque{}, Parts: []HistoryPart{}, Attachments: attachmentsOf(atts)}
 		if hr.FaultCodes == nil {
 			hr.FaultCodes = []string{}
@@ -285,13 +325,31 @@ func (s *Service) categoryNames(ctx context.Context, q *store.Queries, loc i18n.
 
 // CSVHeader is the fixed column order of the CSV export. The vehicle columns
 // were appended later (specs/002, FR-027) and are filled only on the leading
-// "vehicle" record, so existing columns keep their positions.
+// "vehicle" record; the hour meter columns came last (#24). Appending keeps
+// existing columns in their positions.
 var CSVHeader = []string{"record_type", "date", "odometer_km", "record_title", "category_or_part", "brand", "specification",
 	"quantity", "unit", "oem_part_number", "aftermarket_part_number", "cost", "cost_type", "status", "notes",
-	"hsn", "tsn", "displacement_cc", "power_kw", "fuel_type"}
+	"hsn", "tsn", "displacement_cc", "power_kw", "fuel_type", "hour_meter", "hours"}
 
-// vehicleCols is the number of trailing vehicle columns in CSVHeader.
+// vehicleCols is the number of vehicle columns before the hour meter columns.
 const vehicleCols = 5
+
+// hoursCols renders the hour meter columns: the meter's name and hours of
+// the first reading, empty without one.
+func hoursCols(meters map[int64]string, readings []HistoryReading) []string {
+	if len(readings) == 0 {
+		return []string{"", ""}
+	}
+	return []string{meters[readings[0].HourMeterID], strconv.FormatFloat(readings[0].Hours, 'f', -1, 64)}
+}
+
+// kmCol is an entry's odometer cell, empty when no distance was recorded.
+func kmCol(km int64, recorded bool) string {
+	if !recorded {
+		return ""
+	}
+	return strconv.FormatInt(km, 10)
+}
 
 func strOr(p *string) string {
 	if p == nil {
@@ -360,34 +418,47 @@ func WriteCSV(w io.Writer, h History) error {
 		return err
 	}
 	v := h.Vehicle
+	meters := map[int64]string{}
+	for _, m := range v.HourMeters {
+		meters[m.ID] = m.Name
+	}
+	base := len(CSVHeader) - vehicleCols - 2
 	vehicleRow := make([]string, len(CSVHeader))
 	vehicleRow[0], vehicleRow[2], vehicleRow[3], vehicleRow[4], vehicleRow[6] =
-		"vehicle", strconv.FormatInt(v.CurrentOdometerKm, 10), strings.TrimSpace(v.Make+" "+v.Model), v.ChassisCode, v.EngineCode
-	copy(vehicleRow[len(CSVHeader)-vehicleCols:], []string{strOr(v.HSN), strOr(v.TSN), intOr(v.DisplacementCC), intOr(v.PowerKW), strOr(v.FuelType)})
+		"vehicle", kmCol(v.CurrentOdometerKm, v.HasOdometer), strings.TrimSpace(v.Make+" "+v.Model), v.ChassisCode, v.EngineCode
+	copy(vehicleRow[base:], []string{strOr(v.HSN), strOr(v.TSN), intOr(v.DisplacementCC), intOr(v.PowerKW), strOr(v.FuelType)})
+	if len(v.HourMeters) > 0 {
+		m := v.HourMeters[0]
+		copy(vehicleRow[base+vehicleCols:], hoursCols(meters, []HistoryReading{{HourMeterID: m.ID, Hours: m.CurrentHours}}))
+	}
 	if err := cw.Write(neutralize(vehicleRow)); err != nil {
 		return err
 	}
-	// Line-item rows leave the trailing vehicle columns empty.
-	write := func(rec []string) error { return cw.Write(neutralize(append(rec, make([]string, vehicleCols)...))) }
+	// Line-item rows leave the vehicle columns empty and end with their hours.
+	write := func(rec []string, readings []HistoryReading) error {
+		rec = append(rec, make([]string, vehicleCols)...)
+		return cw.Write(neutralize(append(rec, hoursCols(meters, readings)...)))
+	}
 	for _, s := range h.Services {
+		km := kmCol(s.OdometerKm, s.OdometerRecorded)
 		for _, it := range s.Items {
 			q, unit := qty(it.QuantityMl, it.QuantityUnit)
-			if err := write([]string{"service", s.Date, strconv.FormatInt(s.OdometerKm, 10), "", it.Category, it.Brand, it.Specification,
-				q, unit, it.OEMPartNumber, it.AftermarketPartNumber, money(it.CostCents), it.CostType, "", s.Notes}); err != nil {
+			if err := write([]string{"service", s.Date, km, "", it.Category, it.Brand, it.Specification,
+				q, unit, it.OEMPartNumber, it.AftermarketPartNumber, money(it.CostCents), it.CostType, "", s.Notes}, s.MeterReadings); err != nil {
 				return err
 			}
 		}
 		if s.ExtraCostCents != nil && *s.ExtraCostCents > 0 {
-			if err := write([]string{"service_extra", s.Date, strconv.FormatInt(s.OdometerKm, 10), s.ExtraCostLabel, "", "", "",
-				"", "", "", "", money(s.ExtraCostCents), "other", "", ""}); err != nil {
+			if err := write([]string{"service_extra", s.Date, km, s.ExtraCostLabel, "", "", "",
+				"", "", "", "", money(s.ExtraCostCents), "other", "", ""}, s.MeterReadings); err != nil {
 				return err
 			}
 		}
 	}
 	for _, r := range h.Repairs {
-		km := strconv.FormatInt(r.OdometerKm, 10)
+		km := kmCol(r.OdometerKm, r.OdometerRecorded)
 		if len(r.Parts) == 0 {
-			if err := write([]string{"repair", r.CompletedOn, km, r.Title, "", "", "", "", "", "", "", "", "", "completed", r.Procedure}); err != nil {
+			if err := write([]string{"repair", r.CompletedOn, km, r.Title, "", "", "", "", "", "", "", "", "", "completed", r.Procedure}, r.MeterReadings); err != nil {
 				return err
 			}
 			continue
@@ -399,7 +470,7 @@ func WriteCSV(w io.Writer, h History) error {
 				cost = &v
 			}
 			if err := write([]string{"repair_part", r.CompletedOn, km, r.Title, p.Name, p.AftermarketBrand, "",
-				strconv.FormatInt(p.Quantity, 10), "pcs", p.OEMPartNumber, p.AftermarketPartNumber, money(cost), p.CostType, p.Status, r.Procedure}); err != nil {
+				strconv.FormatInt(p.Quantity, 10), "pcs", p.OEMPartNumber, p.AftermarketPartNumber, money(cost), p.CostType, p.Status, r.Procedure}, r.MeterReadings); err != nil {
 				return err
 			}
 		}

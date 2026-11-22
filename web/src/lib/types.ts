@@ -97,6 +97,10 @@ export interface Vehicle {
   current_odometer_km: number
   /** How the odometer reads; distances are always sent in km. */
   odometer_unit: DistanceUnit
+  /** false: tracked by hours only; current_odometer_km is then 0 and means nothing. */
+  has_odometer: boolean
+  /** At most one for now. */
+  hour_meters: HourMeter[]
   /** Display units for this vehicle; null follows the user's preference. */
   displacement_unit: DisplacementUnit | null
   power_unit: PowerUnit | null
@@ -293,7 +297,10 @@ export interface ServiceLog {
   id: number
   vehicle_id: number
   service_date: string
+  /** 0 and meaningless when odometer_recorded is false (vehicle without an odometer). */
   odometer_km: number
+  odometer_recorded: boolean
+  meter_readings: MeterReading[]
   notes: string
   extra_cost_cents: number
   extra_cost_label: string
@@ -320,14 +327,24 @@ export interface Reminder {
   start_odometer_km: number
   /** Never done or unknown: due at the start point until the work is logged. */
   last_done_unknown: boolean
-  baseline: { date: string; odometer_km: number; source: 'service_log' | 'mark_done' | 'start' | 'unknown' }
+  /** hours is null for reminders without an hour meter. */
+  baseline: { date: string; odometer_km: number; hours: number | null; source: 'service_log' | 'mark_done' | 'start' | 'unknown' }
   next_due_km: number | null
   next_due_date: string | null
   remaining_km: number | null
   remaining_days: number | null
   state: ReminderState
-  state_trigger: 'km' | 'time' | null
+  state_trigger: 'km' | 'time' | 'hours' | null
   paused: boolean
+  /** The hour meter of an hours interval; null without one. */
+  hour_meter_id: number | null
+  interval_hours: number | null
+  lead_hours: number | null
+  start_hours: number | null
+  last_done_hours: number | null
+  next_due_hours: number | null
+  /** Negative when overdue. */
+  remaining_hours: number | null
 }
 
 export type RepairStatus = 'planned' | 'in_progress' | 'waiting_on_parts' | 'completed'
@@ -343,6 +360,9 @@ export interface RepairSummary {
   started_on: string | null
   completed_on: string | null
   completion_odometer_km: number | null
+  /** false when completed on a vehicle without an odometer; completion_odometer_km is then 0. */
+  completion_odometer_recorded: boolean
+  completion_meter_readings: MeterReading[]
   fault_codes: string[]
   /** Tag names, sorted by name. */
   tags: string[]
@@ -361,6 +381,28 @@ export interface RepairPriority {
   sort_order: number
   is_default: boolean
   project_count: number
+}
+
+/** An hour meter counting operating hours, next to the odometer or instead of it. */
+export interface HourMeter {
+  id: number
+  name: string
+  /** Hours with at most one decimal. */
+  current_hours: number
+}
+
+/** Hours recorded on a service entry, repair completion or reminder completion. */
+export interface MeterReading {
+  hour_meter_id: number
+  hours: number
+}
+
+export interface HourMeterReading {
+  id: number
+  reading_date: string
+  hours: number
+  source: OdometerReading['source']
+  created_at: string
 }
 
 /** A tag of the garage's shared tag list. */
@@ -466,6 +508,9 @@ export interface Costs {
   by_cost_type: { parts_cents: number; fluids_cents: number; other_cents: number }
   distance_km: number | null
   cost_per_km_cents: number | null
+  /** Only for vehicles tracked by hours only. */
+  hours: number | null
+  cost_per_hour_cents: number | null
 }
 
 export interface CostReport extends Costs {
@@ -482,6 +527,8 @@ export interface TimelineItem {
   title?: string
   category_ids?: number[]
   total_cents: number
+  odometer_recorded: boolean
+  meter_readings: MeterReading[]
 }
 
 export interface VehicleHistory {
@@ -491,6 +538,7 @@ export interface VehicleHistory {
     license_plate: string | null; current_odometer_km: number; hsn: string | null; tsn: string | null
     displacement_cc: number | null; power_kw: number | null; power_w: number | null; fuel_type: FuelType | null; odometer_unit: DistanceUnit
     displacement_unit: DisplacementUnit | null; power_unit: PowerUnit | null
+    has_odometer: boolean; hour_meters: HourMeter[]
   }
   specs: Record<string, string | number | null>
   spec_entries: { label: string; value: string }[]
@@ -498,6 +546,8 @@ export interface VehicleHistory {
     id: number
     service_date: string
     odometer_km: number
+    odometer_recorded: boolean
+    meter_readings: MeterReading[]
     notes?: string
     extra_cost_cents?: number
     extra_cost_label?: string
@@ -510,6 +560,8 @@ export interface VehicleHistory {
     started_on: string | null
     completed_on: string
     completion_odometer_km: number
+    completion_odometer_recorded: boolean
+    completion_meter_readings: MeterReading[]
     symptom: string
     root_cause: string
     procedure_notes?: string

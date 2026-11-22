@@ -5,7 +5,7 @@
 openapi: "3.1.0"
 info:
   title: torq API
-  version: "5"
+  version: "6"
   description: |-
     The REST API of torq, a self-hosted vehicle maintenance and DIY repair tracker. It is used by the web app and the torq mobile app.
 
@@ -1113,6 +1113,199 @@ paths:
                     description: Number of matching items, independent of limit and offset.
         default:
           $ref: "#/components/responses/Error"
+  "/vehicles/{id}/hour-meters":
+    post:
+      operationId: createHourMeter
+      summary: Add an hour meter to a vehicle
+      x-torq-access: member
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - hours
+                - name
+              properties:
+                hours:
+                  type: number
+                  description: "Current reading, 0–999999.9; rounded to a tenth of an hour."
+                name:
+                  type: string
+                  description: 1–40 characters.
+                reading_date:
+                  type: string
+                  description: Date of the first reading, YYYY-MM-DD; default today.
+              additionalProperties: false
+      x-torq-error-codes:
+        - validation.failed
+        - hour_meter.limit_reached
+      responses:
+        "201":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - hour_meter
+                properties:
+                  hour_meter:
+                    $ref: "#/components/schemas/HourMeter"
+        default:
+          $ref: "#/components/responses/Error"
+  "/hour-meters/{id}":
+    patch:
+      operationId: renameHourMeter
+      summary: Rename an hour meter
+      x-torq-access: member
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: 1–40 characters.
+              additionalProperties: false
+      x-torq-error-codes:
+        - validation.failed
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - hour_meter
+                properties:
+                  hour_meter:
+                    $ref: "#/components/schemas/HourMeter"
+        default:
+          $ref: "#/components/responses/Error"
+    delete:
+      operationId: deleteHourMeter
+      summary: Remove an hour meter
+      description: "Refused while service entries or repairs have hours for it, or reminders use only its hours (hour_meter.in_use with params service_logs, repairs and reminders), and on a vehicle without an odometer (hour_meter.required). Reminders that also use distance or time lose their hours interval."
+      x-torq-access: member
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      x-torq-error-codes:
+        - hour_meter.in_use
+        - hour_meter.required
+      responses:
+        "204":
+          description: "Done; no body."
+        default:
+          $ref: "#/components/responses/Error"
+  "/hour-meters/{id}/readings":
+    get:
+      operationId: listHourMeterReadings
+      summary: Hour meter history
+      x-torq-access: member
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+        - name: from
+          in: query
+          description: Earliest date, YYYY-MM-DD.
+          schema:
+            type: string
+        - name: to
+          in: query
+          description: Latest date, YYYY-MM-DD.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                  - total
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/HourMeterReading"
+                  total:
+                    type: integer
+                    description: Number of matching items (at most 500).
+        default:
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: quickUpdateHours
+      summary: Record an hour meter reading
+      description: Same rules as the odometer quick update. A lower value or a jump of more than double the current value or more than 5,000 h needs the matching confirm flag.
+      x-torq-access: member
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                confirm_decrease:
+                  type: boolean
+                confirm_large_jump:
+                  type: boolean
+                hours:
+                  type:
+                    - number
+                    - "null"
+                  description: "0–999999.9; rounded to a tenth of an hour. Required."
+                reading_date:
+                  type: string
+              additionalProperties: false
+      x-torq-error-codes:
+        - hour_meter.decrease_requires_confirmation
+        - hour_meter.large_jump_requires_confirmation
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - reminders
+                  - vehicle
+                properties:
+                  reminders:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Reminder"
+                  vehicle:
+                    $ref: "#/components/schemas/Vehicle"
+        default:
+          $ref: "#/components/responses/Error"
   "/vehicles/{id}/specs":
     get:
       operationId: getSpecs
@@ -1861,10 +2054,18 @@ paths:
               properties:
                 done_on:
                   type: string
+                meter_readings:
+                  type:
+                    - array
+                    - "null"
+                  description: Hours when the work was done; defaults to the meters' current values.
+                  items:
+                    $ref: "#/components/schemas/MeterReading"
                 odometer_km:
                   type:
                     - integer
                     - "null"
+                  description: Ignored for vehicles without an odometer.
               additionalProperties: false
       responses:
         "200":
@@ -2168,10 +2369,18 @@ paths:
               properties:
                 completed_on:
                   type: string
+                completion_meter_readings:
+                  type:
+                    - array
+                    - "null"
+                  description: "Hours at completion. Required (one reading for its meter) when completing a project of a vehicle without an odometer; optional otherwise."
+                  items:
+                    $ref: "#/components/schemas/MeterReading"
                 completion_odometer_km:
                   type:
                     - integer
                     - "null"
+                  description: Required when completing a project of a vehicle with an odometer.
                 status:
                   type: string
               additionalProperties: false
@@ -3448,8 +3657,10 @@ components:
       required:
         - by_cost_type
         - by_source
+        - cost_per_hour_cents
         - cost_per_km_cents
         - distance_km
+        - hours
         - from
         - to
         - total_cents
@@ -3470,8 +3681,10 @@ components:
             required:
               - by_cost_type
               - by_source
+              - cost_per_hour_cents
               - cost_per_km_cents
               - distance_km
+              - hours
               - total_cents
               - vehicle_id
             properties:
@@ -3483,6 +3696,11 @@ components:
                 type: object
                 additionalProperties:
                   type: integer
+              cost_per_hour_cents:
+                type:
+                  - number
+                  - "null"
+                description: Fractional cents per operating hour; only for vehicles tracked by hours only.
               cost_per_km_cents:
                 type:
                   - number
@@ -3491,10 +3709,20 @@ components:
                 type:
                   - integer
                   - "null"
+              hours:
+                type:
+                  - number
+                  - "null"
+                description: Operating hours in the period, for vehicles tracked by hours only; null with fewer than two readings.
               total_cents:
                 type: integer
               vehicle_id:
                 type: integer
+        cost_per_hour_cents:
+          type:
+            - number
+            - "null"
+          description: For a single vehicle tracked by hours only; always null for the whole garage.
         cost_per_km_cents:
           type:
             - number
@@ -3503,6 +3731,11 @@ components:
           type:
             - integer
             - "null"
+        hours:
+          type:
+            - number
+            - "null"
+          description: For a single vehicle tracked by hours only; always null for the whole garage.
         from:
           type: string
         to:
@@ -3623,7 +3856,9 @@ components:
       required:
         - attachments
         - completed_on
+        - completion_meter_readings
         - completion_odometer_km
+        - completion_odometer_recorded
         - fault_codes
         - id
         - parts
@@ -3642,6 +3877,13 @@ components:
           type: string
         completion_odometer_km:
           type: integer
+        completion_meter_readings:
+          type: array
+          items:
+            $ref: "#/components/schemas/MeterReading"
+        completion_odometer_recorded:
+          type: boolean
+          description: False for a vehicle without an odometer; completion_odometer_km is then 0.
         fault_codes:
           type: array
           items:
@@ -3680,7 +3922,9 @@ components:
         - attachments
         - id
         - items
+        - meter_readings
         - odometer_km
+        - odometer_recorded
         - service_date
       properties:
         attachments:
@@ -3701,8 +3945,15 @@ components:
             $ref: "#/components/schemas/HistoryServiceItem"
         notes:
           type: string
+        meter_readings:
+          type: array
+          items:
+            $ref: "#/components/schemas/MeterReading"
         odometer_km:
           type: integer
+        odometer_recorded:
+          type: boolean
+          description: False for a vehicle without an odometer; odometer_km is then 0.
         service_date:
           type: string
         total_cents:
@@ -3846,6 +4097,8 @@ components:
         - displacement_cc
         - displacement_unit
         - engine_code
+        - has_odometer
+        - hour_meters
         - fuel_type
         - hsn
         - id
@@ -3880,6 +4133,13 @@ components:
             - string
             - "null"
           description: diesel, petrol, hybrid, electric, lpg, cng or other.
+        has_odometer:
+          type: boolean
+          description: False for vehicles tracked by hours only; current_odometer_km is then 0 and means nothing.
+        hour_meters:
+          type: array
+          items:
+            $ref: "#/components/schemas/HourMeter"
         hsn:
           type:
             - string
@@ -3922,6 +4182,55 @@ components:
           type:
             - string
             - "null"
+    HourMeter:
+      type: object
+      description: An hour meter that counts operating hours, next to the odometer or instead of it. Vehicles have at most one for now; more may follow, so treat hour_meters as a list.
+      required:
+        - current_hours
+        - id
+        - name
+      properties:
+        current_hours:
+          type: number
+          description: Current reading in hours with at most one decimal, e.g. 1250.4.
+        id:
+          type: integer
+        name:
+          type: string
+          description: "1–40 characters, e.g. \"Engine hours\" or \"Generator\"."
+    HourMeterReading:
+      type: object
+      required:
+        - created_at
+        - hours
+        - id
+        - reading_date
+        - source
+      properties:
+        created_at:
+          type: string
+        hours:
+          type: number
+        id:
+          type: integer
+        reading_date:
+          type: string
+        source:
+          type: string
+          description: "initial, quick_update, service_log, repair_completion or reminder_done."
+    MeterReading:
+      type: object
+      description: An hour meter reading recorded on a service entry, a repair completion or a reminder completion.
+      required:
+        - hour_meter_id
+        - hours
+      properties:
+        hour_meter_id:
+          type: integer
+          description: An hour meter of the same vehicle.
+        hours:
+          type: number
+          description: "0–999999.9; rounded to a tenth of an hour."
     InstanceInfo:
       type: object
       required:
@@ -4065,6 +4374,13 @@ components:
       type: object
       required:
         - baseline
+        - hour_meter_id
+        - interval_hours
+        - last_done_hours
+        - lead_hours
+        - next_due_hours
+        - remaining_hours
+        - start_hours
         - id
         - interval_days
         - interval_km
@@ -4087,12 +4403,22 @@ components:
       properties:
         baseline:
           $ref: "#/components/schemas/ReminderBaseline"
+        hour_meter_id:
+          type:
+            - integer
+            - "null"
+          description: The hour meter of an hours interval; null without one.
         id:
           type: integer
         interval_days:
           type:
             - integer
             - "null"
+        interval_hours:
+          type:
+            - integer
+            - "null"
+          description: Operating hours between services; needs hour_meter_id.
         interval_km:
           type:
             - integer
@@ -4101,6 +4427,11 @@ components:
           type:
             - integer
             - "null"
+        last_done_hours:
+          type:
+            - number
+            - "null"
+          description: Hours when the work was last done, for reminders with an hour meter.
         lead_days:
           type:
             - integer
@@ -4108,6 +4439,11 @@ components:
         last_done_unknown:
           type: boolean
           description: "The last service is unknown: until one is logged, the reminder is due at its start point."
+        lead_hours:
+          type:
+            - integer
+            - "null"
+          description: How many hours before the due point the reminder becomes due soon.
         lead_km:
           type:
             - integer
@@ -4115,6 +4451,10 @@ components:
         next_due_date:
           type:
             - string
+            - "null"
+        next_due_hours:
+          type:
+            - number
             - "null"
         next_due_km:
           type:
@@ -4126,6 +4466,11 @@ components:
           type:
             - integer
             - "null"
+        remaining_hours:
+          type:
+            - number
+            - "null"
+          description: Hours left until due; negative when overdue.
         remaining_km:
           type:
             - integer
@@ -4136,6 +4481,10 @@ components:
             - "null"
         start_date:
           type: string
+        start_hours:
+          type:
+            - number
+            - "null"
         start_odometer_km:
           type: integer
         state:
@@ -4145,7 +4494,7 @@ components:
           type:
             - string
             - "null"
-          description: "Which interval decides the state: km or time."
+          description: "Which interval decides the state: km, time or hours."
         title:
           type: string
         vehicle_id:
@@ -4154,11 +4503,17 @@ components:
       type: object
       required:
         - date
+        - hours
         - odometer_km
         - source
       properties:
         date:
           type: string
+        hours:
+          type:
+            - number
+            - "null"
+          description: Hours of the reminder's hour meter at the baseline; null for reminders without one.
         odometer_km:
           type: integer
         source:
@@ -4177,10 +4532,20 @@ components:
     ReminderInput:
       type: object
       properties:
+        hour_meter_id:
+          type:
+            - integer
+            - "null"
+          description: "An hour meter of the vehicle, required with interval_hours. On update, omitting it keeps the hours settings (interval_hours, lead_hours); null removes them."
         interval_days:
           type:
             - integer
             - "null"
+        interval_hours:
+          type:
+            - integer
+            - "null"
+          description: Operating hours between services (1–100000).
         interval_km:
           type:
             - integer
@@ -4189,6 +4554,11 @@ components:
           type:
             - integer
             - "null"
+        lead_hours:
+          type:
+            - integer
+            - "null"
+          description: Defaults to a tenth of interval_hours on create.
         lead_days:
           type:
             - integer
@@ -4204,6 +4574,11 @@ components:
           type:
             - integer
             - "null"
+        start_hours:
+          type:
+            - number
+            - "null"
+          description: Hours to count from when the last service is unknown; defaults to the meter's current value.
         start_date:
           type: string
         start_odometer_km:
@@ -4220,7 +4595,9 @@ components:
       required:
         - attachments
         - completed_on
+        - completion_meter_readings
         - completion_odometer_km
+        - completion_odometer_recorded
         - created_at
         - fault_codes
         - id
@@ -4252,6 +4629,14 @@ components:
           type:
             - integer
             - "null"
+        completion_meter_readings:
+          description: Hours recorded when the project was completed.
+          type: array
+          items:
+            $ref: "#/components/schemas/MeterReading"
+        completion_odometer_recorded:
+          type: boolean
+          description: "False when completed on a vehicle without an odometer: completion_odometer_km is then 0 and means nothing."
         created_at:
           type: string
         fault_codes:
@@ -4317,6 +4702,13 @@ components:
           type:
             - string
             - "null"
+        completion_meter_readings:
+          type:
+            - array
+            - "null"
+          description: Completed projects only; replaces the hours recorded at completion. Omitted means unchanged.
+          items:
+            $ref: "#/components/schemas/MeterReading"
         completion_odometer_km:
           type:
             - integer
@@ -4497,7 +4889,9 @@ components:
       type: object
       required:
         - completed_on
+        - completion_meter_readings
         - completion_odometer_km
+        - completion_odometer_recorded
         - fault_codes
         - id
         - part_status_counts
@@ -4518,6 +4912,14 @@ components:
           type:
             - integer
             - "null"
+        completion_meter_readings:
+          description: Hours recorded when the project was completed.
+          type: array
+          items:
+            $ref: "#/components/schemas/MeterReading"
+        completion_odometer_recorded:
+          type: boolean
+          description: "False when completed on a vehicle without an odometer: completion_odometer_km is then 0 and means nothing."
         fault_codes:
           type: array
           items:
@@ -4688,8 +5090,10 @@ components:
         - extra_cost_label
         - id
         - items
+        - meter_readings
         - notes
         - odometer_km
+        - odometer_recorded
         - service_date
         - total_cents
         - updated_at
@@ -4711,10 +5115,18 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ServiceItem"
+        meter_readings:
+          description: Hours of the vehicle's hour meters at the time of the entry.
+          type: array
+          items:
+            $ref: "#/components/schemas/MeterReading"
         notes:
           type: string
         odometer_km:
           type: integer
+        odometer_recorded:
+          type: boolean
+          description: "False for entries of a vehicle without an odometer: odometer_km is then 0 and means nothing."
         service_date:
           type: string
         total_cents:
@@ -4770,10 +5182,18 @@ components:
                 type: string
         notes:
           type: string
+        meter_readings:
+          type:
+            - array
+            - "null"
+          description: "Hours for the vehicle's hour meters. Required (one reading for its meter) for a vehicle without an odometer; optional otherwise."
+          items:
+            $ref: "#/components/schemas/MeterReading"
         odometer_km:
           type:
             - integer
             - "null"
+          description: Required for vehicles with an odometer; ignored for vehicles without one.
         service_date:
           type: string
         vehicle_id:
@@ -4849,7 +5269,9 @@ components:
         - date
         - id
         - kind
+        - meter_readings
         - odometer_km
+        - odometer_recorded
         - total_cents
       properties:
         category_ids:
@@ -4863,10 +5285,17 @@ components:
         kind:
           type: string
           description: service or repair.
+        meter_readings:
+          type: array
+          items:
+            $ref: "#/components/schemas/MeterReading"
         odometer_km:
           type: integer
         title:
           type: string
+        odometer_recorded:
+          type: boolean
+          description: False for entries of a vehicle without an odometer; odometer_km is then 0.
         total_cents:
           type: integer
     TorqueSpec:
@@ -4969,6 +5398,8 @@ components:
         - displacement_cc
         - displacement_unit
         - engine_code
+        - has_odometer
+        - hour_meters
         - fuel_type
         - hsn
         - id
@@ -5013,6 +5444,14 @@ components:
             - string
             - "null"
           description: diesel, petrol, hybrid, electric, lpg, cng or other.
+        has_odometer:
+          type: boolean
+          description: "False for vehicles tracked by hours only: current_odometer_km is then 0 and means nothing; show hour_meters instead."
+        hour_meters:
+          type: array
+          description: The vehicle's hour meters; at most one for now.
+          items:
+            $ref: "#/components/schemas/HourMeter"
         hsn:
           type:
             - string
@@ -5071,6 +5510,7 @@ components:
           type:
             - integer
             - "null"
+          description: "Required on create unless has_odometer is false. Rejected on update; use the odometer quick update."
         displacement_cc:
           type:
             - integer
@@ -5087,6 +5527,28 @@ components:
             - string
             - "null"
           description: diesel, petrol, hybrid, electric, lpg, cng or other.
+        has_odometer:
+          type:
+            - boolean
+            - "null"
+          description: "False for a vehicle tracked by hours only; it then needs an hour meter (vehicle.tracking_required) and current_odometer_km is not required. Default true on create, unchanged on update."
+        hour_meters:
+          type:
+            - array
+            - "null"
+          description: "Create only: at most one hour meter with its current reading. Ignored on update; use /vehicles/{id}/hour-meters."
+          items:
+            type: object
+            required:
+              - hours
+              - name
+            properties:
+              hours:
+                type: number
+              name:
+                type: string
+              reading_date:
+                type: string
         hsn:
           type:
             - string

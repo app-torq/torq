@@ -49,6 +49,11 @@ func (s *Server) routes() {
 	s.route("POST /vehicles/{id}/unarchive", member, s.setVehicleArchived(false))
 	s.route("POST /vehicles/{id}/odometer", member, s.quickUpdateOdometer)
 	s.route("GET /vehicles/{id}/odometer-readings", member, s.listOdometerReadings)
+	s.route("POST /vehicles/{id}/hour-meters", member, s.createHourMeter)
+	s.route("PATCH /hour-meters/{id}", member, s.renameHourMeter)
+	s.route("DELETE /hour-meters/{id}", member, s.deleteHourMeter)
+	s.route("POST /hour-meters/{id}/readings", member, s.quickUpdateHours)
+	s.route("GET /hour-meters/{id}/readings", member, s.listHourMeterReadings)
 
 	// Spec sheet
 	s.route("GET /vehicles/{id}/specs", member, s.getSpecs)

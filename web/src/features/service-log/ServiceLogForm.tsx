@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { Plus, Trash2 } from 'lucide-react'
 import { api } from '../../lib/api'
 import { queryKeys } from '../../lib/queryKeys'
-import { distanceField, metricField, parseMoneyToCents, readDistance, readMetricField, toInputValue, type MetricField } from '../../lib/format'
+import { distanceField, hoursToInput, metricField, type MetricField, parseHours, parseMoneyToCents, readDistance, readMetricField, toInputValue } from '../../lib/format'
 import { QUANTITY, QUANTITY_UNITS, type QuantityUnit } from '../../lib/units'
 import { fieldErrors, useErrorText } from '../../lib/errors'
 import { vehicleName, type CostType, type ServiceCategory, type ServiceLog } from '../../lib/types'
@@ -71,8 +71,13 @@ function ServiceLogForm({ log }: { log?: ServiceLog }) {
   const [vehicleId, setVehicleId] = useState(String(log?.vehicle_id ?? params.get('vehicle') ?? ''))
   const [date, setDate] = useState(log?.service_date ?? new Date().toISOString().slice(0, 10))
   const unit = vehicleId ? odometerUnit(Number(vehicleId)) : user.distance_unit
-  const [initialOdometer] = useState(() => distanceField(log?.odometer_km, unit, nf))
+  const [initialOdometer] = useState(() => distanceField(log?.odometer_recorded === false ? null : log?.odometer_km, unit, nf))
   const [odometer, setOdometer] = useState(initialOdometer.text)
+  // Vehicles without an odometer log hours instead; a meter next to the odometer is optional.
+  const vehicle = vehicles.data?.items.find((v) => String(v.id) === vehicleId)
+  const hasOdometer = vehicle?.has_odometer ?? true
+  const meter = vehicle?.hour_meters[0]
+  const [hours, setHours] = useState(() => hoursToInput(log?.meter_readings.find((r) => r.hour_meter_id === meter?.id)?.hours ?? log?.meter_readings[0]?.hours, nf))
   const [notes, setNotes] = useState(log?.notes ?? '')
   const [extraCost, setExtraCost] = useState(log && log.extra_cost_cents > 0 ? toInputValue(log.extra_cost_cents / 100, nf, 2) : '')
   const [extraLabel, setExtraLabel] = useState(log?.extra_cost_label ?? '')
@@ -112,8 +117,10 @@ function ServiceLogForm({ log }: { log?: ServiceLog }) {
   const submit = (e: SubmitEvent) => {
     e.preventDefault()
     const errs: Record<string, string> = {}
-    const km = readDistance(odometer, initialOdometer, unit, nf)
-    if (km === null) errs.odometer_km = 'validation.number'
+    const km = hasOdometer ? readDistance(odometer, initialOdometer, unit, nf) : null
+    if (hasOdometer && km === null) errs.odometer_km = 'validation.number'
+    const h = meter ? parseHours(hours, nf) : null
+    if (h === undefined || (!hasOdometer && h === null)) errs.meter_readings = 'validation.number'
     if (!vehicleId) errs.vehicle_id = 'validation.required'
     let extraCents = 0
     if (extraCost.trim() !== '') {
@@ -150,7 +157,9 @@ function ServiceLogForm({ log }: { log?: ServiceLog }) {
     setLocal(errs)
     if (Object.keys(errs).length > 0) return
     save.mutate({
-      vehicle_id: Number(vehicleId), service_date: date, odometer_km: km, notes,
+      vehicle_id: Number(vehicleId), service_date: date, notes,
+      ...(hasOdometer ? { odometer_km: km } : {}),
+      meter_readings: meter && h != null ? [{ hour_meter_id: meter.id, hours: h }] : [],
       extra_cost_cents: extraCents, extra_cost_label: extraLabel, items: bodyItems,
     })
   }
@@ -182,7 +191,8 @@ function ServiceLogForm({ log }: { log?: ServiceLog }) {
               options={[{ value: '', label: '—' }, ...(vehicles.data?.items ?? []).map((v) => ({ value: String(v.id), label: vehicleName(v) }))]}
             />
             <TextField label={t('fields.date')} type="date" value={date} onChange={setDate} error={fe.service_date} />
-            <NumberField label={t('fields.odometer')} unit={t(`common:units.${unit}`)} decimal={false} value={odometer} onChange={setOdometer} error={fe.odometer_km} />
+            {hasOdometer && <NumberField label={t('fields.odometer')} unit={t(`common:units.${unit}`)} decimal={false} value={odometer} onChange={setOdometer} error={fe.odometer_km} />}
+            {meter && <NumberField label={meter.name} unit={t('common:units.h')} value={hours} onChange={setHours} error={fe.meter_readings} optional={hasOdometer} />}
           </div>
         </Card>
 

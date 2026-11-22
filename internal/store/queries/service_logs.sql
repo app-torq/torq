@@ -1,7 +1,7 @@
 -- name: CreateServiceLog :one
-INSERT INTO service_logs (vehicle_id, service_date, odometer_km, notes, extra_cost_cents, extra_cost_label,
+INSERT INTO service_logs (vehicle_id, service_date, odometer_km, odometer_recorded, notes, extra_cost_cents, extra_cost_label,
                           created_by, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING *;
 
 -- name: GetServiceLog :one
@@ -37,7 +37,7 @@ WHERE (CAST(sqlc.arg(vehicle_id) AS INTEGER) = 0 OR sl.vehicle_id = sqlc.arg(veh
 
 -- name: UpdateServiceLog :one
 UPDATE service_logs
-SET vehicle_id = ?, service_date = ?, odometer_km = ?, notes = ?, extra_cost_cents = ?, extra_cost_label = ?, updated_at = ?
+SET vehicle_id = ?, service_date = ?, odometer_km = ?, odometer_recorded = ?, notes = ?, extra_cost_cents = ?, extra_cost_label = ?, updated_at = ?
 WHERE id = ?
 RETURNING *;
 

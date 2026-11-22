@@ -94,6 +94,15 @@ func (l Locale) Distance(km int64, unit string) string {
 	return l.Number(int64(math.Round(float64(km)/kmPerMile))) + " " + l.T("unit.mi", nil)
 }
 
+// Hours formats an hour meter value stored in tenths of an hour, e.g.
+// "1,250.4 h" or "1.250,4 h"; whole hours show no decimal ("1,262 h").
+func (l Locale) Hours(tenths int64) string {
+	if tenths%10 == 0 {
+		return l.Number(tenths/10) + " h"
+	}
+	return l.printer().Sprint(number.Decimal(float64(tenths)/10, number.Scale(1))) + " h"
+}
+
 // Date formats a YYYY-MM-DD date per the chosen pattern.
 func (l Locale) Date(iso string) string {
 	t, err := time.Parse("2006-01-02", iso)

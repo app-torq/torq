@@ -1,0 +1,26 @@
+Content-Type: application/json
+
+{
+  "embeds": [
+    {
+      "color": 16096779,
+      "description": "22 h",
+      "fields": [
+        {
+          "inline": true,
+          "name": "Vehicle",
+          "value": "Deutz D 6206"
+        },
+        {
+          "inline": true,
+          "name": "Engine hours",
+          "value": "1,490 h"
+        }
+      ],
+      "timestamp": "2026-10-30T08:00:00Z",
+      "title": "Due soon: Engine Oil \u0026 Filter — Mercedes-Benz C 220 CDI",
+      "url": "https://torq.example/vehicles/2/reminders"
+    }
+  ],
+  "username": "torq"
+}

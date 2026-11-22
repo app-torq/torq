@@ -335,3 +335,112 @@ func TestRepairPrioritiesMigration(t *testing.T) {
 		t.Fatalf("priority after delete %v (%v)", prio, err)
 	}
 }
+
+// TestHourMetersMigration covers migration 00017: existing rows keep their
+// values and get the odometer flags set, reminders survive their rebuild with
+// their indexes and webhook references, and the new CHECKs apply.
+func TestHourMetersMigration(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	d, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	sub, err := fs.Sub(migrationsFS, "migrations")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := goose.NewProvider(goose.DialectSQLite3, d.Writer, sub)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.UpTo(ctx, 16); err != nil {
+		t.Fatal(err)
+	}
+	for _, stmt := range []string{
+		`INSERT INTO vehicles (id, make, model, current_odometer_km, created_at, updated_at) VALUES (1, 'Deutz', 'D 6206', 4000, 'x', 'x')`,
+		`INSERT INTO service_logs (id, vehicle_id, service_date, odometer_km, created_at, updated_at) VALUES (1, 1, '2026-10-01', 3900, 'x', 'x')`,
+		`INSERT INTO repair_logs (id, vehicle_id, title, status, completed_on, completion_odometer_km, created_at, updated_at)
+		 VALUES (1, 1, 'Clutch', 'completed', '2026-10-02', 3950, 'x', 'x')`,
+		`INSERT INTO reminders (id, vehicle_id, service_category_id, interval_km, interval_months, lead_km, start_date, start_odometer_km,
+		                       next_due_km, next_due_date, state, state_trigger, state_changed_at, last_done_unknown, created_at, updated_at)
+		 VALUES (1, 1, 1, 15000, 12, 1000, '2026-10-01', 3900, 18900, '2027-10-01', 'due_soon', 'km', 'x', 1, 'x', 'x')`,
+		`INSERT INTO webhooks (id, name, url, preset, created_at, updated_at) VALUES (1, 'n', 'https://example.org', 'generic_json', 'x', 'x')`,
+		`INSERT INTO webhook_deliveries (id, webhook_id, event, reminder_id, request_body, request_headers_json, status, created_at)
+		 VALUES (1, 1, 'reminder_due_soon', 1, x'7b7d', '{}', 'succeeded', 'x')`,
+	} {
+		if _, err := d.Writer.ExecContext(ctx, stmt); err != nil {
+			t.Fatalf("%s: %v", stmt, err)
+		}
+	}
+	if err := Migrate(ctx, d, dir); err != nil {
+		t.Fatal(err)
+	}
+
+	var hasOdo, logRec, repRec, unknown int64
+	var intervalKm, leadKm, nextKm int64
+	var state, trigger string
+	if err := d.Reader.QueryRowContext(ctx, `SELECT (SELECT has_odometer FROM vehicles WHERE id = 1),
+		(SELECT odometer_recorded FROM service_logs WHERE id = 1), (SELECT completion_odometer_recorded FROM repair_logs WHERE id = 1),
+		interval_km, lead_km, next_due_km, state, state_trigger, last_done_unknown FROM reminders WHERE id = 1`).
+		Scan(&hasOdo, &logRec, &repRec, &intervalKm, &leadKm, &nextKm, &state, &trigger, &unknown); err != nil {
+		t.Fatal(err)
+	}
+	if hasOdo != 1 || logRec != 1 || repRec != 1 || intervalKm != 15000 || leadKm != 1000 || nextKm != 18900 || state != "due_soon" || trigger != "km" || unknown != 1 {
+		t.Fatalf("after migration: %d %d %d %d %d %d %s %s %d", hasOdo, logRec, repRec, intervalKm, leadKm, nextKm, state, trigger, unknown)
+	}
+	var indexes string
+	if err := d.Reader.QueryRowContext(ctx, "SELECT group_concat(name, ',') FROM (SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'reminders' ORDER BY name)").Scan(&indexes); err != nil {
+		t.Fatal(err)
+	}
+	if indexes != "reminders_category,reminders_hour_meter,reminders_vehicle_state" {
+		t.Fatalf("indexes %q", indexes)
+	}
+
+	var fk int
+	if err := d.Writer.QueryRowContext(ctx, "PRAGMA foreign_keys").Scan(&fk); err != nil || fk != 1 {
+		t.Fatalf("foreign_keys = %d (%v)", fk, err)
+	}
+	rows, err := d.Writer.QueryContext(ctx, "PRAGMA foreign_key_check")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rows.Next() {
+		t.Fatal("foreign key violations after migration")
+	}
+	if err := rows.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, stmt := range []string{
+		`INSERT INTO hour_meters (vehicle_id, name, current_hours_tenths, created_at, updated_at) VALUES (1, 'Engine hours', 12504, 'x', 'x')`,
+		`INSERT INTO hour_meter_readings (hour_meter_id, reading_date, hours_tenths, source, created_at) VALUES (1, '2026-10-03', 12504, 'initial', 'x')`,
+		`UPDATE reminders SET hour_meter_id = 1, interval_hours = 250, lead_hours = 25, state_trigger = 'hours' WHERE id = 1`,
+	} {
+		if _, err := d.Writer.ExecContext(ctx, stmt); err != nil {
+			t.Fatalf("%s: %v", stmt, err)
+		}
+	}
+	for _, stmt := range []string{
+		"UPDATE vehicles SET has_odometer = 2",
+		"INSERT INTO hour_meters (vehicle_id, name, current_hours_tenths, created_at, updated_at) VALUES (1, 'Second', 1, 'x', 'x')",
+		"INSERT INTO hour_meters (vehicle_id, name, current_hours_tenths, created_at, updated_at) VALUES (1, '', 1, 'x', 'x')",
+		"INSERT INTO hour_meter_readings (hour_meter_id, reading_date, hours_tenths, source, created_at) VALUES (1, '2026-10-03', -1, 'initial', 'x')",
+		"UPDATE reminders SET interval_km = NULL, interval_months = NULL, interval_hours = NULL, lead_hours = NULL",
+		"UPDATE reminders SET state_trigger = 'meters'",
+		"UPDATE reminders SET hour_meter_id = NULL",
+	} {
+		if _, err := d.Writer.ExecContext(ctx, stmt); err == nil {
+			t.Errorf("CHECK accepted %s", stmt)
+		}
+	}
+	// The webhook delivery still points at the rebuilt reminders table.
+	if _, err := d.Writer.ExecContext(ctx, "DELETE FROM reminders WHERE id = 1"); err != nil {
+		t.Fatal(err)
+	}
+	var reminderID sql.NullInt64
+	if err := d.Reader.QueryRowContext(ctx, "SELECT reminder_id FROM webhook_deliveries WHERE id = 1").Scan(&reminderID); err != nil || reminderID.Valid {
+		t.Fatalf("delivery reminder_id after delete %v (%v)", reminderID, err)
+	}
+}

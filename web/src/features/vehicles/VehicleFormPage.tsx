@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../lib/api'
 import { queryKeys } from '../../lib/queryKeys'
-import { metricField, metricToInput, parseDistance, powerW, readMetricField } from '../../lib/format'
+import { metricField, metricToInput, parseDistance, parseHours, powerW, readMetricField } from '../../lib/format'
 import { DISPLACEMENT, POWER, type DisplacementUnit, type DistanceUnit, type PowerUnit, type UnitSpec } from '../../lib/units'
 import { vinWarning } from '../../lib/vin'
 import { fieldErrors, useErrorText } from '../../lib/errors'
@@ -55,10 +55,16 @@ export interface VehicleFormValues extends Record<string, string> {
   fuel: string
   odometer: string
   odometerUnit: DistanceUnit
+  /** What the vehicle is tracked by; an hour meter is created with it on create. */
+  trackBy: TrackBy
+  meterName: string
+  meterHours: string
   /** '' follows the user's preference. */
   displacementUnit: DisplacementUnit | ''
   powerUnit: PowerUnit | ''
 }
+
+type TrackBy = 'odometer' | 'hours' | 'both'
 
 const DISPLACEMENT_UNITS: DisplacementUnit[] = ['cc', 'l', 'ci']
 const POWER_UNITS: PowerUnit[] = ['kw', 'ps', 'hp']
@@ -108,6 +114,9 @@ function initialValues(user: User, v?: Vehicle): VehicleFormValues {
     fuel: v?.fuel_type ?? '',
     odometer: '',
     odometerUnit: v?.odometer_unit ?? user.distance_unit,
+    trackBy: !v ? 'odometer' : !v.has_odometer ? 'hours' : v.hour_meters.length > 0 ? 'both' : 'odometer',
+    meterName: '',
+    meterHours: '',
     displacementUnit,
     powerUnit,
   }
@@ -278,16 +287,26 @@ function VehicleForm({ vehicle }: { vehicle?: Vehicle }) {
       displacement_unit: v.displacementUnit === '' ? null : v.displacementUnit,
       power_unit: v.powerUnit === '' ? null : v.powerUnit,
     }
-    if (!vehicle) {
+    const hasOdometer = v.trackBy !== 'hours'
+    if (!vehicle || vehicle.hour_meters.length > 0) body.has_odometer = hasOdometer
+    if (!vehicle && hasOdometer) {
       const km = parseDistance(v.odometer, v.odometerUnit, nf)
       if (km === null) errs.current_odometer_km = 'validation.number'
       body.current_odometer_km = km
+    }
+    if (!vehicle && v.trackBy !== 'odometer') {
+      const hours = parseHours(v.meterHours, nf)
+      if (hours === null || hours === undefined) errs.meter_hours = 'validation.number'
+      body.hour_meters = [{ name: v.meterName.trim() || t('hours.defaultName'), hours }]
     }
     setLocal(errs)
     if (Object.keys(errs).length === 0) save.mutate(body)
   }
 
   const hi = auto.isHighlighted
+  // A new vehicle can be tracked any way; an existing one switches between
+  // both and hours only once it has a meter (meters are added on its page).
+  const trackByOptions: TrackBy[] = !vehicle ? ['odometer', 'hours', 'both'] : vehicle.hour_meters.length > 0 ? ['both', 'hours'] : ['odometer']
 
   return (
     <div className="max-w-2xl">
@@ -403,17 +422,35 @@ function VehicleForm({ vehicle }: { vehicle?: Vehicle }) {
               optional
             />
             <NumberField label={t('fields.modelYear')} value={values.year} onChange={set('year')} error={fe.model_year} decimal={false} optional />
-            {!vehicle && (
+            {trackByOptions.length > 1 && (
+              <SelectField
+                label={t('fields.trackBy')}
+                value={values.trackBy}
+                onChange={set('trackBy')}
+                options={trackByOptions.map((o) => ({ value: o, label: t(`trackBy.${o}`) }))}
+                hint={t(vehicle ? 'fields.trackByEditHint' : 'fields.trackByHint')}
+                error={fe.has_odometer}
+              />
+            )}
+            {!vehicle && values.trackBy !== 'odometer' && (
+              <>
+                <TextField label={t('hours.name')} value={values.meterName} onChange={set('meterName')} placeholder={t('hours.defaultName')} error={fe['hour_meters.name']} maxLength={40} hint={t('hours.nameHint')} optional />
+                <NumberField label={t('hours.current')} value={values.meterHours} onChange={set('meterHours')} unit={t('common:units.h')} error={fe.meter_hours ?? fe['hour_meters.hours']} />
+              </>
+            )}
+            {!vehicle && values.trackBy !== 'hours' && (
               <NumberField label={t('fields.odometer')} value={values.odometer} onChange={set('odometer')} error={fe.current_odometer_km} unit={t(`common:units.${values.odometerUnit}`)} decimal={false} />
             )}
-            <SelectField
-              label={t('fields.odometerUnit')}
-              value={values.odometerUnit}
-              onChange={set('odometerUnit')}
-              options={[{ value: 'km', label: t('odometerUnits.km') }, { value: 'mi', label: t('odometerUnits.mi') }]}
-              hint={t('fields.odometerUnitHint')}
-              error={fe.odometer_unit}
-            />
+            {values.trackBy !== 'hours' && (
+              <SelectField
+                label={t('fields.odometerUnit')}
+                value={values.odometerUnit}
+                onChange={set('odometerUnit')}
+                options={[{ value: 'km', label: t('odometerUnits.km') }, { value: 'mi', label: t('odometerUnits.mi') }]}
+                hint={t('fields.odometerUnitHint')}
+                error={fe.odometer_unit}
+              />
+            )}
             <TextField label={t('fields.vin')} value={values.vin} onChange={set('vin')} error={fe.vin} hint={vinHint} maxLength={32} optional />
             <TextField label={t('fields.licensePlate')} value={values.plate} onChange={set('plate')} error={fe.license_plate} maxLength={16} optional />
           </div>

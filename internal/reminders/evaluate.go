@@ -50,19 +50,58 @@ func ptr(n sql.NullInt64) *int64 {
 	return &v
 }
 
-func intervalOf(r store.Reminder) engine.Interval {
-	return engine.Interval{Km: ptr(r.IntervalKm), Months: ptr(r.IntervalMonths), Days: ptr(r.IntervalDays)}
+// tenths converts whole hours to tenths of an hour for the engine.
+func tenths(n sql.NullInt64) *int64 {
+	if !n.Valid {
+		return nil
+	}
+	v := n.Int64 * 10
+	return &v
+}
+
+// intervalOf is the reminder's interval; distance only counts on vehicles
+// with an odometer, hours only with a meter.
+func intervalOf(r store.Reminder, hasOdometer bool) engine.Interval {
+	iv := engine.Interval{Months: ptr(r.IntervalMonths), Days: ptr(r.IntervalDays)}
+	if hasOdometer {
+		iv.Km = ptr(r.IntervalKm)
+	}
+	if r.HourMeterID.Valid {
+		iv.HoursTenths = tenths(r.IntervalHours)
+	}
+	return iv
 }
 
 func leadOf(r store.Reminder) engine.Lead {
-	return engine.Lead{Km: ptr(r.LeadKm), Days: ptr(r.LeadDays)}
+	return engine.Lead{Km: ptr(r.LeadKm), Days: ptr(r.LeadDays), HoursTenths: tenths(r.LeadHours)}
+}
+
+// currentHours is the current value of the reminder's hour meter, or 0.
+func currentHours(ctx context.Context, q *store.Queries, r store.Reminder) (int64, error) {
+	if !r.HourMeterID.Valid {
+		return 0, nil
+	}
+	m, err := q.GetHourMeter(ctx, r.HourMeterID.Int64)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, nil
+	}
+	return m.CurrentHoursTenths, err
+}
+
+// priorHours is the hours base kept when the latest work has no reading for
+// the reminder's meter: the last evaluated value, else the start value.
+func priorHours(r store.Reminder) int64 {
+	if r.LastDoneHoursTenths.Valid {
+		return r.LastDoneHoursTenths.Int64
+	}
+	return r.StartHoursTenths.Int64
 }
 
 // resolveBaseline returns the effective baseline (data-model §6) and its source.
 func resolveBaseline(ctx context.Context, q *store.Queries, r store.Reminder) (engine.Baseline, string, error) {
 	if r.ServiceCategoryID.Valid {
 		row, err := q.LatestServiceForCategory(ctx, store.LatestServiceForCategoryParams{
-			VehicleID: r.VehicleID, CategoryID: r.ServiceCategoryID.Int64,
+			VehicleID: r.VehicleID, CategoryID: r.ServiceCategoryID.Int64, HourMeterID: r.HourMeterID,
 		})
 		switch {
 		case err == nil:
@@ -70,7 +109,11 @@ func resolveBaseline(ctx context.Context, q *store.Queries, r store.Reminder) (e
 			if perr != nil {
 				return engine.Baseline{}, "", perr
 			}
-			return engine.Baseline{Date: d, Km: row.OdometerKm}, BaselineServiceLog, nil
+			hours := priorHours(r)
+			if row.HoursTenths.Valid {
+				hours = row.HoursTenths.Int64
+			}
+			return engine.Baseline{Date: d, Km: row.OdometerKm, HoursTenths: hours}, BaselineServiceLog, nil
 		case !errors.Is(err, sql.ErrNoRows):
 			return engine.Baseline{}, "", err
 		}
@@ -79,16 +122,16 @@ func resolveBaseline(ctx context.Context, q *store.Queries, r store.Reminder) (e
 		if err != nil {
 			return engine.Baseline{}, "", err
 		}
-		return engine.Baseline{Date: d, Km: r.LastDoneOdometerKm.Int64}, BaselineMarkDone, nil
+		return engine.Baseline{Date: d, Km: r.LastDoneOdometerKm.Int64, HoursTenths: priorHours(r)}, BaselineMarkDone, nil
 	}
 	d, err := engine.ParseDate(r.StartDate)
 	if err != nil {
 		return engine.Baseline{}, "", err
 	}
 	if r.LastDoneUnknown == 1 {
-		return engine.Baseline{Date: d, Km: r.StartOdometerKm, Unknown: true}, BaselineUnknown, nil
+		return engine.Baseline{Date: d, Km: r.StartOdometerKm, HoursTenths: r.StartHoursTenths.Int64, Unknown: true}, BaselineUnknown, nil
 	}
-	return engine.Baseline{Date: d, Km: r.StartOdometerKm}, BaselineStart, nil
+	return engine.Baseline{Date: d, Km: r.StartOdometerKm, HoursTenths: r.StartHoursTenths.Int64}, BaselineStart, nil
 }
 
 // EvaluateVehicle recomputes due points and states for every reminder of the
@@ -120,8 +163,12 @@ func (s *Service) EvaluateVehicle(ctx context.Context, tx *sql.Tx, vehicleID int
 		if err != nil {
 			return err
 		}
-		due := engine.NextDue(base, intervalOf(r))
-		st := engine.Evaluate(due, leadOf(r), v.CurrentOdometerKm, today)
+		hours, err := currentHours(ctx, q, r)
+		if err != nil {
+			return err
+		}
+		due := engine.NextDue(base, intervalOf(r, v.HasOdometer == 1))
+		st := engine.EvaluateWithHours(due, leadOf(r), v.CurrentOdometerKm, hours, today)
 
 		active := !r.PausedAt.Valid && !v.ArchivedAt.Valid
 		notified := r.LastNotifiedState
@@ -141,13 +188,16 @@ func (s *Service) EvaluateVehicle(ctx context.Context, tx *sql.Tx, vehicleID int
 		if st.State != r.State {
 			changedAt = now
 		}
-		lastDate, lastKm := sql.NullString{}, sql.NullInt64{}
+		lastDate, lastKm, lastHours := sql.NullString{}, sql.NullInt64{}, sql.NullInt64{}
 		if source != BaselineStart && source != BaselineUnknown {
 			lastDate = sql.NullString{String: base.Date.String(), Valid: true}
 			lastKm = sql.NullInt64{Int64: base.Km, Valid: true}
+			if r.HourMeterID.Valid {
+				lastHours = sql.NullInt64{Int64: base.HoursTenths, Valid: true}
+			}
 		}
 		params := store.SetReminderEvaluationParams{
-			LastDoneDate: lastDate, LastDoneOdometerKm: lastKm,
+			LastDoneDate: lastDate, LastDoneOdometerKm: lastKm, LastDoneHoursTenths: lastHours,
 			State: st.State, StateChangedAt: changedAt, LastNotifiedState: notified, ID: r.ID,
 		}
 		if due.Km != nil {
@@ -155,6 +205,9 @@ func (s *Service) EvaluateVehicle(ctx context.Context, tx *sql.Tx, vehicleID int
 		}
 		if due.Date != nil {
 			params.NextDueDate = sql.NullString{String: due.Date.String(), Valid: true}
+		}
+		if due.HoursTenths != nil {
+			params.NextDueHoursTenths = sql.NullInt64{Int64: *due.HoursTenths, Valid: true}
 		}
 		if st.Trigger != "" {
 			params.StateTrigger = sql.NullString{String: st.Trigger, Valid: true}

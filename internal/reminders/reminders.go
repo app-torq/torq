@@ -35,7 +35,16 @@ type Input struct {
 	StartDate         string
 	StartOdometerKm   *int64
 	LastDoneUnknown   *bool
+	// HourMeterID, IntervalHours and LeadHours (whole hours) add an hours
+	// dimension; StartHoursTenths defaults to the meter's current value.
+	HourMeterID      *int64
+	IntervalHours    *int64
+	LeadHours        *int64
+	StartHoursTenths *int64
 }
+
+// defaultLeadHours warns a tenth of the interval ahead (250 h → 25 h).
+func defaultLeadHours(interval int64) int64 { return interval / 10 }
 
 func boolInt64(b *bool) int64 {
 	if b != nil && *b {
@@ -58,9 +67,17 @@ func (s *Service) validate(in *Input, v *apperr.Validation) {
 		v.Check(n < 1, "title", "reminder.title_required")
 	}
 	v.Check(n > 120, "title", "validation.length")
-	if in.IntervalKm == nil && in.IntervalMonths == nil && in.IntervalDays == nil {
+	if in.IntervalKm == nil && in.IntervalMonths == nil && in.IntervalDays == nil && in.IntervalHours == nil {
 		v.Add("interval_km", "reminder.interval_required")
 	}
+	v.Check(in.IntervalHours != nil && (*in.IntervalHours < 1 || *in.IntervalHours > 100000), "interval_hours", "validation.range")
+	v.Check(in.IntervalHours != nil && in.HourMeterID == nil, "hour_meter_id", "validation.required")
+	v.Check(in.LeadHours != nil && in.IntervalHours == nil, "lead_hours", "validation.invalid_choice")
+	v.Check(in.LeadHours != nil && *in.LeadHours < 0, "lead_hours", "validation.non_negative")
+	if in.LeadHours != nil && in.IntervalHours != nil && *in.LeadHours >= *in.IntervalHours {
+		v.Add("lead_hours", "reminder.lead_exceeds_interval")
+	}
+	v.Check(in.StartHoursTenths != nil && *in.StartHoursTenths < 0, "start_hours", "validation.non_negative")
 	if in.IntervalMonths != nil && in.IntervalDays != nil {
 		v.Add("interval_days", "reminder.months_and_days_exclusive")
 	}
@@ -82,6 +99,36 @@ func (s *Service) validate(in *Input, v *apperr.Validation) {
 		v.Check(in.StartDate > s.Clock.Today(), "start_date", "validation.future_date")
 	}
 	v.Check(in.StartOdometerKm != nil && *in.StartOdometerKm < 0, "start_odometer_km", "validation.non_negative")
+}
+
+// checkVehicleDimensions refuses a distance interval on a vehicle without an
+// odometer and an hour meter of another vehicle.
+func checkVehicleDimensions(ctx context.Context, q *store.Queries, veh store.Vehicle, in *Input) error {
+	var v apperr.Validation
+	v.Check(veh.HasOdometer == 0 && in.IntervalKm != nil, "interval_km", "validation.invalid_choice")
+	if in.HourMeterID != nil {
+		m, err := q.GetHourMeter(ctx, *in.HourMeterID)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		v.Check(err != nil || m.VehicleID != veh.ID, "hour_meter_id", "validation.invalid_choice")
+	}
+	return v.Err()
+}
+
+// startHours is the meter's current value, the default start for hours.
+func startHours(ctx context.Context, q *store.Queries, meterID *int64) (*int64, error) {
+	if meterID == nil {
+		return nil, nil
+	}
+	m, err := q.GetHourMeter(ctx, *meterID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &m.CurrentHoursTenths, nil
 }
 
 func checkCategory(ctx context.Context, q *store.Queries, id *int64, requireActive bool) error {
@@ -127,7 +174,22 @@ func (s *Service) Create(ctx context.Context, in Input, createdBy int64) (store.
 			if err != nil {
 				return err
 			}
-			in.IntervalKm, in.IntervalMonths = ptr(c.DefaultIntervalKm), ptr(c.DefaultIntervalMonths)
+			in.IntervalMonths = ptr(c.DefaultIntervalMonths)
+			if veh.HasOdometer == 1 {
+				in.IntervalKm = ptr(c.DefaultIntervalKm)
+			}
+		}
+		if err := checkVehicleDimensions(ctx, q, veh, &in); err != nil {
+			return err
+		}
+		if in.StartHoursTenths == nil {
+			if in.StartHoursTenths, err = startHours(ctx, q, in.HourMeterID); err != nil {
+				return err
+			}
+		}
+		if in.LeadHours == nil && in.IntervalHours != nil {
+			lead := defaultLeadHours(*in.IntervalHours)
+			in.LeadHours = &lead
 		}
 		if in.StartDate == "" {
 			in.StartDate = s.Clock.Today()
@@ -156,8 +218,9 @@ func (s *Service) Create(ctx context.Context, in Input, createdBy int64) (store.
 			IntervalKm: nullInt(in.IntervalKm), IntervalMonths: nullInt(in.IntervalMonths), IntervalDays: nullInt(in.IntervalDays),
 			LeadKm: nullInt(in.LeadKm), LeadDays: nullInt(in.LeadDays),
 			StartDate: in.StartDate, StartOdometerKm: *in.StartOdometerKm, LastDoneUnknown: boolInt64(in.LastDoneUnknown),
-			StateChangedAt: now,
-			CreatedBy:      sql.NullInt64{Int64: createdBy, Valid: createdBy > 0}, CreatedAt: now, UpdatedAt: now,
+			HourMeterID: nullInt(in.HourMeterID), IntervalHours: nullInt(in.IntervalHours), LeadHours: nullInt(in.LeadHours),
+			StartHoursTenths: nullInt(in.StartHoursTenths), StateChangedAt: now,
+			CreatedBy: sql.NullInt64{Int64: createdBy, Valid: createdBy > 0}, CreatedAt: now, UpdatedAt: now,
 		})
 		if err != nil {
 			return err
@@ -204,6 +267,20 @@ func (s *Service) Update(ctx context.Context, id int64, in Input) (store.Reminde
 			unknown := cur.LastDoneUnknown == 1
 			in.LastDoneUnknown = &unknown
 		}
+		veh, err := vehicles.Get(ctx, q, cur.VehicleID)
+		if err != nil {
+			return err
+		}
+		if err := checkVehicleDimensions(ctx, q, veh, &in); err != nil {
+			return err
+		}
+		if in.StartHoursTenths == nil && in.HourMeterID != nil {
+			if cur.StartHoursTenths.Valid && cur.HourMeterID.Valid && cur.HourMeterID.Int64 == *in.HourMeterID {
+				in.StartHoursTenths = &cur.StartHoursTenths.Int64
+			} else if in.StartHoursTenths, err = startHours(ctx, q, in.HourMeterID); err != nil {
+				return err
+			}
+		}
 		changedCategory := in.ServiceCategoryID != nil && (!cur.ServiceCategoryID.Valid || cur.ServiceCategoryID.Int64 != *in.ServiceCategoryID)
 		if err := checkCategory(ctx, q, in.ServiceCategoryID, changedCategory); err != nil {
 			return err
@@ -218,7 +295,8 @@ func (s *Service) Update(ctx context.Context, id int64, in Input) (store.Reminde
 			IntervalKm: nullInt(in.IntervalKm), IntervalMonths: nullInt(in.IntervalMonths), IntervalDays: nullInt(in.IntervalDays),
 			LeadKm: nullInt(in.LeadKm), LeadDays: nullInt(in.LeadDays),
 			StartDate: in.StartDate, StartOdometerKm: *in.StartOdometerKm, LastDoneUnknown: boolInt64(in.LastDoneUnknown),
-			UpdatedAt: clock.Timestamp(s.Clock.Now()), ID: id,
+			HourMeterID: nullInt(in.HourMeterID), IntervalHours: nullInt(in.IntervalHours), LeadHours: nullInt(in.LeadHours),
+			StartHoursTenths: nullInt(in.StartHoursTenths), UpdatedAt: clock.Timestamp(s.Clock.Now()), ID: id,
 		}); err != nil {
 			return err
 		}
@@ -265,9 +343,15 @@ func (s *Service) SetPaused(ctx context.Context, id int64, paused bool) (store.R
 	return out, err
 }
 
-// MarkDone resets a standalone reminder from the given date and odometer
-// (defaults: today, current odometer) and records an odometer reading (FR-032).
+// MarkDone resets a standalone reminder without hour meter readings.
 func (s *Service) MarkDone(ctx context.Context, id int64, doneOn string, odometerKm *int64) (store.Reminder, error) {
+	return s.MarkDoneWithReadings(ctx, id, doneOn, odometerKm, nil)
+}
+
+// MarkDoneWithReadings resets a standalone reminder from the given date,
+// odometer and hours (defaults: today, current values) and records the
+// readings (FR-032). Vehicles without an odometer get no odometer reading.
+func (s *Service) MarkDoneWithReadings(ctx context.Context, id int64, doneOn string, odometerKm *int64, readings []vehicles.HoursReading) (store.Reminder, error) {
 	var out store.Reminder
 	err := s.DB.WithTx(ctx, func(tx *sql.Tx) error {
 		q := store.New(tx)
@@ -299,15 +383,40 @@ func (s *Service) MarkDone(ctx context.Context, id int64, doneOn string, odomete
 			v.Check(doneOn > s.Clock.Today(), "done_on", "validation.future_date")
 		}
 		v.Check(km < 0, "odometer_km", "validation.non_negative")
+		if err := vehicles.ValidateReadings(ctx, q, r.VehicleID, readings, false, "meter_readings", &v); err != nil {
+			return err
+		}
 		if err := v.Err(); err != nil {
 			return err
 		}
-		if _, err := s.Vehicles.RecordReading(ctx, tx, r.VehicleID, doneOn, km, vehicles.SourceReminderDone); err != nil {
-			return err
+		if veh.HasOdometer == 1 {
+			if _, err := s.Vehicles.RecordReading(ctx, tx, r.VehicleID, doneOn, km, vehicles.SourceReminderDone); err != nil {
+				return err
+			}
+		}
+		for _, rd := range readings {
+			if err := s.Vehicles.RecordHoursReading(ctx, tx, doneOn, vehicles.SourceReminderDone, rd); err != nil {
+				return err
+			}
+		}
+		lastHours := sql.NullInt64{}
+		if r.HourMeterID.Valid {
+			cur, err := startHours(ctx, q, &r.HourMeterID.Int64)
+			if err != nil {
+				return err
+			}
+			if cur != nil {
+				lastHours = sql.NullInt64{Int64: *cur, Valid: true}
+			}
+			for _, rd := range readings {
+				if rd.MeterID == r.HourMeterID.Int64 {
+					lastHours = sql.NullInt64{Int64: rd.HoursTenths, Valid: true}
+				}
+			}
 		}
 		if err := q.SetReminderDone(ctx, store.SetReminderDoneParams{
 			LastDoneDate: sql.NullString{String: doneOn, Valid: true}, LastDoneOdometerKm: sql.NullInt64{Int64: km, Valid: true},
-			UpdatedAt: clock.Timestamp(s.Clock.Now()), ID: id,
+			LastDoneHoursTenths: lastHours, UpdatedAt: clock.Timestamp(s.Clock.Now()), ID: id,
 		}); err != nil {
 			return err
 		}
@@ -368,23 +477,25 @@ func (s *Service) views(ctx context.Context, q *store.Queries, rows []store.Remi
 	if err != nil {
 		return nil, err
 	}
-	kms := map[int64]int64{}
+	vehs := map[int64]store.Vehicle{}
 	out := make([]View, 0, len(rows))
 	for _, r := range rows {
-		km, ok := kms[r.VehicleID]
+		veh, ok := vehs[r.VehicleID]
 		if !ok {
-			v, err := vehicles.Get(ctx, q, r.VehicleID)
-			if err != nil {
+			if veh, err = vehicles.Get(ctx, q, r.VehicleID); err != nil {
 				return nil, err
 			}
-			km = v.CurrentOdometerKm
-			kms[r.VehicleID] = km
+			vehs[r.VehicleID] = veh
 		}
 		base, source, err := resolveBaseline(ctx, q, r)
 		if err != nil {
 			return nil, err
 		}
-		st := engine.Evaluate(engine.NextDue(base, intervalOf(r)), leadOf(r), km, today)
+		hours, err := currentHours(ctx, q, r)
+		if err != nil {
+			return nil, err
+		}
+		st := engine.EvaluateWithHours(engine.NextDue(base, intervalOf(r, veh.HasOdometer == 1)), leadOf(r), veh.CurrentOdometerKm, hours, today)
 		// The stored state is authoritative (it drives notifications); the
 		// remaining values are computed fresh for display.
 		st.State = r.State
@@ -407,7 +518,7 @@ func lessUrgent(a, b View) bool {
 	return urgencyScore(a) > urgencyScore(b)
 }
 
-// urgencyScore approximates closeness to due: lower is more urgent. One day ≈ 50 km.
+// urgencyScore approximates closeness to due: lower is more urgent. One day ≈ 50 km ≈ one hour of use.
 func urgencyScore(v View) int64 {
 	score := int64(1 << 62)
 	if v.Status.RemainingKm != nil {
@@ -415,6 +526,10 @@ func urgencyScore(v View) int64 {
 	}
 	if v.Status.RemainingDays != nil {
 		score = min(score, *v.Status.RemainingDays*50)
+	}
+	// One hour of use ≈ one day ≈ 50 km.
+	if v.Status.RemainingHoursTenths != nil {
+		score = min(score, *v.Status.RemainingHoursTenths*5)
 	}
 	return score
 }

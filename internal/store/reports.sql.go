@@ -10,6 +10,62 @@ import (
 	"database/sql"
 )
 
+const hourReadingRange = `-- name: HourReadingRange :many
+SELECT m.vehicle_id,
+       CAST(MIN(hr.hours_tenths) AS INTEGER) AS min_tenths,
+       CAST(MAX(hr.hours_tenths) AS INTEGER) AS max_tenths,
+       COUNT(*) AS readings
+FROM hour_meter_readings hr
+JOIN hour_meters m ON m.id = hr.hour_meter_id
+JOIN vehicles v ON v.id = m.vehicle_id
+WHERE v.has_odometer = 0
+  AND (CAST(?1 AS INTEGER) = 0 OR m.vehicle_id = ?1)
+  AND hr.reading_date >= ?2 AND hr.reading_date <= ?3
+GROUP BY m.vehicle_id
+`
+
+type HourReadingRangeParams struct {
+	VehicleID int64
+	FromDate  string
+	ToDate    string
+}
+
+type HourReadingRangeRow struct {
+	VehicleID int64
+	MinTenths int64
+	MaxTenths int64
+	Readings  int64
+}
+
+// Hours span of vehicles tracked by hours only (cost per operating hour).
+func (q *Queries) HourReadingRange(ctx context.Context, arg HourReadingRangeParams) ([]HourReadingRangeRow, error) {
+	rows, err := q.db.QueryContext(ctx, hourReadingRange, arg.VehicleID, arg.FromDate, arg.ToDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []HourReadingRangeRow{}
+	for rows.Next() {
+		var i HourReadingRangeRow
+		if err := rows.Scan(
+			&i.VehicleID,
+			&i.MinTenths,
+			&i.MaxTenths,
+			&i.Readings,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const readingRange = `-- name: ReadingRange :many
 SELECT vehicle_id,
        CAST(MIN(odometer_km) AS INTEGER) AS min_km,
@@ -194,7 +250,7 @@ func (q *Queries) ServiceExtraCosts(ctx context.Context, arg ServiceExtraCostsPa
 }
 
 const timelineRepairs = `-- name: TimelineRepairs :many
-SELECT id, vehicle_id, title, status, symptom, root_cause, procedure_notes, special_tools, started_on, completed_on, completion_odometer_km, created_by, created_at, updated_at, priority_id FROM repair_logs
+SELECT id, vehicle_id, title, status, symptom, root_cause, procedure_notes, special_tools, started_on, completed_on, completion_odometer_km, created_by, created_at, updated_at, priority_id, completion_odometer_recorded FROM repair_logs
 WHERE vehicle_id = ?1 AND status = 'completed'
   AND completed_on >= ?2 AND completed_on <= ?3
 ORDER BY completed_on DESC, completion_odometer_km DESC, id DESC
@@ -231,6 +287,7 @@ func (q *Queries) TimelineRepairs(ctx context.Context, arg TimelineRepairsParams
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.PriorityID,
+			&i.CompletionOdometerRecorded,
 		); err != nil {
 			return nil, err
 		}
@@ -246,7 +303,7 @@ func (q *Queries) TimelineRepairs(ctx context.Context, arg TimelineRepairsParams
 }
 
 const timelineServiceLogs = `-- name: TimelineServiceLogs :many
-SELECT id, vehicle_id, service_date, odometer_km, notes, extra_cost_cents, extra_cost_label, created_by, created_at, updated_at FROM service_logs
+SELECT id, vehicle_id, service_date, odometer_km, notes, extra_cost_cents, extra_cost_label, created_by, created_at, updated_at, odometer_recorded FROM service_logs
 WHERE vehicle_id = ?1
   AND service_date >= ?2 AND service_date <= ?3
 ORDER BY service_date DESC, odometer_km DESC, id DESC
@@ -278,6 +335,7 @@ func (q *Queries) TimelineServiceLogs(ctx context.Context, arg TimelineServiceLo
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.OdometerRecorded,
 		); err != nil {
 			return nil, err
 		}

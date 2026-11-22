@@ -32,6 +32,20 @@ WHERE (CAST(sqlc.arg(vehicle_id) AS INTEGER) = 0 OR vehicle_id = sqlc.arg(vehicl
   AND reading_date >= sqlc.arg(from_date) AND reading_date <= sqlc.arg(to_date)
 GROUP BY vehicle_id;
 
+-- name: HourReadingRange :many
+-- Hours span of vehicles tracked by hours only (cost per operating hour).
+SELECT m.vehicle_id,
+       CAST(MIN(hr.hours_tenths) AS INTEGER) AS min_tenths,
+       CAST(MAX(hr.hours_tenths) AS INTEGER) AS max_tenths,
+       COUNT(*) AS readings
+FROM hour_meter_readings hr
+JOIN hour_meters m ON m.id = hr.hour_meter_id
+JOIN vehicles v ON v.id = m.vehicle_id
+WHERE v.has_odometer = 0
+  AND (CAST(sqlc.arg(vehicle_id) AS INTEGER) = 0 OR m.vehicle_id = sqlc.arg(vehicle_id))
+  AND hr.reading_date >= sqlc.arg(from_date) AND hr.reading_date <= sqlc.arg(to_date)
+GROUP BY m.vehicle_id;
+
 -- name: TimelineServiceLogs :many
 SELECT * FROM service_logs
 WHERE vehicle_id = sqlc.arg(vehicle_id)

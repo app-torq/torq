@@ -172,42 +172,53 @@ func (q *Queries) GetDelivery(ctx context.Context, id int64) (WebhookDelivery, e
 }
 
 const getReminderWithVehicle = `-- name: GetReminderWithVehicle :one
-SELECT r.id, r.vehicle_id, r.service_category_id, r.title, r.interval_km, r.interval_months, r.interval_days, r.lead_km, r.lead_days, r.start_date, r.start_odometer_km, r.last_done_date, r.last_done_odometer_km, r.next_due_km, r.next_due_date, r.state, r.state_trigger, r.state_changed_at, r.last_notified_state, r.paused_at, r.created_by, r.created_at, r.updated_at, r.last_done_unknown, v.make, v.model, v.license_plate, v.current_odometer_km, v.odometer_unit
+SELECT r.id, r.vehicle_id, r.service_category_id, r.title, r.interval_km, r.interval_months, r.interval_days, r.lead_km, r.lead_days, r.start_date, r.start_odometer_km, r.last_done_date, r.last_done_odometer_km, r.next_due_km, r.next_due_date, r.state, r.state_trigger, r.state_changed_at, r.last_notified_state, r.paused_at, r.created_by, r.created_at, r.updated_at, r.last_done_unknown, r.hour_meter_id, r.interval_hours, r.lead_hours, r.start_hours_tenths, r.last_done_hours_tenths, r.next_due_hours_tenths, v.make, v.model, v.license_plate, v.current_odometer_km, v.odometer_unit, v.has_odometer,
+       m.name AS hour_meter_name, m.current_hours_tenths
 FROM reminders r
 JOIN vehicles v ON v.id = r.vehicle_id
+LEFT JOIN hour_meters m ON m.id = r.hour_meter_id
 WHERE r.id = ?
 `
 
 type GetReminderWithVehicleRow struct {
-	ID                 int64
-	VehicleID          int64
-	ServiceCategoryID  sql.NullInt64
-	Title              string
-	IntervalKm         sql.NullInt64
-	IntervalMonths     sql.NullInt64
-	IntervalDays       sql.NullInt64
-	LeadKm             sql.NullInt64
-	LeadDays           sql.NullInt64
-	StartDate          string
-	StartOdometerKm    int64
-	LastDoneDate       sql.NullString
-	LastDoneOdometerKm sql.NullInt64
-	NextDueKm          sql.NullInt64
-	NextDueDate        sql.NullString
-	State              string
-	StateTrigger       sql.NullString
-	StateChangedAt     string
-	LastNotifiedState  string
-	PausedAt           sql.NullString
-	CreatedBy          sql.NullInt64
-	CreatedAt          string
-	UpdatedAt          string
-	LastDoneUnknown    int64
-	Make               string
-	Model              string
-	LicensePlate       sql.NullString
-	CurrentOdometerKm  int64
-	OdometerUnit       string
+	ID                  int64
+	VehicleID           int64
+	ServiceCategoryID   sql.NullInt64
+	Title               string
+	IntervalKm          sql.NullInt64
+	IntervalMonths      sql.NullInt64
+	IntervalDays        sql.NullInt64
+	LeadKm              sql.NullInt64
+	LeadDays            sql.NullInt64
+	StartDate           string
+	StartOdometerKm     int64
+	LastDoneDate        sql.NullString
+	LastDoneOdometerKm  sql.NullInt64
+	NextDueKm           sql.NullInt64
+	NextDueDate         sql.NullString
+	State               string
+	StateTrigger        sql.NullString
+	StateChangedAt      string
+	LastNotifiedState   string
+	PausedAt            sql.NullString
+	CreatedBy           sql.NullInt64
+	CreatedAt           string
+	UpdatedAt           string
+	LastDoneUnknown     int64
+	HourMeterID         sql.NullInt64
+	IntervalHours       sql.NullInt64
+	LeadHours           sql.NullInt64
+	StartHoursTenths    sql.NullInt64
+	LastDoneHoursTenths sql.NullInt64
+	NextDueHoursTenths  sql.NullInt64
+	Make                string
+	Model               string
+	LicensePlate        sql.NullString
+	CurrentOdometerKm   int64
+	OdometerUnit        string
+	HasOdometer         int64
+	HourMeterName       sql.NullString
+	CurrentHoursTenths  sql.NullInt64
 }
 
 func (q *Queries) GetReminderWithVehicle(ctx context.Context, id int64) (GetReminderWithVehicleRow, error) {
@@ -238,11 +249,20 @@ func (q *Queries) GetReminderWithVehicle(ctx context.Context, id int64) (GetRemi
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.LastDoneUnknown,
+		&i.HourMeterID,
+		&i.IntervalHours,
+		&i.LeadHours,
+		&i.StartHoursTenths,
+		&i.LastDoneHoursTenths,
+		&i.NextDueHoursTenths,
 		&i.Make,
 		&i.Model,
 		&i.LicensePlate,
 		&i.CurrentOdometerKm,
 		&i.OdometerUnit,
+		&i.HasOdometer,
+		&i.HourMeterName,
+		&i.CurrentHoursTenths,
 	)
 	return i, err
 }
@@ -359,43 +379,54 @@ func (q *Queries) ListDeliveries(ctx context.Context, arg ListDeliveriesParams) 
 }
 
 const listDueReminders = `-- name: ListDueReminders :many
-SELECT r.id, r.vehicle_id, r.service_category_id, r.title, r.interval_km, r.interval_months, r.interval_days, r.lead_km, r.lead_days, r.start_date, r.start_odometer_km, r.last_done_date, r.last_done_odometer_km, r.next_due_km, r.next_due_date, r.state, r.state_trigger, r.state_changed_at, r.last_notified_state, r.paused_at, r.created_by, r.created_at, r.updated_at, r.last_done_unknown, v.make, v.model, v.license_plate, v.current_odometer_km, v.odometer_unit
+SELECT r.id, r.vehicle_id, r.service_category_id, r.title, r.interval_km, r.interval_months, r.interval_days, r.lead_km, r.lead_days, r.start_date, r.start_odometer_km, r.last_done_date, r.last_done_odometer_km, r.next_due_km, r.next_due_date, r.state, r.state_trigger, r.state_changed_at, r.last_notified_state, r.paused_at, r.created_by, r.created_at, r.updated_at, r.last_done_unknown, r.hour_meter_id, r.interval_hours, r.lead_hours, r.start_hours_tenths, r.last_done_hours_tenths, r.next_due_hours_tenths, v.make, v.model, v.license_plate, v.current_odometer_km, v.odometer_unit, v.has_odometer,
+       m.name AS hour_meter_name, m.current_hours_tenths
 FROM reminders r
 JOIN vehicles v ON v.id = r.vehicle_id
+LEFT JOIN hour_meters m ON m.id = r.hour_meter_id
 WHERE r.state IN ('due_soon', 'overdue') AND r.paused_at IS NULL AND v.archived_at IS NULL
 ORDER BY CASE r.state WHEN 'overdue' THEN 0 ELSE 1 END, r.id
 `
 
 type ListDueRemindersRow struct {
-	ID                 int64
-	VehicleID          int64
-	ServiceCategoryID  sql.NullInt64
-	Title              string
-	IntervalKm         sql.NullInt64
-	IntervalMonths     sql.NullInt64
-	IntervalDays       sql.NullInt64
-	LeadKm             sql.NullInt64
-	LeadDays           sql.NullInt64
-	StartDate          string
-	StartOdometerKm    int64
-	LastDoneDate       sql.NullString
-	LastDoneOdometerKm sql.NullInt64
-	NextDueKm          sql.NullInt64
-	NextDueDate        sql.NullString
-	State              string
-	StateTrigger       sql.NullString
-	StateChangedAt     string
-	LastNotifiedState  string
-	PausedAt           sql.NullString
-	CreatedBy          sql.NullInt64
-	CreatedAt          string
-	UpdatedAt          string
-	LastDoneUnknown    int64
-	Make               string
-	Model              string
-	LicensePlate       sql.NullString
-	CurrentOdometerKm  int64
-	OdometerUnit       string
+	ID                  int64
+	VehicleID           int64
+	ServiceCategoryID   sql.NullInt64
+	Title               string
+	IntervalKm          sql.NullInt64
+	IntervalMonths      sql.NullInt64
+	IntervalDays        sql.NullInt64
+	LeadKm              sql.NullInt64
+	LeadDays            sql.NullInt64
+	StartDate           string
+	StartOdometerKm     int64
+	LastDoneDate        sql.NullString
+	LastDoneOdometerKm  sql.NullInt64
+	NextDueKm           sql.NullInt64
+	NextDueDate         sql.NullString
+	State               string
+	StateTrigger        sql.NullString
+	StateChangedAt      string
+	LastNotifiedState   string
+	PausedAt            sql.NullString
+	CreatedBy           sql.NullInt64
+	CreatedAt           string
+	UpdatedAt           string
+	LastDoneUnknown     int64
+	HourMeterID         sql.NullInt64
+	IntervalHours       sql.NullInt64
+	LeadHours           sql.NullInt64
+	StartHoursTenths    sql.NullInt64
+	LastDoneHoursTenths sql.NullInt64
+	NextDueHoursTenths  sql.NullInt64
+	Make                string
+	Model               string
+	LicensePlate        sql.NullString
+	CurrentOdometerKm   int64
+	OdometerUnit        string
+	HasOdometer         int64
+	HourMeterName       sql.NullString
+	CurrentHoursTenths  sql.NullInt64
 }
 
 func (q *Queries) ListDueReminders(ctx context.Context) ([]ListDueRemindersRow, error) {
@@ -432,11 +463,20 @@ func (q *Queries) ListDueReminders(ctx context.Context) ([]ListDueRemindersRow, 
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.LastDoneUnknown,
+			&i.HourMeterID,
+			&i.IntervalHours,
+			&i.LeadHours,
+			&i.StartHoursTenths,
+			&i.LastDoneHoursTenths,
+			&i.NextDueHoursTenths,
 			&i.Make,
 			&i.Model,
 			&i.LicensePlate,
 			&i.CurrentOdometerKm,
 			&i.OdometerUnit,
+			&i.HasOdometer,
+			&i.HourMeterName,
+			&i.CurrentHoursTenths,
 		); err != nil {
 			return nil, err
 		}

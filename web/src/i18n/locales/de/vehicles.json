@@ -35,7 +35,10 @@
     "displacementUnit": "Hubraumeinheit",
     "powerUnit": "Leistungseinheit",
     "unitPreference": "Meine Einstellung ({{unit}})",
-    "vehicleUnitHint": "Wird für alle in diesen Einheiten angezeigt und eingegeben. Auf „Meine Einstellung“ lassen, damit die Einstellungen jeder Person gelten."
+    "vehicleUnitHint": "Wird für alle in diesen Einheiten angezeigt und eingegeben. Auf „Meine Einstellung“ lassen, damit die Einstellungen jeder Person gelten.",
+    "trackBy": "Erfassen nach",
+    "trackByHint": "Traktoren und Maschinen ohne Kilometerzähler nutzen nur Betriebsstunden. Ein Wohnmobil mit Stromaggregat kann beides erfassen.",
+    "trackByEditHint": "Bei „Nur Betriebsstunden“ wird der Kilometerstand ausgeblendet; seine Historie bleibt erhalten."
   },
   "tabs": {
     "overview": "Übersicht",
@@ -142,5 +145,31 @@
   "odometerUnits": {
     "km": "Kilometer (km)",
     "mi": "Meilen (mi)"
+  },
+  "trackBy": {
+    "odometer": "Kilometerstand",
+    "hours": "Nur Betriebsstunden",
+    "both": "Kilometerstand und Betriebsstunden"
+  },
+  "hours": {
+    "title": "Betriebsstundenzähler",
+    "add": "Betriebsstundenzähler hinzufügen",
+    "addHint": "Für Ausstattung, die nach Betriebsstunden gewartet wird, z. B. ein Stromaggregat.",
+    "name": "Name des Zählers",
+    "nameHint": "z. B. Betriebsstunden oder Stromaggregat",
+    "defaultName": "Betriebsstunden",
+    "current": "Aktuelle Betriebsstunden",
+    "named": "{{name}}: {{hours}}",
+    "update": "Stunden aktualisieren",
+    "newValue": "Neuer Stand ({{name}})",
+    "decreaseTitle": "Stunden verringern?",
+    "decreaseBody": "Der aktuelle Stand ist {{current}}. Auf {{next}} setzen? Nur zum Korrigieren von Tippfehlern oder nach einem Zählertausch verwenden.",
+    "jumpTitle": "Großer Sprung",
+    "jumpBody": "{{next}} ist ein großer Sprung gegenüber {{current}}. Stimmt das?",
+    "rename": "Zähler umbenennen",
+    "remove": "Zähler entfernen",
+    "removeTitle": "{{name}} entfernen?",
+    "removeBody": "Seine Ablesungen werden gelöscht. Erinnerungen, die auch Strecke oder Zeit nutzen, funktionieren ohne Stunden weiter.",
+    "inUse": "Serviceeinträge, Reparaturen oder Erinnerungen nutzen diesen Zähler, daher kann er nicht entfernt werden. Du kannst ihn stattdessen umbenennen."
   }
 }

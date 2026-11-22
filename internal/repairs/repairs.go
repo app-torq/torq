@@ -68,6 +68,9 @@ type Input struct {
 	DefaultPriority bool
 	// Tags are tag names; unknown ones are created.
 	Tags []string
+	// CompletionMeterReadings replace the hours of a completed project when
+	// not nil (edit only).
+	CompletionMeterReadings []vehicles.HoursReading
 }
 
 // Totals summarizes the BOM.
@@ -79,14 +82,23 @@ type Totals struct {
 // Repair is a project with its children.
 type Repair struct {
 	store.RepairLog
-	FaultCodes  []string
-	Tags        []string
-	TorqueSpecs []store.RepairTorqueSpec
-	Parts       []store.RepairPart
-	Totals      Totals
+	FaultCodes []string
+	Tags       []string
+	// CompletionMeterReadings are the hours recorded when it was completed.
+	CompletionMeterReadings []vehicles.HoursReading
+	TorqueSpecs             []store.RepairTorqueSpec
+	Parts                   []store.RepairPart
+	Totals                  Totals
 }
 
 func nullStr(s string) sql.NullString { return sql.NullString{String: s, Valid: s != ""} }
+
+func boolInt(b bool) int64 {
+	if b {
+		return 1
+	}
+	return 0
+}
 
 func nullInt(p *int64) sql.NullInt64 {
 	if p == nil {
@@ -256,10 +268,22 @@ func (s *Service) Update(ctx context.Context, id int64, in Input) (Repair, error
 				completionKm = nullInt(in.CompletionKm)
 			}
 		}
+		readingsChanged := false
+		if cur.Status == StatusCompleted && in.CompletionMeterReadings != nil {
+			var v apperr.Validation
+			if err := vehicles.ValidateReadings(ctx, q, cur.VehicleID, in.CompletionMeterReadings, cur.CompletionOdometerRecorded == 0, "completion_meter_readings", &v); err != nil {
+				return err
+			}
+			if err := v.Err(); err != nil {
+				return err
+			}
+			readingsChanged = true
+		}
 		if _, err := q.UpdateRepair(ctx, store.UpdateRepairParams{
 			Title: in.Title, Symptom: in.Symptom, RootCause: in.RootCause, ProcedureNotes: in.ProcedureNotes,
 			SpecialTools: in.SpecialTools, StartedOn: nullStr(in.StartedOn), CompletedOn: completedOn,
-			CompletionOdometerKm: completionKm, PriorityID: priority, UpdatedAt: clock.Timestamp(s.Clock.Now()), ID: id,
+			CompletionOdometerKm: completionKm, CompletionOdometerRecorded: cur.CompletionOdometerRecorded,
+			PriorityID: priority, UpdatedAt: clock.Timestamp(s.Clock.Now()), ID: id,
 		}); err != nil {
 			if strings.Contains(err.Error(), "CHECK constraint failed") {
 				return apperr.Unprocessable("repair.completed_before_started", nil)
@@ -269,8 +293,14 @@ func (s *Service) Update(ctx context.Context, id int64, in Input) (Repair, error
 		if err := s.writeChildren(ctx, q, id, in); err != nil {
 			return err
 		}
-		if cur.Status == StatusCompleted && (completedOn != cur.CompletedOn || completionKm != cur.CompletionOdometerKm) {
-			if err := s.recordCompletion(ctx, tx, id, cur.VehicleID, completedOn.String, completionKm.Int64); err != nil {
+		if cur.Status == StatusCompleted && (completedOn != cur.CompletedOn || completionKm != cur.CompletionOdometerKm || readingsChanged) {
+			readings := in.CompletionMeterReadings
+			if !readingsChanged {
+				if readings, err = completionReadings(ctx, q, id); err != nil {
+					return err
+				}
+			}
+			if err := s.recordCompletion(ctx, tx, id, cur.VehicleID, completedOn.String, completionKm.Int64, cur.CompletionOdometerRecorded == 1, readings); err != nil {
 				return err
 			}
 		}
@@ -280,25 +310,71 @@ func (s *Service) Update(ctx context.Context, id int64, in Input) (Repair, error
 	return out, err
 }
 
-func (s *Service) recordCompletion(ctx context.Context, tx *sql.Tx, repairID, vehicleID int64, date string, km int64) error {
+// recordCompletion replaces the project's completion readings: the odometer
+// reading when a distance was recorded, and its hour meter readings.
+func (s *Service) recordCompletion(ctx context.Context, tx *sql.Tx, repairID, vehicleID int64, date string, km int64, kmRecorded bool, readings []vehicles.HoursReading) error {
 	q := store.New(tx)
-	if err := q.DeleteRepairReading(ctx, sql.NullInt64{Int64: repairID, Valid: true}); err != nil {
+	if err := removeCompletionReadings(ctx, q, repairID); err != nil {
 		return err
 	}
-	readingID, err := s.Vehicles.RecordReading(ctx, tx, vehicleID, date, km, vehicles.SourceRepairCompletion)
-	if err != nil {
-		return err
+	if kmRecorded {
+		readingID, err := s.Vehicles.RecordReading(ctx, tx, vehicleID, date, km, vehicles.SourceRepairCompletion)
+		if err != nil {
+			return err
+		}
+		if err := q.LinkReadingToRepair(ctx, store.LinkReadingToRepairParams{RepairLogID: sql.NullInt64{Int64: repairID, Valid: true}, ID: readingID}); err != nil {
+			return err
+		}
 	}
-	if err := q.LinkReadingToRepair(ctx, store.LinkReadingToRepairParams{RepairLogID: sql.NullInt64{Int64: repairID, Valid: true}, ID: readingID}); err != nil {
-		return err
+	for _, r := range readings {
+		r.RepairLogID = repairID
+		if err := s.Vehicles.RecordHoursReading(ctx, tx, date, vehicles.SourceRepairCompletion, r); err != nil {
+			return err
+		}
 	}
 	return s.Vehicles.AfterHistoryChange(ctx, tx, vehicleID)
 }
 
-// SetStatus moves a project through the workflow (data-model §4):
-// completing requires a date and odometer and records an odometer reading;
-// reopening removes that reading but keeps the completion values.
+func removeCompletionReadings(ctx context.Context, q *store.Queries, repairID int64) error {
+	if err := q.DeleteRepairReading(ctx, sql.NullInt64{Int64: repairID, Valid: true}); err != nil {
+		return err
+	}
+	return q.DeleteRepairMeterReadings(ctx, sql.NullInt64{Int64: repairID, Valid: true})
+}
+
+// completionReadingsFor returns the hour meter readings of the given projects.
+func completionReadingsFor(ctx context.Context, q *store.Queries, ids []int64) (map[int64][]vehicles.HoursReading, error) {
+	nids := make([]sql.NullInt64, len(ids))
+	for i, id := range ids {
+		nids[i] = sql.NullInt64{Int64: id, Valid: true}
+	}
+	rows, err := q.ListRepairMeterReadings(ctx, nids)
+	if err != nil {
+		return nil, err
+	}
+	out := map[int64][]vehicles.HoursReading{}
+	for _, r := range rows {
+		id := r.RepairLogID.Int64
+		out[id] = append(out[id], vehicles.HoursReading{MeterID: r.HourMeterID, HoursTenths: r.HoursTenths, RepairLogID: id})
+	}
+	return out, nil
+}
+
+func completionReadings(ctx context.Context, q *store.Queries, id int64) ([]vehicles.HoursReading, error) {
+	m, err := completionReadingsFor(ctx, q, []int64{id})
+	return m[id], err
+}
+
+// SetStatus moves a project through the workflow without hour meter readings.
 func (s *Service) SetStatus(ctx context.Context, id int64, status, completedOn string, completionKm *int64) (Repair, error) {
+	return s.SetStatusWithReadings(ctx, id, status, completedOn, completionKm, nil)
+}
+
+// SetStatusWithReadings moves a project through the workflow (data-model §4):
+// completing requires a date and the odometer, or hours for vehicles without
+// an odometer, and records the readings; reopening removes them but keeps the
+// completion values.
+func (s *Service) SetStatusWithReadings(ctx context.Context, id int64, status, completedOn string, completionKm *int64, readings []vehicles.HoursReading) (Repair, error) {
 	if !validStatus(status) {
 		var v apperr.Validation
 		v.Add("status", "validation.invalid_choice")
@@ -314,7 +390,7 @@ func (s *Service) SetStatus(ctx context.Context, id int64, status, completedOn s
 		if err != nil {
 			return err
 		}
-		started, done, km := cur.StartedOn, cur.CompletedOn, cur.CompletionOdometerKm
+		started, done, km, kmRecorded := cur.StartedOn, cur.CompletedOn, cur.CompletionOdometerKm, cur.CompletionOdometerRecorded
 		today := s.Clock.Today()
 		if status == StatusInProgress && !started.Valid {
 			start := today
@@ -335,30 +411,42 @@ func (s *Service) SetStatus(ctx context.Context, id int64, status, completedOn s
 			} else if started.Valid && completedOn < started.String {
 				v.Add("completed_on", "repair.completed_before_started")
 			}
-			if completionKm == nil {
+			veh, err := vehicles.Get(ctx, q, cur.VehicleID)
+			if err != nil {
+				return err
+			}
+			hasOdometer := veh.HasOdometer == 1
+			switch {
+			case !hasOdometer:
+				completionKm = new(int64)
+			case completionKm == nil:
 				v.Add("completion_odometer_km", "validation.required")
-			} else if *completionKm < 0 {
+			case *completionKm < 0:
 				v.Add("completion_odometer_km", "validation.non_negative")
+			}
+			if err := vehicles.ValidateReadings(ctx, q, cur.VehicleID, readings, !hasOdometer, "completion_meter_readings", &v); err != nil {
+				return err
 			}
 			if err := v.Err(); err != nil {
 				return err
 			}
 			done = sql.NullString{String: completedOn, Valid: true}
 			km = nullInt(completionKm)
+			kmRecorded = boolInt(hasOdometer)
 		}
 		if _, err := q.SetRepairStatus(ctx, store.SetRepairStatusParams{
 			Status: status, StartedOn: started, CompletedOn: done, CompletionOdometerKm: km,
-			UpdatedAt: clock.Timestamp(s.Clock.Now()), ID: id,
+			CompletionOdometerRecorded: kmRecorded, UpdatedAt: clock.Timestamp(s.Clock.Now()), ID: id,
 		}); err != nil {
 			return err
 		}
 		switch {
 		case status == StatusCompleted:
-			if err := s.recordCompletion(ctx, tx, id, cur.VehicleID, done.String, km.Int64); err != nil {
+			if err := s.recordCompletion(ctx, tx, id, cur.VehicleID, done.String, km.Int64, kmRecorded == 1, readings); err != nil {
 				return err
 			}
 		case cur.Status == StatusCompleted:
-			if err := q.DeleteRepairReading(ctx, sql.NullInt64{Int64: id, Valid: true}); err != nil {
+			if err := removeCompletionReadings(ctx, q, id); err != nil {
 				return err
 			}
 			if err := s.Vehicles.AfterHistoryChange(ctx, tx, cur.VehicleID); err != nil {
@@ -425,6 +513,9 @@ func load(ctx context.Context, q *store.Queries, id int64) (Repair, error) {
 		return Repair{}, err
 	}
 	out.Tags = tags[id]
+	if out.CompletionMeterReadings, err = completionReadings(ctx, q, id); err != nil {
+		return Repair{}, err
+	}
 	if out.TorqueSpecs, err = q.ListTorqueSpecs(ctx, id); err != nil {
 		return Repair{}, err
 	}
@@ -551,8 +642,12 @@ func (s *Service) List(ctx context.Context, f Filter) ([]Repair, int64, error) {
 	if err != nil {
 		return nil, 0, err
 	}
+	hours, err := completionReadingsFor(ctx, q, ids)
+	if err != nil {
+		return nil, 0, err
+	}
 	for _, r := range rows {
-		out = append(out, Repair{RepairLog: r, FaultCodes: byRepair[r.ID], Tags: tags[r.ID], Totals: totals[r.ID]})
+		out = append(out, Repair{RepairLog: r, FaultCodes: byRepair[r.ID], Tags: tags[r.ID], CompletionMeterReadings: hours[r.ID], Totals: totals[r.ID]})
 	}
 	return out, total, nil
 }

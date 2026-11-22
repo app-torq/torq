@@ -18,6 +18,7 @@ import (
 	"github.com/app-torq/torq/internal/notify/presets"
 	"github.com/app-torq/torq/internal/reminders/engine"
 	"github.com/app-torq/torq/internal/store"
+	"github.com/app-torq/torq/internal/vehicles"
 )
 
 // Events (data-model §7).
@@ -82,6 +83,10 @@ type reminderRow struct {
 	LicensePlate      sql.NullString
 	CurrentOdometerKm int64
 	OdometerUnit      string
+	HasOdometer       int64
+	// HourMeterName and CurrentHoursTenths describe the reminder's hour meter, if any.
+	HourMeterName      sql.NullString
+	CurrentHoursTenths sql.NullInt64
 }
 
 func ptrInt(n sql.NullInt64) *int64 {
@@ -132,6 +137,11 @@ func (s *Service) describe(ctx context.Context, q *store.Queries, r reminderRow,
 			}
 		}
 	}
+	if r.NextDueHoursTenths.Valid && r.CurrentHoursTenths.Valid {
+		next := vehicles.TenthsToHours(r.NextDueHoursTenths.Int64)
+		remaining := vehicles.TenthsToHours(r.NextDueHoursTenths.Int64 - r.CurrentHoursTenths.Int64)
+		rem.HourMeter, rem.NextDueHours, rem.RemainingHours = ptrStr(r.HourMeterName), &next, &remaining
+	}
 	veh := presets.Vehicle{ID: r.VehicleID, Name: r.Make + " " + r.Model, LicensePlate: ptrStr(r.LicensePlate),
 		CurrentOdometerKm: r.CurrentOdometerKm, OdometerUnit: r.OdometerUnit}
 
@@ -141,6 +151,13 @@ func (s *Service) describe(ctx context.Context, q *store.Queries, r reminderRow,
 			parts = append(parts, loc.T("notify.remaining_km", map[string]string{"value": loc.Distance(*rem.RemainingKm, r.OdometerUnit)}))
 		} else {
 			parts = append(parts, loc.T("notify.over_km", map[string]string{"value": loc.Distance(-*rem.RemainingKm, r.OdometerUnit)}))
+		}
+	}
+	if rem.RemainingHours != nil {
+		if left := r.NextDueHoursTenths.Int64 - r.CurrentHoursTenths.Int64; left >= 0 {
+			parts = append(parts, loc.T("notify.remaining_hours", map[string]string{"value": loc.Hours(left)}))
+		} else {
+			parts = append(parts, loc.T("notify.over_hours", map[string]string{"value": loc.Hours(-left)}))
 		}
 	}
 	if rem.RemainingDays != nil {
@@ -156,6 +173,9 @@ func (s *Service) describe(ctx context.Context, q *store.Queries, r reminderRow,
 	var due []string
 	if rem.NextDueKm != nil {
 		due = append(due, loc.T("notify.due_at_km", map[string]string{"value": loc.Distance(*rem.NextDueKm, r.OdometerUnit)}))
+	}
+	if rem.NextDueHours != nil {
+		due = append(due, loc.T("notify.due_at_hours", map[string]string{"value": loc.Hours(r.NextDueHoursTenths.Int64)}))
 	}
 	if rem.NextDueDate != nil {
 		due = append(due, loc.T("notify.due_on", map[string]string{"value": loc.Date(*rem.NextDueDate)}))
@@ -197,12 +217,22 @@ func (s *Service) reminderMessage(ctx context.Context, q *store.Queries, event s
 		Title: loc.T(titleKey, map[string]string{"reminder": rem.Name, "vehicle": veh.Name}),
 		Body:  line, URL: s.link("/vehicles/" + strconv.FormatInt(veh.ID, 10) + "/reminders"),
 		Reminder: &rem, Vehicle: &veh,
-		Fields: []presets.Field{
-			{Name: loc.T("notify.field.vehicle", nil), Value: veh.Name},
-			{Name: loc.T("notify.field.odometer", nil), Value: loc.Distance(veh.CurrentOdometerKm, veh.OdometerUnit)},
-		},
+		Fields: readingFields(r, veh, loc),
 		SentAt: s.Clock.Now(),
 	}
+}
+
+// readingFields are the vehicle and its current readings for text presets:
+// the odometer when it has one, and the reminder's hour meter.
+func readingFields(r reminderRow, veh presets.Vehicle, loc i18n.Locale) []presets.Field {
+	fields := []presets.Field{{Name: loc.T("notify.field.vehicle", nil), Value: veh.Name}}
+	if r.HasOdometer == 1 {
+		fields = append(fields, presets.Field{Name: loc.T("notify.field.odometer", nil), Value: loc.Distance(veh.CurrentOdometerKm, veh.OdometerUnit)})
+	}
+	if r.HourMeterName.Valid && r.CurrentHoursTenths.Valid {
+		fields = append(fields, presets.Field{Name: r.HourMeterName.String, Value: loc.Hours(r.CurrentHoursTenths.Int64)})
+	}
+	return fields
 }
 
 func loadReminder(ctx context.Context, q *store.Queries, id int64) (reminderRow, error) {
@@ -214,8 +244,9 @@ func loadReminder(ctx context.Context, q *store.Queries, id int64) (reminderRow,
 		Reminder: store.Reminder{
 			ID: row.ID, VehicleID: row.VehicleID, ServiceCategoryID: row.ServiceCategoryID, Title: row.Title,
 			NextDueKm: row.NextDueKm, NextDueDate: row.NextDueDate, State: row.State, StateTrigger: row.StateTrigger,
+			NextDueHoursTenths: row.NextDueHoursTenths,
 		},
 		Make: row.Make, Model: row.Model, LicensePlate: row.LicensePlate, CurrentOdometerKm: row.CurrentOdometerKm,
-		OdometerUnit: row.OdometerUnit,
+		OdometerUnit: row.OdometerUnit, HasOdometer: row.HasOdometer, HourMeterName: row.HourMeterName, CurrentHoursTenths: row.CurrentHoursTenths,
 	}, nil
 }

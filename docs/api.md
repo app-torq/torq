@@ -100,6 +100,20 @@ torque in Nm, pressure in bar, displacement in cm³ and power in kW (`power_kw`,
 Integer storage loses nothing for whole miles, cubic inches or horsepower (sent as `power_w`). Still, send
 an unchanged stored value back as it was rather than converting it twice.
 
+### Hour meters (API level 6)
+
+Operating hours are sent as numbers in hours with at most one decimal (`1250.4`) and are never converted.
+
+- A vehicle lists its hour meters in `hour_meters` (at most one for now; treat it as a list). Service
+  entries, repair completions and reminder completions carry hours in `meter_readings` /
+  `completion_meter_readings`, keyed by `hour_meter_id`.
+- `has_odometer: false` marks a vehicle tracked by hours only. Its `current_odometer_km` stays an integer
+  (0) so older clients keep working, but it means nothing; show the hours instead. Likewise,
+  `odometer_recorded` / `completion_odometer_recorded` say whether an entry's `odometer_km` /
+  `completion_odometer_km` was recorded.
+- Reminders can have an hours interval (`hour_meter_id`, `interval_hours`, `lead_hours`); `state_trigger`
+  can then be `hours`. A `PATCH /reminders/{id}` without `hour_meter_id` keeps the hours settings.
+
 ## Errors
 
 Errors are JSON with a dotted code and never prose, so each client translates them:

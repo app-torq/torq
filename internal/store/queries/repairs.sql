@@ -56,7 +56,7 @@ WHERE (CAST(sqlc.arg(vehicle_id) AS INTEGER) = 0 OR r.vehicle_id = sqlc.arg(vehi
 -- name: UpdateRepair :one
 UPDATE repair_logs
 SET title = ?, symptom = ?, root_cause = ?, procedure_notes = ?, special_tools = ?, started_on = ?,
-    completed_on = ?, completion_odometer_km = ?, priority_id = ?, updated_at = ?
+    completed_on = ?, completion_odometer_km = ?, completion_odometer_recorded = ?, priority_id = ?, updated_at = ?
 WHERE id = ?
 RETURNING *;
 
@@ -65,7 +65,7 @@ UPDATE repair_logs SET updated_at = ? WHERE id = ?;
 
 -- name: SetRepairStatus :one
 UPDATE repair_logs
-SET status = ?, started_on = ?, completed_on = ?, completion_odometer_km = ?, updated_at = ?
+SET status = ?, started_on = ?, completed_on = ?, completion_odometer_km = ?, completion_odometer_recorded = ?, updated_at = ?
 WHERE id = ?
 RETURNING *;
 

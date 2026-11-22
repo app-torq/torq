@@ -14,6 +14,7 @@ import { ConfirmDialog } from '../../components/Dialog'
 import { Card, DefinitionList, ErrorBanner, Table } from '../../components/ui'
 import { invalidateOdometerDependents } from './hooks'
 import { OdometerQuickUpdate } from './OdometerQuickUpdate'
+import { AddHourMeter, HourMeterCard } from './HourMeterCard'
 import { useVehicleContext } from './VehicleDetailLayout'
 
 export function VehicleOverview() {
@@ -28,6 +29,7 @@ export function VehicleOverview() {
   const readings = useQuery({
     queryKey: queryKeys.odometerReadings(v.id),
     queryFn: () => api.get<ListResponse<OdometerReading>>(`/vehicles/${v.id}/odometer-readings`),
+    enabled: v.has_odometer,
   })
 
   const archive = useMutation({
@@ -60,10 +62,12 @@ export function VehicleOverview() {
             { label: t('fields.modelYear'), value: v.model_year ?? none },
             { label: t('fields.licensePlate'), value: v.license_plate ?? none },
             { label: t('fields.vin'), value: <span className="font-mono">{v.vin ?? none}</span> },
-            { label: t('fields.odometer'), value: <span className="tabular-nums">{fmt.distance(v.current_odometer_km, v.odometer_unit)}</span> },
+            ...(v.has_odometer ? [{ label: t('fields.odometer'), value: <span className="tabular-nums">{fmt.distance(v.current_odometer_km, v.odometer_unit)}</span> }] : []),
+            ...v.hour_meters.map((m) => ({ label: m.name, value: <span className="tabular-nums">{fmt.hours(m.current_hours)}</span> })),
           ]}
         />
       </Card>
+      {v.has_odometer && (
       <Card title={t('odometer.title')}>
         <div className="space-y-4">
           {!v.archived && <OdometerQuickUpdate vehicle={v} />}
@@ -88,6 +92,9 @@ export function VehicleOverview() {
           </div>
         </div>
       </Card>
+      )}
+      {v.hour_meters.map((m) => <HourMeterCard key={m.id} vehicle={v} meter={m} />)}
+      {v.has_odometer && v.hour_meters.length === 0 && !v.archived && <AddHourMeter vehicle={v} />}
       <Card className="lg:col-span-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="max-w-xl text-sm text-zinc-400">{t('archiveHint')}</p>

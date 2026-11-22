@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Pencil, Plus, Trash2, Wrench } from 'lucide-react'
 import { api } from '../../lib/api'
-import { distanceField, metricField, readDistance, readMetricField, type MetricField } from '../../lib/format'
+import { distanceField, hoursToInput, metricField, parseHours, readDistance, readMetricField, type MetricField } from '../../lib/format'
 import { TORQUE, type DistanceUnit } from '../../lib/units'
 import { useFormat } from '../../lib/useFormat'
 import { fieldErrors, useErrorText } from '../../lib/errors'
@@ -28,6 +28,7 @@ import { TagInput } from './TagInput'
 import { TagList } from './tags'
 import { PartsTable } from './PartsTable'
 import { BackLink } from '../../components/BackLink'
+import { entryReading } from '../vehicles/readings'
 
 export function RepairDetailPage() {
   const { id } = useParams()
@@ -93,7 +94,7 @@ export function RepairDetailPage() {
               items={[
                 { label: t('fields.startedOn'), value: r.started_on ? fmt.date(r.started_on) : none },
                 { label: t('fields.completedOn'), value: r.status === 'completed' && r.completed_on ? fmt.date(r.completed_on) : none },
-                { label: t('fields.completionOdometer'), value: r.status === 'completed' && r.completion_odometer_km !== null ? fmt.distance(r.completion_odometer_km, odometerUnit(r.vehicle_id)) : none },
+                { label: r.status === 'completed' && !r.completion_odometer_recorded ? t('fields.completionReading') : t('fields.completionOdometer'), value: r.status === 'completed' && r.completion_odometer_km !== null ? entryReading(fmt, odometerUnit(r.vehicle_id), r.completion_odometer_km, r.completion_odometer_recorded, r.completion_meter_readings) : none },
                 { label: t('parts.total'), value: <span className="tabular-nums">{fmt.money(r.parts_total_cents)}</span> },
               ]}
             />
@@ -218,6 +219,9 @@ function EditRepairDialog({ repair, unit, onClose }: { repair: Repair; unit: Dis
   const torqueSpec = TORQUE[user.torque_unit]
   const [initialKm] = useState(() => distanceField(repair.completion_odometer_km, unit, nf))
   const [completionKm, setCompletionKm] = useState(initialKm.text)
+  // The hours at completion, for the vehicle's meter.
+  const meter = useVehicle(repair.vehicle_id).data?.hour_meters[0]
+  const [completionHours, setCompletionHours] = useState(() => hoursToInput(repair.completion_meter_readings[0]?.hours, nf))
   const [torques, setTorques] = useState<TorqueDraft[]>(() =>
     repair.torque_specs.map((ts) => {
       const initial = metricField(ts.value_nm, torqueSpec, nf)
@@ -251,9 +255,16 @@ function EditRepairDialog({ repair, unit, onClose }: { repair: Repair; unit: Dis
     }
     if (repair.status === 'completed') {
       body.completed_on = completedOn
-      const km = readDistance(completionKm, initialKm, unit, nf)
-      if (km === null) errs.completion_odometer_km = 'validation.number'
-      body.completion_odometer_km = km
+      if (repair.completion_odometer_recorded) {
+        const km = readDistance(completionKm, initialKm, unit, nf)
+        if (km === null) errs.completion_odometer_km = 'validation.number'
+        body.completion_odometer_km = km
+      }
+      if (meter) {
+        const h = parseHours(completionHours, nf)
+        if (h === undefined || (!repair.completion_odometer_recorded && h === null)) errs.completion_meter_readings = 'validation.number'
+        body.completion_meter_readings = h == null ? [] : [{ hour_meter_id: meter.id, hours: h }]
+      }
     }
     setLocal(errs)
     if (Object.keys(errs).length === 0) save.mutate(body)
@@ -284,7 +295,8 @@ function EditRepairDialog({ repair, unit, onClose }: { repair: Repair; unit: Dis
           {repair.status === 'completed' && (
             <>
               <TextField label={t('fields.completedOn')} type="date" value={completedOn} onChange={setCompletedOn} error={fe.completed_on} />
-              <NumberField label={t('fields.completionOdometer')} unit={t(`common:units.${unit}`)} decimal={false} value={completionKm} onChange={setCompletionKm} error={fe.completion_odometer_km} />
+              {repair.completion_odometer_recorded && <NumberField label={t('fields.completionOdometer')} unit={t(`common:units.${unit}`)} decimal={false} value={completionKm} onChange={setCompletionKm} error={fe.completion_odometer_km} />}
+              {meter && <NumberField label={meter.name} unit={t('common:units.h')} value={completionHours} onChange={setCompletionHours} error={fe.completion_meter_readings} optional={repair.completion_odometer_recorded} />}
             </>
           )}
         </div>

@@ -36,6 +36,14 @@ func TestFormatting(t *testing.T) {
 	if got := de.Distance(215000, "km"); got != "215.000 km" {
 		t.Fatalf("distance km %q", got)
 	}
+	for tenths, want := range map[int64]string{12504: "1,250.4 h", 12620: "1,262 h", 3: "0.3 h", 0: "0 h"} {
+		if got := Default.Hours(tenths); got != want {
+			t.Errorf("hours %d: %q, want %q", tenths, got, want)
+		}
+	}
+	if got := de.Hours(12504); got != "1.250,4 h" {
+		t.Fatalf("de hours %q", got)
+	}
 	us := Locale{Lang: "en", DateFormat: "MM/DD/YYYY", NumberFormat: "point"}
 	if got := us.Date("2026-10-15"); got != "10/15/2026" {
 		t.Fatalf("us date %q", got)
