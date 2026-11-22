@@ -16,7 +16,7 @@ import { NumberField, NumberRangeField } from '../../components/NumberField'
 import { ConfirmDialog, Dialog } from '../../components/Dialog'
 import { Card, ErrorBanner, Loading, Notice } from '../../components/ui'
 import { useVehicleContext } from './VehicleDetailLayout'
-import { SpecEntryImages } from './SpecEntryImages'
+import { SpecEntryAttachments } from './SpecEntryAttachments'
 import { applyAutofill, editField, initialDraft, rangeMeta, toRequestBody, type AutofillSummary, type SpecUnits } from './specsDraft'
 
 interface SpecsResponse {
@@ -322,7 +322,7 @@ function CustomEntries({ vehicleId, entries }: { vehicleId: number; entries: Spe
             <div className="min-w-0 flex-1">
               <div className="text-sm font-medium text-zinc-100">{e.label}</div>
               {e.value && <div className="whitespace-pre-wrap text-sm text-zinc-300">{e.value}</div>}
-              <SpecEntryImages entry={e} vehicleId={vehicleId} />
+              <SpecEntryAttachments entry={e} vehicleId={vehicleId} />
             </div>
             <div className="flex shrink-0 items-start gap-0.5">
               <IconButton aria-label={t('common:actions.moveUp')} disabled={i === 0 || reorder.isPending} onClick={() => { move(i, -1) }}>

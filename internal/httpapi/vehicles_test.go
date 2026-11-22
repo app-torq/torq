@@ -252,6 +252,15 @@ func TestSpecSheet(t *testing.T) {
 	if len(specs.Entries) != 1 {
 		t.Fatalf("entries %+v", specs.Entries)
 	}
+
+	// Spec entries take PDFs as well as images (#27).
+	if rec := c.upload("/spec-entries/"+itoa(b.Entry.ID)+"/attachments", "belt-routing.pdf", testPDF, ""); rec.Code != http.StatusCreated {
+		t.Fatalf("pdf upload: %d %s", rec.Code, rec.Body)
+	}
+	c.call(http.MethodGet, base+"/specs", nil, http.StatusOK, &specs)
+	if got := specs.Entries[0].Attachments; len(got) != 1 || got[0].MimeType != "application/pdf" {
+		t.Fatalf("attachments %+v", got)
+	}
 }
 
 // TestVehicleProfileExtension covers the HSN/TSN and technical fields from
