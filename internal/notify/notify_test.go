@@ -312,3 +312,41 @@ func TestMessageUsesOdometerUnit(t *testing.T) {
 		}
 	}
 }
+
+// TestMessageUsesHours checks the notification for a reminder by hours on a
+// vehicle tracked by hours only: the text names hours left and the due point
+// in hours, never a distance, and the JSON carries the hour fields.
+func TestMessageUsesHours(t *testing.T) {
+	f := setup(t)
+	tractor, err := f.veh.Create(f.ctx, vehicles.Profile{Make: "Deutz", Model: "D 6206", NoOdometer: true,
+		InitialMeter: &vehicles.MeterInput{Name: "Engine hours", HoursTenths: 12620}}, 0, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	meters, err := f.veh.Meters(f.ctx, []int64{tractor.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	meter := meters[tractor.ID][0].ID
+	wh := f.webhook(t, f.srv.URL, WebhookInput{Enabled: true, DueSoon: true})
+	every := int64(250)
+	if _, err := f.rem.Create(f.ctx, reminders.Input{VehicleID: tractor.ID, Title: "Oil", HourMeterID: &meter, IntervalHours: &every}, 0); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.veh.QuickUpdateHours(f.ctx, meter, vehicles.HoursUpdate{HoursTenths: 14900}); err != nil {
+		t.Fatal(err)
+	}
+	d := f.deliveries(t, wh.ID)
+	if len(d) != 1 {
+		t.Fatalf("deliveries %d", len(d))
+	}
+	body := string(d[0].RequestBody)
+	for _, want := range []string{`"message":"22 h left (due at 1,512 h)"`, `"remaining_hours":22`, `"next_due_hours":1512`, `"hour_meter":"Engine hours"`, `"trigger":"hours"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("body lacks %s:\n%s", want, body)
+		}
+	}
+	if strings.Contains(body, " km") {
+		t.Errorf("hours-only vehicle mentions km:\n%s", body)
+	}
+}

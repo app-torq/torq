@@ -13,8 +13,9 @@ const (
 
 // Trigger values: which dimension produced the state.
 const (
-	TriggerKm   = "km"
-	TriggerTime = "time"
+	TriggerKm    = "km"
+	TriggerTime  = "time"
+	TriggerHours = "hours"
 )
 
 const dateLayout = "2006-01-02"
@@ -68,6 +69,8 @@ type Interval struct {
 	Km     *int64
 	Months *int64
 	Days   *int64
+	// HoursTenths is an hour meter interval in tenths of an hour.
+	HoursTenths *int64
 }
 
 // HasTime reports whether the interval has a time component.
@@ -87,23 +90,26 @@ func (i Interval) LengthDaysLowerBound() int64 {
 
 // Lead is the "due soon" threshold before the due point. Nil means zero.
 type Lead struct {
-	Km   *int64
-	Days *int64
+	Km          *int64
+	Days        *int64
+	HoursTenths *int64
 }
 
 // Baseline is the last time the work was done (or the manual start point).
 // Unknown marks a start point without a known last service: the work is due
 // at the baseline itself rather than one interval after it.
 type Baseline struct {
-	Date    Date
-	Km      int64
-	Unknown bool
+	Date        Date
+	Km          int64
+	HoursTenths int64
+	Unknown     bool
 }
 
 // Due is the next due point; a nil field means that dimension is not tracked.
 type Due struct {
-	Km   *int64
-	Date *Date
+	Km          *int64
+	Date        *Date
+	HoursTenths *int64
 }
 
 // NextDue adds the interval to the baseline, or returns the baseline itself
@@ -115,6 +121,10 @@ func NextDue(b Baseline, iv Interval) Due {
 			km := b.Km
 			due.Km = &km
 		}
+		if iv.HoursTenths != nil {
+			h := b.HoursTenths
+			due.HoursTenths = &h
+		}
 		if iv.HasTime() {
 			d := b.Date
 			due.Date = &d
@@ -124,6 +134,10 @@ func NextDue(b Baseline, iv Interval) Due {
 	if iv.Km != nil {
 		km := b.Km + *iv.Km
 		due.Km = &km
+	}
+	if iv.HoursTenths != nil {
+		h := b.HoursTenths + *iv.HoursTenths
+		due.HoursTenths = &h
 	}
 	switch {
 	case iv.Months != nil:
@@ -139,10 +153,11 @@ func NextDue(b Baseline, iv Interval) Due {
 // Status is the evaluated state with the remaining distance/time to the due point.
 // Remaining values are negative when overdue.
 type Status struct {
-	State         string
-	Trigger       string // "" when upcoming
-	RemainingKm   *int64
-	RemainingDays *int64
+	State                string
+	Trigger              string // "" when upcoming
+	RemainingKm          *int64
+	RemainingDays        *int64
+	RemainingHoursTenths *int64
 }
 
 func rank(state string) int {
@@ -159,26 +174,41 @@ func rank(state string) int {
 // Rank orders states by urgency (upcoming < due_soon < overdue).
 func Rank(state string) int { return rank(state) }
 
-// Evaluate computes the state for the current odometer and date:
-// overdue if any limit is reached, due_soon if within any lead threshold,
-// otherwise upcoming (data-model §6).
-func Evaluate(due Due, lead Lead, curKm int64, today Date) Status {
-	var st Status
-	kmState, timeState := Upcoming, Upcoming
-	if due.Km != nil {
-		remaining := *due.Km - curKm
-		st.RemainingKm = &remaining
-		leadKm := int64(0)
-		if lead.Km != nil {
-			leadKm = *lead.Km
-		}
-		switch {
-		case curKm >= *due.Km:
-			kmState = Overdue
-		case curKm >= *due.Km-leadKm:
-			kmState = DueSoon
-		}
+// usageState is the state of a usage dimension (distance or hours) at cur.
+func usageState(due, lead *int64, cur int64) (string, *int64) {
+	if due == nil {
+		return Upcoming, nil
 	}
+	remaining := *due - cur
+	l := int64(0)
+	if lead != nil {
+		l = *lead
+	}
+	switch {
+	case cur >= *due:
+		return Overdue, &remaining
+	case cur >= *due-l:
+		return DueSoon, &remaining
+	}
+	return Upcoming, &remaining
+}
+
+// Evaluate computes the state for the current odometer and date, for
+// reminders without an hours dimension.
+func Evaluate(due Due, lead Lead, curKm int64, today Date) Status {
+	return EvaluateWithHours(due, lead, curKm, 0, today)
+}
+
+// EvaluateWithHours computes the state for the current odometer, hour meter
+// and date: overdue if any limit is reached, due_soon if within any lead
+// threshold, otherwise upcoming (data-model §6). The trigger is the most
+// urgent dimension; ties go to km, then hours, then time.
+func EvaluateWithHours(due Due, lead Lead, curKm, curHoursTenths int64, today Date) Status {
+	var st Status
+	kmState, remKm := usageState(due.Km, lead.Km, curKm)
+	hoursState, remHours := usageState(due.HoursTenths, lead.HoursTenths, curHoursTenths)
+	st.RemainingKm, st.RemainingHoursTenths = remKm, remHours
+	timeState := Upcoming
 	if due.Date != nil {
 		remaining := int64(today.DaysUntil(*due.Date))
 		st.RemainingDays = &remaining
@@ -193,13 +223,11 @@ func Evaluate(due Due, lead Lead, curKm int64, today Date) Status {
 			timeState = DueSoon
 		}
 	}
-	switch {
-	case rank(kmState) >= rank(timeState) && kmState != Upcoming:
-		st.State, st.Trigger = kmState, TriggerKm
-	case timeState != Upcoming:
-		st.State, st.Trigger = timeState, TriggerTime
-	default:
-		st.State = Upcoming
+	st.State = Upcoming
+	for _, d := range []struct{ state, trigger string }{{kmState, TriggerKm}, {hoursState, TriggerHours}, {timeState, TriggerTime}} {
+		if d.state != Upcoming && rank(d.state) > rank(st.State) {
+			st.State, st.Trigger = d.state, d.trigger
+		}
 	}
 	return st
 }

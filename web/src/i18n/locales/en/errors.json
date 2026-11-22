@@ -62,7 +62,8 @@
     "tsn_invalid": "TSN must be exactly 3 letters or digits.",
     "displacement_out_of_range": "Displacement is out of range.",
     "power_out_of_range": "Power is out of range.",
-    "fuel_type_invalid": "Choose a fuel type from the list."
+    "fuel_type_invalid": "Choose a fuel type from the list.",
+    "tracking_required": "A vehicle needs an odometer, an hour meter or both."
   },
   "odometer": {
     "decrease_requires_confirmation": "Lowering the odometer needs confirmation.",
@@ -126,5 +127,12 @@
   },
   "priority": {
     "order_mismatch": "The priority list changed meanwhile. Reload and try again."
+  },
+  "hour_meter": {
+    "limit_reached": "This vehicle already has an hour meter.",
+    "in_use": "Service entries, repairs or reminders use this hour meter. Rename it instead.",
+    "required": "A vehicle without an odometer needs its hour meter.",
+    "decrease_requires_confirmation": "Lowering the hours needs confirmation.",
+    "large_jump_requires_confirmation": "This large jump needs confirmation."
   }
 }

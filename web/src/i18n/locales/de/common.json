@@ -44,6 +44,7 @@
     "quickActions": "Schnellaktionen"
   },
   "units": {
+    "h": "h",
     "km": "km",
     "mi": "mi",
     "l": "L",

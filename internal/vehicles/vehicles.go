@@ -78,6 +78,18 @@ type Profile struct {
 	// user's preference.
 	DisplacementUnit *string
 	PowerUnit        *string
+	// NoOdometer marks a vehicle tracked by hours only; it then needs an hour
+	// meter, and its current_odometer_km stays 0.
+	NoOdometer bool
+	// InitialMeter adds an hour meter on Create; Update ignores it.
+	InitialMeter *MeterInput
+}
+
+func boolInt(b bool) int64 {
+	if b {
+		return 1
+	}
+	return 0
 }
 
 func (p *Profile) normalize() {
@@ -160,14 +172,24 @@ func nullInt(p *int64) sql.NullInt64 {
 	return sql.NullInt64{Int64: *p, Valid: true}
 }
 
-// Create adds a vehicle with an empty spec sheet and an initial odometer reading.
+// Create adds a vehicle with an empty spec sheet and an initial odometer
+// reading, or, for a vehicle tracked by hours only, its hour meter.
 func (s *Service) Create(ctx context.Context, p Profile, odometerKm int64, createdBy int64) (store.Vehicle, error) {
 	p.normalize()
+	if p.NoOdometer {
+		odometerKm = 0
+	}
 	var v apperr.Validation
 	s.validate(p, &v)
 	v.Check(odometerKm < 0, "current_odometer_km", "validation.non_negative")
+	if p.InitialMeter != nil {
+		s.validateMeter(p.InitialMeter, &v, "hour_meters.")
+	}
 	if err := v.Err(); err != nil {
 		return store.Vehicle{}, err
+	}
+	if p.NoOdometer && p.InitialMeter == nil {
+		return store.Vehicle{}, apperr.Unprocessable("vehicle.tracking_required", nil)
 	}
 	var out store.Vehicle
 	err := s.DB.WithTx(ctx, func(tx *sql.Tx) error {
@@ -180,7 +202,7 @@ func (s *Service) Create(ctx context.Context, p Profile, odometerKm int64, creat
 			Hsn: nullStringPtr(p.HSN), Tsn: nullStringPtr(p.TSN), DisplacementCc: nullInt(p.DisplacementCC),
 			PowerKw: nullInt(p.PowerKW), PowerW: nullInt(p.PowerW), FuelType: nullStringPtr(p.FuelType),
 			OdometerUnit: p.OdometerUnit, DisplacementUnit: nullStringPtr(p.DisplacementUnit), PowerUnit: nullStringPtr(p.PowerUnit),
-			CurrentOdometerKm: odometerKm, CreatedBy: sql.NullInt64{Int64: createdBy, Valid: createdBy > 0},
+			HasOdometer: boolInt(!p.NoOdometer), CurrentOdometerKm: odometerKm, CreatedBy: sql.NullInt64{Int64: createdBy, Valid: createdBy > 0},
 			CreatedAt: now, UpdatedAt: now,
 		})
 		if err != nil {
@@ -188,6 +210,14 @@ func (s *Service) Create(ctx context.Context, p Profile, odometerKm int64, creat
 		}
 		if err := q.CreateVehicleSpecs(ctx, store.CreateVehicleSpecsParams{VehicleID: out.ID, UpdatedAt: now}); err != nil {
 			return err
+		}
+		if p.InitialMeter != nil {
+			if _, err := s.createMeter(ctx, q, out.ID, *p.InitialMeter); err != nil {
+				return err
+			}
+		}
+		if p.NoOdometer {
+			return nil
 		}
 		_, err = q.InsertOdometerReading(ctx, store.InsertOdometerReadingParams{
 			VehicleID: out.ID, ReadingDate: s.Clock.Today(), OdometerKm: odometerKm, Source: SourceInitial, CreatedAt: now,
@@ -225,7 +255,8 @@ func (s *Service) List(ctx context.Context, filter ArchiveFilter) ([]store.Vehic
 	return store.New(s.DB.Reader).ListVehicles(ctx, int64(filter))
 }
 
-// Update replaces the profile fields (not the odometer).
+// Update replaces the profile fields (not the odometer). Turning the odometer
+// off needs an hour meter; turning it back on keeps the last odometer value.
 func (s *Service) Update(ctx context.Context, id int64, p Profile) (store.Vehicle, error) {
 	p.normalize()
 	var v apperr.Validation
@@ -233,17 +264,39 @@ func (s *Service) Update(ctx context.Context, id int64, p Profile) (store.Vehicl
 	if err := v.Err(); err != nil {
 		return store.Vehicle{}, err
 	}
-	out, err := store.New(s.DB.Writer).UpdateVehicleProfile(ctx, store.UpdateVehicleProfileParams{
-		Make: p.Make, Model: p.Model, ChassisCode: p.ChassisCode, ModelYear: nullInt(p.ModelYear),
-		EngineCode: p.EngineCode, Vin: nullString(p.VIN), LicensePlate: nullString(p.LicensePlate),
-		Hsn: nullStringPtr(p.HSN), Tsn: nullStringPtr(p.TSN), DisplacementCc: nullInt(p.DisplacementCC),
-		PowerKw: nullInt(p.PowerKW), PowerW: nullInt(p.PowerW), FuelType: nullStringPtr(p.FuelType),
-		OdometerUnit: p.OdometerUnit, DisplacementUnit: nullStringPtr(p.DisplacementUnit), PowerUnit: nullStringPtr(p.PowerUnit),
-		UpdatedAt: clock.Timestamp(s.Clock.Now()), ID: id,
-	})
-	if errors.Is(err, sql.ErrNoRows) {
-		return store.Vehicle{}, apperr.NotFound()
+	if p.NoOdometer {
+		meters, err := MetersFor(ctx, store.New(s.DB.Reader), []int64{id})
+		if err != nil {
+			return store.Vehicle{}, err
+		}
+		if len(meters[id]) == 0 {
+			if _, err := s.Get(ctx, id); err != nil {
+				return store.Vehicle{}, err
+			}
+			return store.Vehicle{}, apperr.Unprocessable("vehicle.tracking_required", nil)
+		}
 	}
+	var out store.Vehicle
+	err := s.DB.WithTx(ctx, func(tx *sql.Tx) error {
+		q := store.New(tx)
+		cur, err := Get(ctx, q, id)
+		if err != nil {
+			return err
+		}
+		out, err = q.UpdateVehicleProfile(ctx, store.UpdateVehicleProfileParams{
+			Make: p.Make, Model: p.Model, ChassisCode: p.ChassisCode, ModelYear: nullInt(p.ModelYear),
+			EngineCode: p.EngineCode, Vin: nullString(p.VIN), LicensePlate: nullString(p.LicensePlate),
+			Hsn: nullStringPtr(p.HSN), Tsn: nullStringPtr(p.TSN), DisplacementCc: nullInt(p.DisplacementCC),
+			PowerKw: nullInt(p.PowerKW), PowerW: nullInt(p.PowerW), FuelType: nullStringPtr(p.FuelType),
+			OdometerUnit: p.OdometerUnit, DisplacementUnit: nullStringPtr(p.DisplacementUnit), PowerUnit: nullStringPtr(p.PowerUnit),
+			HasOdometer: boolInt(!p.NoOdometer), UpdatedAt: clock.Timestamp(s.Clock.Now()), ID: id,
+		})
+		if err != nil || cur.HasOdometer == out.HasOdometer {
+			return err
+		}
+		// Reminders ignore distance on vehicles without an odometer.
+		return s.afterChange(ctx, tx, id)
+	})
 	return out, err
 }
 

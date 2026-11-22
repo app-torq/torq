@@ -75,6 +75,26 @@ type CatalogVehicle struct {
 	GenerationDeKey string
 }
 
+type HourMeter struct {
+	ID                 int64
+	VehicleID          int64
+	Name               string
+	CurrentHoursTenths int64
+	CreatedAt          string
+	UpdatedAt          string
+}
+
+type HourMeterReading struct {
+	ID           int64
+	HourMeterID  int64
+	ReadingDate  string
+	HoursTenths  int64
+	Source       string
+	ServiceLogID sql.NullInt64
+	RepairLogID  sql.NullInt64
+	CreatedAt    string
+}
+
 type InstanceSetting struct {
 	ID                      int64
 	WeeklyDigestWeekday     int64
@@ -105,30 +125,36 @@ type OdometerReading struct {
 }
 
 type Reminder struct {
-	ID                 int64
-	VehicleID          int64
-	ServiceCategoryID  sql.NullInt64
-	Title              string
-	IntervalKm         sql.NullInt64
-	IntervalMonths     sql.NullInt64
-	IntervalDays       sql.NullInt64
-	LeadKm             sql.NullInt64
-	LeadDays           sql.NullInt64
-	StartDate          string
-	StartOdometerKm    int64
-	LastDoneDate       sql.NullString
-	LastDoneOdometerKm sql.NullInt64
-	NextDueKm          sql.NullInt64
-	NextDueDate        sql.NullString
-	State              string
-	StateTrigger       sql.NullString
-	StateChangedAt     string
-	LastNotifiedState  string
-	PausedAt           sql.NullString
-	CreatedBy          sql.NullInt64
-	CreatedAt          string
-	UpdatedAt          string
-	LastDoneUnknown    int64
+	ID                  int64
+	VehicleID           int64
+	ServiceCategoryID   sql.NullInt64
+	Title               string
+	IntervalKm          sql.NullInt64
+	IntervalMonths      sql.NullInt64
+	IntervalDays        sql.NullInt64
+	LeadKm              sql.NullInt64
+	LeadDays            sql.NullInt64
+	StartDate           string
+	StartOdometerKm     int64
+	LastDoneDate        sql.NullString
+	LastDoneOdometerKm  sql.NullInt64
+	NextDueKm           sql.NullInt64
+	NextDueDate         sql.NullString
+	State               string
+	StateTrigger        sql.NullString
+	StateChangedAt      string
+	LastNotifiedState   string
+	PausedAt            sql.NullString
+	CreatedBy           sql.NullInt64
+	CreatedAt           string
+	UpdatedAt           string
+	LastDoneUnknown     int64
+	HourMeterID         sql.NullInt64
+	IntervalHours       sql.NullInt64
+	LeadHours           sql.NullInt64
+	StartHoursTenths    sql.NullInt64
+	LastDoneHoursTenths sql.NullInt64
+	NextDueHoursTenths  sql.NullInt64
 }
 
 type RepairFaultCode struct {
@@ -138,21 +164,22 @@ type RepairFaultCode struct {
 }
 
 type RepairLog struct {
-	ID                   int64
-	VehicleID            int64
-	Title                string
-	Status               string
-	Symptom              string
-	RootCause            string
-	ProcedureNotes       string
-	SpecialTools         string
-	StartedOn            sql.NullString
-	CompletedOn          sql.NullString
-	CompletionOdometerKm sql.NullInt64
-	CreatedBy            sql.NullInt64
-	CreatedAt            string
-	UpdatedAt            string
-	PriorityID           sql.NullInt64
+	ID                         int64
+	VehicleID                  int64
+	Title                      string
+	Status                     string
+	Symptom                    string
+	RootCause                  string
+	ProcedureNotes             string
+	SpecialTools               string
+	StartedOn                  sql.NullString
+	CompletedOn                sql.NullString
+	CompletionOdometerKm       sql.NullInt64
+	CreatedBy                  sql.NullInt64
+	CreatedAt                  string
+	UpdatedAt                  string
+	PriorityID                 sql.NullInt64
+	CompletionOdometerRecorded int64
 }
 
 type RepairLogTag struct {
@@ -214,16 +241,17 @@ type ServiceCategory struct {
 }
 
 type ServiceLog struct {
-	ID             int64
-	VehicleID      int64
-	ServiceDate    string
-	OdometerKm     int64
-	Notes          string
-	ExtraCostCents int64
-	ExtraCostLabel string
-	CreatedBy      sql.NullInt64
-	CreatedAt      string
-	UpdatedAt      string
+	ID               int64
+	VehicleID        int64
+	ServiceDate      string
+	OdometerKm       int64
+	Notes            string
+	ExtraCostCents   int64
+	ExtraCostLabel   string
+	CreatedBy        sql.NullInt64
+	CreatedAt        string
+	UpdatedAt        string
+	OdometerRecorded int64
 }
 
 type ServiceLogItem struct {
@@ -311,6 +339,7 @@ type Vehicle struct {
 	PowerW            sql.NullInt64
 	DisplacementUnit  sql.NullString
 	PowerUnit         sql.NullString
+	HasOdometer       int64
 }
 
 type VehicleSpec struct {

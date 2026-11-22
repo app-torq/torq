@@ -23,7 +23,11 @@
     "perKm": "{{value}}/km",
     "costPerMi": "Kosten pro Meile",
     "perMi": "{{value}}/mi",
-    "costPerDistance": "Kosten pro Strecke"
+    "costPerDistance": "Kosten pro Strecke",
+    "costPerHour": "Kosten pro Stunde",
+    "hours": "Betriebsstunden",
+    "perHour": "{{value}}/h",
+    "costPerDistanceOrHour": "Kosten pro Strecke bzw. Stunde"
   },
   "breakdown": {
     "bySource": "Wartung vs. Reparaturprojekte",

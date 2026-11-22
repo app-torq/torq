@@ -111,9 +111,10 @@ func (s *Service) digestMessage(ctx context.Context, q *store.Queries, event str
 			Reminder: store.Reminder{
 				ID: row.ID, VehicleID: row.VehicleID, ServiceCategoryID: row.ServiceCategoryID, Title: row.Title,
 				NextDueKm: row.NextDueKm, NextDueDate: row.NextDueDate, State: row.State, StateTrigger: row.StateTrigger,
+				NextDueHoursTenths: row.NextDueHoursTenths,
 			},
 			Make: row.Make, Model: row.Model, LicensePlate: row.LicensePlate, CurrentOdometerKm: row.CurrentOdometerKm,
-			OdometerUnit: row.OdometerUnit,
+			OdometerUnit: row.OdometerUnit, HasOdometer: row.HasOdometer, HourMeterName: row.HourMeterName, CurrentHoursTenths: row.CurrentHoursTenths,
 		}
 		rem, veh, line := s.describe(ctx, q, r, loc)
 		item := presets.DigestItem{Reminder: rem, Vehicle: veh, Line: line}

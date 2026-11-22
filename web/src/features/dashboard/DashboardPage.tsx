@@ -6,7 +6,8 @@ import { vehicleName } from '../../lib/types'
 import { Badge, Card, EmptyState, ErrorBanner, Loading, PageHeader } from '../../components/ui'
 import { useVehicles } from '../vehicles/hooks'
 import { VehicleAvatar } from '../vehicles/VehicleAvatar'
-import { OdometerQuickUpdate } from '../vehicles/OdometerQuickUpdate'
+import { VehicleReadingUpdate } from '../vehicles/VehicleReadingUpdate'
+import { currentReading } from '../vehicles/readings'
 import { dashboardPanels } from './panels'
 import { InstallHint } from '../../app/pwa/InstallHint'
 
@@ -41,14 +42,14 @@ export function DashboardPage() {
                     {vehicleName(v)}
                   </Link>
                   <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-400">
-                    <span className="tabular-nums">{fmt.distance(v.current_odometer_km, v.odometer_unit)}</span>
+                    <span className="tabular-nums">{currentReading(v, fmt, t)}</span>
                     {v.reminder_counts.overdue > 0 && <Badge tone="red">{v.reminder_counts.overdue}</Badge>}
                     {v.reminder_counts.due_soon > 0 && <Badge tone="amber">{v.reminder_counts.due_soon}</Badge>}
                   </div>
                 </div>
               </div>
               <div className="mt-3">
-                <OdometerQuickUpdate vehicle={v} compact />
+                <VehicleReadingUpdate vehicle={v} compact />
               </div>
             </Card>
           ))}

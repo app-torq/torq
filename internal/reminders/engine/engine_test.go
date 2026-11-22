@@ -143,3 +143,54 @@ func TestNilLeadIsZero(t *testing.T) {
 		t.Fatalf("nil lead must not create a due-soon window, got %s", st.State)
 	}
 }
+
+// TestHoursDimension covers reminders by operating hours (in tenths): every
+// 250 h or 12 months with a 25 h / 30 day lead, last done at 1,262 h.
+func TestHoursDimension(t *testing.T) {
+	b := Baseline{Date: MustDate("2026-10-15"), HoursTenths: 12620}
+	iv := Interval{HoursTenths: i64(2500), Months: i64(12)}
+	due := NextDue(b, iv)
+	if due.HoursTenths == nil || *due.HoursTenths != 15120 || due.Date.String() != "2027-10-15" || due.Km != nil {
+		t.Fatalf("due %+v", due)
+	}
+	lead := Lead{HoursTenths: i64(250), Days: i64(30)}
+	today := MustDate("2026-11-01")
+	for _, c := range []struct {
+		hours        int64
+		today        Date
+		state, trig  string
+		remainTenths int64
+	}{
+		{14869, today, Upcoming, "", 251},
+		{14870, today, DueSoon, TriggerHours, 250},
+		{15119, today, DueSoon, TriggerHours, 1},
+		{15120, today, Overdue, TriggerHours, 0},
+		{15500, today, Overdue, TriggerHours, -380},
+		// Time comes first: hours far from due, date past due.
+		{13000, MustDate("2027-10-15"), Overdue, TriggerTime, 2120},
+		// Time due soon, hours overdue: the more urgent state wins.
+		{15200, MustDate("2027-09-20"), Overdue, TriggerHours, -80},
+	} {
+		st := EvaluateWithHours(due, lead, 0, c.hours, c.today)
+		if st.State != c.state || st.Trigger != c.trig || st.RemainingHoursTenths == nil || *st.RemainingHoursTenths != c.remainTenths {
+			t.Errorf("hours %d on %s: %+v (remaining %v)", c.hours, c.today, st, st.RemainingHoursTenths)
+		}
+	}
+
+	// Ties between equally urgent dimensions go to km, then hours, then time.
+	all := Due{Km: i64(1000), HoursTenths: i64(100), Date: ptrDate(MustDate("2026-11-01"))}
+	if st := EvaluateWithHours(all, Lead{}, 1000, 100, MustDate("2026-11-01")); st.Trigger != TriggerKm {
+		t.Fatalf("km tie %+v", st)
+	}
+	if st := EvaluateWithHours(all, Lead{}, 999, 100, MustDate("2026-11-01")); st.Trigger != TriggerHours {
+		t.Fatalf("hours tie %+v", st)
+	}
+
+	// Never done: due at the start reading right away; a nil lead is zero.
+	never := NextDue(Baseline{Date: MustDate("2026-11-01"), HoursTenths: 12504, Unknown: true}, Interval{HoursTenths: i64(2500)})
+	if st := EvaluateWithHours(never, Lead{}, 0, 12504, MustDate("2026-11-01")); st.State != Overdue || st.Trigger != TriggerHours {
+		t.Fatalf("never done %+v", st)
+	}
+}
+
+func ptrDate(d Date) *Date { return &d }

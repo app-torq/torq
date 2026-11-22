@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../lib/api'
 import { queryKeys } from '../../lib/queryKeys'
-import { distanceField, parseNumber, readDistance, type MetricField } from '../../lib/format'
+import { distanceField, hoursToInput, parseHours, parseNumber, readDistance, type MetricField } from '../../lib/format'
 import { kmIn, type DistanceUnit } from '../../lib/units'
 import { fieldErrors, useErrorText } from '../../lib/errors'
 import { vehicleName, type Reminder } from '../../lib/types'
@@ -40,6 +40,10 @@ export function ReminderForm({ reminder, vehicleId, onClose }: Props) {
   const categories = useCategories(reminder !== null)
 
   const [vehicle, setVehicle] = useState(String(reminder?.vehicle_id ?? vehicleId ?? ''))
+  // Distance only for vehicles with an odometer; hours for vehicles with a meter.
+  const selected = vehicles.data?.items.find((v) => String(v.id) === vehicle)
+  const hasOdometer = selected?.has_odometer ?? true
+  const meter = selected?.hour_meters[0]
   const unitOf = useOdometerUnit()
   const unit = vehicle ? unitOf(Number(vehicle)) : user.distance_unit
   // Distances are entered in the vehicle's unit; untouched fields keep their km.
@@ -58,6 +62,9 @@ export function ReminderForm({ reminder, vehicleId, onClose }: Props) {
   const [startDate, setStartDate] = useState(reminder?.start_date ?? '')
   const [startKm, setStartKm] = useState(initial.startKm.text)
   const [unknown, setUnknown] = useState(reminder?.last_done_unknown ?? false)
+  const [intervalHours, setIntervalHours] = useState(str(reminder?.interval_hours))
+  const [leadHours, setLeadHours] = useState(str(reminder?.lead_hours))
+  const [startHours, setStartHours] = useState(hoursToInput(reminder?.hour_meter_id ? reminder.start_hours : null, nf))
   const [local, setLocal] = useState<Record<string, string>>({})
 
   const save = useMutation({
@@ -74,7 +81,7 @@ export function ReminderForm({ reminder, vehicleId, onClose }: Props) {
     setCategoryId(id)
     const c = categories.data?.items.find((x) => String(x.id) === id)
     if (c && !reminder && intervalKm === '' && intervalTime === '') {
-      setIntervalKm(defaultInterval(c.default_interval_km, unit))
+      if (hasOdometer) setIntervalKm(defaultInterval(c.default_interval_km, unit))
       setIntervalTime(str(c.default_interval_months))
       setTimeUnit('months')
     }
@@ -103,12 +110,22 @@ export function ReminderForm({ reminder, vehicleId, onClose }: Props) {
       vehicle_id: Number(vehicle),
       service_category_id: kind === 'linked' && categoryId ? Number(categoryId) : null,
       title: kind === 'standalone' ? title : '',
-      interval_km: dist('interval_km', intervalKm, initial.intervalKm),
+      interval_km: hasOdometer ? dist('interval_km', intervalKm, initial.intervalKm) : null,
       interval_months: timeUnit === 'months' ? time : null,
       interval_days: timeUnit === 'days' ? time : null,
       start_date: startDate,
-      start_odometer_km: dist('start_odometer_km', startKm, initial.startKm),
       last_done_unknown: unknown,
+    }
+    if (hasOdometer) body.start_odometer_km = dist('start_odometer_km', startKm, initial.startKm)
+    const ih = meter ? int('interval_hours', intervalHours) : null
+    body.hour_meter_id = meter && ih !== null ? meter.id : null
+    body.interval_hours = ih
+    const lh = ih !== null ? int('lead_hours', leadHours) : null
+    if (reminder || lh !== null) body.lead_hours = lh
+    if (meter && ih !== null && startHours.trim() !== '') {
+      const h = parseHours(startHours, nf)
+      if (h === null || h === undefined) errs.start_hours = 'validation.number'
+      else body.start_hours = h
     }
     const lk = dist('lead_km', leadKm, initial.leadKm)
     const ld = int('lead_days', leadDays)
@@ -165,7 +182,8 @@ export function ReminderForm({ reminder, vehicleId, onClose }: Props) {
           ) : (
             <TextField label={t('fields.title')} value={title} onChange={setTitle} hint={t('fields.titleHint')} error={fe.title} maxLength={120} className="sm:col-span-2" />
           )}
-          <NumberField label={t('fields.intervalKm')} unit={km} decimal={false} value={intervalKm} onChange={setIntervalKm} error={fe.interval_km} optional />
+          {hasOdometer && <NumberField label={t('fields.intervalKm')} unit={km} decimal={false} value={intervalKm} onChange={setIntervalKm} error={fe.interval_km} optional />}
+          {meter && <NumberField label={t('fields.intervalHours', { name: meter.name })} unit={t('common:units.h')} decimal={false} value={intervalHours} onChange={setIntervalHours} error={fe.interval_hours ?? fe.hour_meter_id} optional />}
           <FieldPair>
             <NumberField label={t('fields.intervalTime')} decimal={false} value={intervalTime} onChange={setIntervalTime} error={fe.interval_months ?? fe.interval_days} className="flex-1" optional />
             <SelectField
@@ -176,7 +194,8 @@ export function ReminderForm({ reminder, vehicleId, onClose }: Props) {
               className="w-32"
             />
           </FieldPair>
-          <NumberField label={t('fields.leadKm')} unit={km} decimal={false} value={leadKm} onChange={setLeadKm} error={fe.lead_km} hint={t('fields.leadHint')} optional />
+          {hasOdometer && <NumberField label={t('fields.leadKm')} unit={km} decimal={false} value={leadKm} onChange={setLeadKm} error={fe.lead_km} hint={t('fields.leadHint')} optional />}
+          {meter && <NumberField label={t('fields.leadHours')} unit={t('common:units.h')} decimal={false} value={leadHours} onChange={setLeadHours} error={fe.lead_hours} hint={t('fields.leadHoursHint')} optional />}
           <NumberField label={t('fields.leadDays')} unit={t('fields.days')} decimal={false} value={leadDays} onChange={setLeadDays} error={fe.lead_days} optional />
           <div className="sm:col-span-2">
             <Checkbox label={t('fields.lastDoneUnknown')} checked={unknown} onChange={setUnknown} />
@@ -185,7 +204,8 @@ export function ReminderForm({ reminder, vehicleId, onClose }: Props) {
           {!unknown && (
             <>
               <TextField label={t('fields.startDate')} type="date" value={startDate} onChange={setStartDate} error={fe.start_date} hint={t('fields.startHint')} optional />
-              <NumberField label={t('fields.startOdometer')} unit={km} decimal={false} value={startKm} onChange={setStartKm} error={fe.start_odometer_km} optional />
+              {hasOdometer && <NumberField label={t('fields.startOdometer')} unit={km} decimal={false} value={startKm} onChange={setStartKm} error={fe.start_odometer_km} optional />}
+              {meter && <NumberField label={t('fields.startHours', { name: meter.name })} unit={t('common:units.h')} value={startHours} onChange={setStartHours} error={fe.start_hours} optional />}
             </>
           )}
         </div>

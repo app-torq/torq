@@ -7,7 +7,8 @@ import { vehicleName, type Vehicle } from '../lib/types'
 import { Dialog } from '../components/Dialog'
 import { inputClass } from '../components/Field'
 import { useVehicles } from '../features/vehicles/hooks'
-import { OdometerQuickUpdate } from '../features/vehicles/OdometerQuickUpdate'
+import { VehicleReadingUpdate } from '../features/vehicles/VehicleReadingUpdate'
+import { currentReading } from '../features/vehicles/readings'
 import { quickActions, type QuickActionDef } from './paletteActions'
 
 /** Opens the palette on Ctrl/⌘+K. */
@@ -54,7 +55,7 @@ function Palette({ onClose }: { onClose: () => void }) {
     }
     if (step.kind === 'vehicle') {
       return (vehicles.data?.items ?? [])
-        .map((v) => ({ key: String(v.id), label: `${vehicleName(v)} · ${fmt.distance(v.current_odometer_km, v.odometer_unit)}`, icon: undefined, run: () => { pickVehicle(step.action, v) } }))
+        .map((v) => ({ key: String(v.id), label: `${vehicleName(v)} · ${currentReading(v, fmt, t)}`, icon: undefined, run: () => { pickVehicle(step.action, v) } }))
         .filter((i) => i.label.toLowerCase().includes(q))
     }
     return []
@@ -105,7 +106,7 @@ function Palette({ onClose }: { onClose: () => void }) {
     return (
       <div className="space-y-3">
         <p className="text-sm text-zinc-400">{vehicleName(step.vehicle)}</p>
-        <OdometerQuickUpdate vehicle={step.vehicle} onDone={onClose} autoFocus />
+        <VehicleReadingUpdate vehicle={step.vehicle} onDone={onClose} autoFocus />
       </div>
     )
   }

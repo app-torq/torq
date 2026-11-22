@@ -15,35 +15,38 @@ type reminderCounts struct {
 }
 
 type vehicleJSON struct {
-	ID                int64          `json:"id"`
-	Make              string         `json:"make"`
-	Model             string         `json:"model"`
-	ChassisCode       string         `json:"chassis_code"`
-	ModelYear         *int64         `json:"model_year"`
-	EngineCode        string         `json:"engine_code"`
-	VIN               *string        `json:"vin"`
-	LicensePlate      *string        `json:"license_plate"`
-	HSN               *string        `json:"hsn"`
-	TSN               *string        `json:"tsn"`
-	DisplacementCC    *int64         `json:"displacement_cc"`
-	PowerKW           *int64         `json:"power_kw"`
-	PowerW            *int64         `json:"power_w"`
-	FuelType          *string        `json:"fuel_type"`
-	CurrentOdometerKm int64          `json:"current_odometer_km"`
-	OdometerUnit      string         `json:"odometer_unit"`
-	DisplacementUnit  *string        `json:"displacement_unit"`
-	PowerUnit         *string        `json:"power_unit"`
-	AvatarURL         *string        `json:"avatar_url"`
-	Archived          bool           `json:"archived"`
-	ReminderCounts    reminderCounts `json:"reminder_counts"`
-	CreatedAt         string         `json:"created_at"`
-	UpdatedAt         string         `json:"updated_at"`
+	ID                int64           `json:"id"`
+	Make              string          `json:"make"`
+	Model             string          `json:"model"`
+	ChassisCode       string          `json:"chassis_code"`
+	ModelYear         *int64          `json:"model_year"`
+	EngineCode        string          `json:"engine_code"`
+	VIN               *string         `json:"vin"`
+	LicensePlate      *string         `json:"license_plate"`
+	HSN               *string         `json:"hsn"`
+	TSN               *string         `json:"tsn"`
+	DisplacementCC    *int64          `json:"displacement_cc"`
+	PowerKW           *int64          `json:"power_kw"`
+	PowerW            *int64          `json:"power_w"`
+	FuelType          *string         `json:"fuel_type"`
+	CurrentOdometerKm int64           `json:"current_odometer_km"`
+	HasOdometer       bool            `json:"has_odometer"`
+	HourMeters        []hourMeterJSON `json:"hour_meters"`
+	OdometerUnit      string          `json:"odometer_unit"`
+	DisplacementUnit  *string         `json:"displacement_unit"`
+	PowerUnit         *string         `json:"power_unit"`
+	AvatarURL         *string         `json:"avatar_url"`
+	Archived          bool            `json:"archived"`
+	ReminderCounts    reminderCounts  `json:"reminder_counts"`
+	CreatedAt         string          `json:"created_at"`
+	UpdatedAt         string          `json:"updated_at"`
 }
 
 // vehicleExtras are derived values shown on vehicle cards.
 type vehicleExtras struct {
 	counts map[int64]reminderCounts
 	avatar map[int64]string
+	meters map[int64][]store.HourMeter
 }
 
 func (s *Server) toVehicleJSON(v store.Vehicle, x vehicleExtras) vehicleJSON {
@@ -52,6 +55,7 @@ func (s *Server) toVehicleJSON(v store.Vehicle, x vehicleExtras) vehicleJSON {
 		EngineCode: v.EngineCode, VIN: strPtr(v.Vin), LicensePlate: strPtr(v.LicensePlate),
 		HSN: strPtr(v.Hsn), TSN: strPtr(v.Tsn), DisplacementCC: intPtr(v.DisplacementCc), PowerKW: intPtr(v.PowerKw),
 		PowerW: intPtr(v.PowerW), FuelType: strPtr(v.FuelType), CurrentOdometerKm: v.CurrentOdometerKm,
+		HasOdometer: v.HasOdometer == 1, HourMeters: toHourMetersJSON(x.meters[v.ID]),
 		OdometerUnit: v.OdometerUnit, DisplacementUnit: strPtr(v.DisplacementUnit), PowerUnit: strPtr(v.PowerUnit), Archived: v.ArchivedAt.Valid,
 		ReminderCounts: x.counts[v.ID], CreatedAt: v.CreatedAt, UpdatedAt: v.UpdatedAt,
 	}
@@ -72,6 +76,9 @@ func (s *Server) loadVehicleExtras(ctx context.Context) (vehicleExtras, error) {
 		x.counts[id] = reminderCounts{DueSoon: c[0], Overdue: c[1]}
 	}
 	if x.avatar, err = s.vehicleAvatars(ctx); err != nil {
+		return x, err
+	}
+	if x.meters, err = s.vehicles.AllMeters(ctx); err != nil {
 		return x, err
 	}
 	return x, nil
@@ -103,6 +110,13 @@ type vehicleInput struct {
 	OdometerUnit      *string `json:"odometer_unit"`
 	DisplacementUnit  *string `json:"displacement_unit"`
 	PowerUnit         *string `json:"power_unit"`
+	HasOdometer       *bool   `json:"has_odometer"`
+	// HourMeters adds meters on create only.
+	HourMeters []struct {
+		Name        string   `json:"name"`
+		Hours       *float64 `json:"hours"`
+		ReadingDate string   `json:"reading_date"`
+	} `json:"hour_meters"`
 }
 
 func (in vehicleInput) profile() vehicles.Profile {
@@ -110,6 +124,7 @@ func (in vehicleInput) profile() vehicles.Profile {
 		Make: in.Make, Model: in.Model, ChassisCode: in.ChassisCode, ModelYear: in.ModelYear, EngineCode: in.EngineCode,
 		HSN: in.HSN, TSN: in.TSN, DisplacementCC: in.DisplacementCC, PowerKW: in.PowerKW, PowerW: in.PowerW,
 		FuelType: in.FuelType, DisplacementUnit: in.DisplacementUnit, PowerUnit: in.PowerUnit,
+		NoOdometer: in.HasOdometer != nil && !*in.HasOdometer,
 	}
 	if in.OdometerUnit != nil {
 		p.OdometerUnit = *in.OdometerUnit
@@ -155,20 +170,34 @@ func (s *Server) createVehicle(w http.ResponseWriter, r *http.Request) error {
 	if err := decodeJSON(w, r, &in); err != nil {
 		return err
 	}
-	if in.CurrentOdometerKm == nil {
-		var v apperr.Validation
-		v.Add("current_odometer_km", "validation.required")
-		return v.Err()
-	}
 	if in.OdometerUnit == nil {
 		unit := currentUser(r).Prefs.DistanceUnit
 		in.OdometerUnit = &unit
 	}
-	v, err := s.vehicles.Create(r.Context(), in.profile(), *in.CurrentOdometerKm, currentUser(r).ID)
+	noOdometer := in.HasOdometer != nil && !*in.HasOdometer
+	var v apperr.Validation
+	v.Check(in.CurrentOdometerKm == nil && !noOdometer, "current_odometer_km", "validation.required")
+	v.Check(len(in.HourMeters) > 1, "hour_meters", "hour_meter.limit_reached")
+	p := in.profile()
+	for _, m := range in.HourMeters {
+		hours := 0.0
+		v.Check(m.Hours == nil, "hour_meters.hours", "validation.required")
+		if m.Hours != nil {
+			hours = *m.Hours
+		}
+		p.InitialMeter = &vehicles.MeterInput{Name: m.Name, HoursTenths: hoursField(hours, "hour_meters.hours", &v), ReadingDate: m.ReadingDate}
+	}
+	if err := v.Err(); err != nil {
+		return err
+	}
+	if in.CurrentOdometerKm == nil {
+		in.CurrentOdometerKm = new(int64)
+	}
+	veh, err := s.vehicles.Create(r.Context(), p, *in.CurrentOdometerKm, currentUser(r).ID)
 	if err != nil {
 		return err
 	}
-	out, err := s.vehicleOut(r.Context(), v)
+	out, err := s.vehicleOut(r.Context(), veh)
 	if err != nil {
 		return err
 	}
@@ -202,12 +231,13 @@ func (s *Server) updateVehicle(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	hasOdometer := cur.HasOdometer == 1
 	// PATCH: start from the stored profile and overlay supplied fields.
 	in := vehicleInput{
 		Make: cur.Make, Model: cur.Model, ChassisCode: cur.ChassisCode, ModelYear: intPtr(cur.ModelYear),
 		EngineCode: cur.EngineCode, VIN: strPtr(cur.Vin), LicensePlate: strPtr(cur.LicensePlate),
 		HSN: strPtr(cur.Hsn), TSN: strPtr(cur.Tsn), DisplacementCC: intPtr(cur.DisplacementCc),
-		PowerKW: intPtr(cur.PowerKw), FuelType: strPtr(cur.FuelType), OdometerUnit: &cur.OdometerUnit,
+		PowerKW: intPtr(cur.PowerKw), FuelType: strPtr(cur.FuelType), OdometerUnit: &cur.OdometerUnit, HasOdometer: &hasOdometer,
 		DisplacementUnit: strPtr(cur.DisplacementUnit), PowerUnit: strPtr(cur.PowerUnit),
 	}
 	if err := decodeJSON(w, r, &in); err != nil {

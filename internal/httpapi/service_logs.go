@@ -121,18 +121,20 @@ type serviceItemJSON struct {
 }
 
 type serviceLogJSON struct {
-	ID             int64             `json:"id"`
-	VehicleID      int64             `json:"vehicle_id"`
-	ServiceDate    string            `json:"service_date"`
-	OdometerKm     int64             `json:"odometer_km"`
-	Notes          string            `json:"notes"`
-	ExtraCostCents int64             `json:"extra_cost_cents"`
-	ExtraCostLabel string            `json:"extra_cost_label"`
-	Items          []serviceItemJSON `json:"items"`
-	TotalCents     int64             `json:"total_cents"`
-	Attachments    []attachmentJSON  `json:"attachments,omitempty"`
-	CreatedAt      string            `json:"created_at"`
-	UpdatedAt      string            `json:"updated_at"`
+	ID               int64              `json:"id"`
+	VehicleID        int64              `json:"vehicle_id"`
+	ServiceDate      string             `json:"service_date"`
+	OdometerKm       int64              `json:"odometer_km"`
+	OdometerRecorded bool               `json:"odometer_recorded"`
+	MeterReadings    []meterReadingJSON `json:"meter_readings"`
+	Notes            string             `json:"notes"`
+	ExtraCostCents   int64              `json:"extra_cost_cents"`
+	ExtraCostLabel   string             `json:"extra_cost_label"`
+	Items            []serviceItemJSON  `json:"items"`
+	TotalCents       int64              `json:"total_cents"`
+	Attachments      []attachmentJSON   `json:"attachments,omitempty"`
+	CreatedAt        string             `json:"created_at"`
+	UpdatedAt        string             `json:"updated_at"`
 }
 
 func toServiceLogJSON(l servicelog.Log) serviceLogJSON {
@@ -146,19 +148,21 @@ func toServiceLogJSON(l servicelog.Log) serviceLogJSON {
 		})
 	}
 	return serviceLogJSON{
-		ID: l.ID, VehicleID: l.VehicleID, ServiceDate: l.ServiceDate, OdometerKm: l.OdometerKm, Notes: l.Notes,
+		ID: l.ID, VehicleID: l.VehicleID, ServiceDate: l.ServiceDate, OdometerKm: l.OdometerKm,
+		OdometerRecorded: l.OdometerRecorded == 1, MeterReadings: readingsOut(l.MeterReadings), Notes: l.Notes,
 		ExtraCostCents: l.ExtraCostCents, ExtraCostLabel: l.ExtraCostLabel, Items: items, TotalCents: l.TotalCents(),
 		CreatedAt: l.CreatedAt, UpdatedAt: l.UpdatedAt,
 	}
 }
 
 type serviceLogInput struct {
-	VehicleID      int64  `json:"vehicle_id"`
-	ServiceDate    string `json:"service_date"`
-	OdometerKm     *int64 `json:"odometer_km"`
-	Notes          string `json:"notes"`
-	ExtraCostCents int64  `json:"extra_cost_cents"`
-	ExtraCostLabel string `json:"extra_cost_label"`
+	VehicleID      int64              `json:"vehicle_id"`
+	ServiceDate    string             `json:"service_date"`
+	OdometerKm     *int64             `json:"odometer_km"`
+	Notes          string             `json:"notes"`
+	ExtraCostCents int64              `json:"extra_cost_cents"`
+	ExtraCostLabel string             `json:"extra_cost_label"`
+	MeterReadings  []meterReadingJSON `json:"meter_readings"`
 	Items          []struct {
 		CategoryID            int64  `json:"category_id"`
 		Brand                 string `json:"brand"`
@@ -172,15 +176,20 @@ type serviceLogInput struct {
 	} `json:"items"`
 }
 
+// domain converts the request; odometer_km may be missing for vehicles
+// without an odometer, which the service checks.
 func (in serviceLogInput) domain() (servicelog.Input, error) {
-	if in.OdometerKm == nil {
-		var v apperr.Validation
-		v.Add("odometer_km", "validation.required")
-		return servicelog.Input{}, v.Err()
-	}
+	var v apperr.Validation
 	out := servicelog.Input{
-		VehicleID: in.VehicleID, ServiceDate: in.ServiceDate, OdometerKm: *in.OdometerKm, Notes: in.Notes,
-		ExtraCostCents: in.ExtraCostCents, ExtraCostLabel: in.ExtraCostLabel,
+		VehicleID: in.VehicleID, ServiceDate: in.ServiceDate, Notes: in.Notes,
+		ExtraCostCents: in.ExtraCostCents, ExtraCostLabel: in.ExtraCostLabel, NoOdometerKm: in.OdometerKm == nil,
+		MeterReadings: readingsIn(in.MeterReadings, "meter_readings", &v),
+	}
+	if in.OdometerKm != nil {
+		out.OdometerKm = *in.OdometerKm
+	}
+	if err := v.Err(); err != nil {
+		return servicelog.Input{}, err
 	}
 	for _, it := range in.Items {
 		out.Items = append(out.Items, servicelog.ItemInput{

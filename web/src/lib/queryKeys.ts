@@ -10,6 +10,7 @@ export const queryKeys = {
   vehicleList: (archived: string) => ['vehicles', 'list', archived] as const,
   vehicle: (id: number) => ['vehicles', 'detail', id] as const,
   odometerReadings: (id: number) => ['vehicles', 'readings', id] as const,
+  hourReadings: (meterId: number) => ['vehicles', 'hour-readings', meterId] as const,
   specs: (vehicleId: number) => ['specs', vehicleId] as const,
   categories: ['service-categories'] as const,
   serviceLogs: ['service-logs'] as const,

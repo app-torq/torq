@@ -32,6 +32,8 @@ var locales = []locale{
 		func(n int64) string { return fmt.Sprintf("%d km", n) }},
 }
 
+func f64(v float64) *float64 { return &v }
+
 func messages(l locale) map[string]Message {
 	at := time.Date(2026, 10, 30, 8, 0, 0, 0, time.UTC)
 	veh := &Vehicle{ID: 1, Name: "Mercedes-Benz C 220 CDI", LicensePlate: str("B-TQ 646"), CurrentOdometerKm: 225350, OdometerUnit: "km"}
@@ -54,6 +56,11 @@ func messages(l locale) map[string]Message {
 		"digest_empty":      {Event: "digest_weekly", Severity: SeverityInfo, Title: l.digest, Body: "—", Digest: &Digest{Period: "weekly", Overdue: items(0), DueSoon: items(0)}, MoreText: more, SentAt: at},
 		"digest_25":         {Event: "digest_weekly", Severity: SeverityInfo, Title: l.digest, Body: "25", URL: "https://torq.example/reminders", Digest: &Digest{Period: "weekly", Overdue: items(25), DueSoon: items(0)}, MoreText: more, SentAt: at},
 		"test":              {Event: "test", Severity: SeverityInfo, Title: l.test, Body: l.testBody, Vehicle: veh, SentAt: at},
+		// A tractor tracked by hours only (#24).
+		"reminder_hours": {Event: "reminder_due_soon", Severity: SeverityWarning, Title: l.dueSoon, Body: "22 h", URL: "https://torq.example/vehicles/2/reminders",
+			Reminder: &Reminder{ID: 8, Name: "Engine Oil & Filter", State: "due_soon", Trigger: str("hours"), NextDueDate: str("2027-10-15"), RemainingDays: i64(350),
+				HourMeter: str("Engine hours"), NextDueHours: f64(1512), RemainingHours: f64(22)},
+			Vehicle: &Vehicle{ID: 2, Name: "Deutz D 6206", OdometerUnit: "km"}, Fields: []Field{{l.vehicle, "Deutz D 6206"}, {"Engine hours", "1,490 h"}}, SentAt: at},
 	}
 }
 

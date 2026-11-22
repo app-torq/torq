@@ -63,12 +63,18 @@ type Input struct {
 	ExtraCostCents int64
 	ExtraCostLabel string
 	Items          []ItemInput
+	// NoOdometerKm is set when no distance was given; that is only allowed
+	// for vehicles without an odometer, whose entries need hours instead.
+	NoOdometerKm bool
+	// MeterReadings are hours for the vehicle's hour meters.
+	MeterReadings []vehicles.HoursReading
 }
 
 // Log is a service session with its items.
 type Log struct {
 	store.ServiceLog
-	Items []store.ServiceLogItem
+	Items         []store.ServiceLogItem
+	MeterReadings []vehicles.HoursReading
 }
 
 // TotalCents sums item costs and the extra cost.
@@ -87,8 +93,31 @@ func trimLen(v *apperr.Validation, s *string, field string, maxLen int) {
 	v.Check(utf8.RuneCountInString(*s) > maxLen, field, "validation.length")
 }
 
-func (s *Service) validate(ctx context.Context, q *store.Queries, in *Input) error {
+// validate checks the input against the vehicle and returns whether the
+// entry records a distance (false for vehicles without an odometer).
+func (s *Service) validate(ctx context.Context, q *store.Queries, in *Input) (bool, error) {
+	veh, err := vehicles.Get(ctx, q, in.VehicleID)
+	if err != nil {
+		if e, ok := apperr.As(err); ok && e.Code == "not_found" {
+			var v apperr.Validation
+			v.Add("vehicle_id", "validation.invalid_choice")
+			return false, v.Err()
+		}
+		return false, err
+	}
+	recorded := veh.HasOdometer == 1
+	if !recorded {
+		in.OdometerKm = 0
+	}
 	var v apperr.Validation
+	v.Check(recorded && in.NoOdometerKm, "odometer_km", "validation.required")
+	if err := vehicles.ValidateReadings(ctx, q, in.VehicleID, in.MeterReadings, !recorded, "meter_readings", &v); err != nil {
+		return false, err
+	}
+	return recorded, s.validateFields(ctx, q, in, &v)
+}
+
+func (s *Service) validateFields(ctx context.Context, q *store.Queries, in *Input, v *apperr.Validation) error {
 	if _, ok := vehicles.ParseDate(in.ServiceDate); !ok {
 		v.Add("service_date", "validation.date")
 	} else {
@@ -96,8 +125,8 @@ func (s *Service) validate(ctx context.Context, q *store.Queries, in *Input) err
 	}
 	v.Check(in.OdometerKm < 0, "odometer_km", "validation.non_negative")
 	v.Check(in.ExtraCostCents < 0, "extra_cost_cents", "validation.non_negative")
-	trimLen(&v, &in.Notes, "notes", 10000)
-	trimLen(&v, &in.ExtraCostLabel, "extra_cost_label", 120)
+	trimLen(v, &in.Notes, "notes", 10000)
+	trimLen(v, &in.ExtraCostLabel, "extra_cost_label", 120)
 	if len(in.Items) == 0 {
 		return apperr.Unprocessable("service_log.items_required", nil)
 	}
@@ -134,12 +163,26 @@ func (s *Service) validate(ctx context.Context, q *store.Queries, in *Input) err
 			it.QuantityUnit = ""
 		}
 		v.Check(it.CostCents != nil && *it.CostCents < 0, prefix+"cost_cents", "validation.non_negative")
-		trimLen(&v, &it.Brand, prefix+"brand", 120)
-		trimLen(&v, &it.Specification, prefix+"specification", 120)
-		trimLen(&v, &it.OEMPartNumber, prefix+"oem_part_number", 64)
-		trimLen(&v, &it.AftermarketPartNumber, prefix+"aftermarket_part_number", 64)
+		trimLen(v, &it.Brand, prefix+"brand", 120)
+		trimLen(v, &it.Specification, prefix+"specification", 120)
+		trimLen(v, &it.OEMPartNumber, prefix+"oem_part_number", 64)
+		trimLen(v, &it.AftermarketPartNumber, prefix+"aftermarket_part_number", 64)
 	}
 	return v.Err()
+}
+
+// recordMeterReadings replaces the entry's hour meter readings.
+func (s *Service) recordMeterReadings(ctx context.Context, tx *sql.Tx, l store.ServiceLog, readings []vehicles.HoursReading) error {
+	if err := store.New(tx).DeleteServiceLogMeterReadings(ctx, sql.NullInt64{Int64: l.ID, Valid: true}); err != nil {
+		return err
+	}
+	for _, r := range readings {
+		r.ServiceLogID = l.ID
+		if err := s.Vehicles.RecordHoursReading(ctx, tx, l.ServiceDate, vehicles.SourceServiceLog, r); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *Service) writeItems(ctx context.Context, q *store.Queries, logID int64, items []ItemInput) error {
@@ -160,11 +203,15 @@ func (s *Service) writeItems(ctx context.Context, q *store.Queries, logID int64,
 	return nil
 }
 
-// recordReading replaces the log's odometer reading and returns any history warning.
+// recordReading replaces the log's odometer reading and returns any history
+// warning. Entries without a recorded distance get no odometer reading.
 func (s *Service) recordReading(ctx context.Context, tx *sql.Tx, l store.ServiceLog) ([]string, error) {
 	q := store.New(tx)
 	if err := q.DeleteServiceLogReading(ctx, sql.NullInt64{Int64: l.ID, Valid: true}); err != nil {
 		return nil, err
+	}
+	if l.OdometerRecorded == 0 {
+		return nil, nil
 	}
 	readingID, err := s.Vehicles.RecordReading(ctx, tx, l.VehicleID, l.ServiceDate, l.OdometerKm, vehicles.SourceServiceLog)
 	if err != nil {
@@ -185,18 +232,6 @@ func (s *Service) recordReading(ctx context.Context, tx *sql.Tx, l store.Service
 	return nil, nil
 }
 
-func vehicleMustExist(ctx context.Context, q *store.Queries, id int64) error {
-	if _, err := vehicles.Get(ctx, q, id); err != nil {
-		if e, ok := apperr.As(err); ok && e.Code == "not_found" {
-			var v apperr.Validation
-			v.Add("vehicle_id", "validation.invalid_choice")
-			return v.Err()
-		}
-		return err
-	}
-	return nil
-}
-
 // Create records a service session, updates the odometer and re-evaluates
 // linked reminders in one transaction (FR-018, FR-019).
 func (s *Service) Create(ctx context.Context, in Input, createdBy int64) (Log, []string, error) {
@@ -204,15 +239,13 @@ func (s *Service) Create(ctx context.Context, in Input, createdBy int64) (Log, [
 	var warnings []string
 	err := s.DB.WithTx(ctx, func(tx *sql.Tx) error {
 		q := store.New(tx)
-		if err := vehicleMustExist(ctx, q, in.VehicleID); err != nil {
-			return err
-		}
-		if err := s.validate(ctx, q, &in); err != nil {
+		recorded, err := s.validate(ctx, q, &in)
+		if err != nil {
 			return err
 		}
 		now := clock.Timestamp(s.Clock.Now())
 		l, err := q.CreateServiceLog(ctx, store.CreateServiceLogParams{
-			VehicleID: in.VehicleID, ServiceDate: in.ServiceDate, OdometerKm: in.OdometerKm, Notes: in.Notes,
+			VehicleID: in.VehicleID, ServiceDate: in.ServiceDate, OdometerKm: in.OdometerKm, OdometerRecorded: boolInt(recorded), Notes: in.Notes,
 			ExtraCostCents: in.ExtraCostCents, ExtraCostLabel: in.ExtraCostLabel,
 			CreatedBy: sql.NullInt64{Int64: createdBy, Valid: createdBy > 0}, CreatedAt: now, UpdatedAt: now,
 		})
@@ -225,6 +258,9 @@ func (s *Service) Create(ctx context.Context, in Input, createdBy int64) (Log, [
 		if warnings, err = s.recordReading(ctx, tx, l); err != nil {
 			return err
 		}
+		if err := s.recordMeterReadings(ctx, tx, l, in.MeterReadings); err != nil {
+			return err
+		}
 		if err := s.Vehicles.AfterHistoryChange(ctx, tx, l.VehicleID); err != nil {
 			return err
 		}
@@ -232,6 +268,13 @@ func (s *Service) Create(ctx context.Context, in Input, createdBy int64) (Log, [
 		return err
 	})
 	return out, warnings, err
+}
+
+func boolInt(b bool) int64 {
+	if b {
+		return 1
+	}
+	return 0
 }
 
 // Replace overwrites a session including its items (PUT).
@@ -247,14 +290,12 @@ func (s *Service) Replace(ctx context.Context, id int64, in Input) (Log, []strin
 		if err != nil {
 			return err
 		}
-		if err := vehicleMustExist(ctx, q, in.VehicleID); err != nil {
-			return err
-		}
-		if err := s.validate(ctx, q, &in); err != nil {
+		recorded, err := s.validate(ctx, q, &in)
+		if err != nil {
 			return err
 		}
 		l, err := q.UpdateServiceLog(ctx, store.UpdateServiceLogParams{
-			VehicleID: in.VehicleID, ServiceDate: in.ServiceDate, OdometerKm: in.OdometerKm, Notes: in.Notes,
+			VehicleID: in.VehicleID, ServiceDate: in.ServiceDate, OdometerKm: in.OdometerKm, OdometerRecorded: boolInt(recorded), Notes: in.Notes,
 			ExtraCostCents: in.ExtraCostCents, ExtraCostLabel: in.ExtraCostLabel, UpdatedAt: clock.Timestamp(s.Clock.Now()), ID: id,
 		})
 		if err != nil {
@@ -267,6 +308,9 @@ func (s *Service) Replace(ctx context.Context, id int64, in Input) (Log, []strin
 			return err
 		}
 		if warnings, err = s.recordReading(ctx, tx, l); err != nil {
+			return err
+		}
+		if err := s.recordMeterReadings(ctx, tx, l, in.MeterReadings); err != nil {
 			return err
 		}
 		if err := s.Vehicles.AfterHistoryChange(ctx, tx, l.VehicleID); err != nil {
@@ -322,7 +366,29 @@ func load(ctx context.Context, q *store.Queries, id int64) (Log, error) {
 		return Log{}, err
 	}
 	items, err := q.ListServiceLogItems(ctx, id)
-	return Log{ServiceLog: l, Items: items}, err
+	if err != nil {
+		return Log{}, err
+	}
+	readings, err := meterReadingsFor(ctx, q, []int64{id})
+	return Log{ServiceLog: l, Items: items, MeterReadings: readings[id]}, err
+}
+
+// meterReadingsFor returns the hour meter readings of the given entries.
+func meterReadingsFor(ctx context.Context, q *store.Queries, ids []int64) (map[int64][]vehicles.HoursReading, error) {
+	nids := make([]sql.NullInt64, len(ids))
+	for i, id := range ids {
+		nids[i] = sql.NullInt64{Int64: id, Valid: true}
+	}
+	rows, err := q.ListServiceLogMeterReadings(ctx, nids)
+	if err != nil {
+		return nil, err
+	}
+	out := map[int64][]vehicles.HoursReading{}
+	for _, r := range rows {
+		id := r.ServiceLogID.Int64
+		out[id] = append(out[id], vehicles.HoursReading{MeterID: r.HourMeterID, HoursTenths: r.HoursTenths, ServiceLogID: id})
+	}
+	return out, nil
 }
 
 // Get returns one session with items.
@@ -371,8 +437,12 @@ func (s *Service) List(ctx context.Context, f Filter) ([]Log, int64, error) {
 	for _, it := range items {
 		byLog[it.ServiceLogID] = append(byLog[it.ServiceLogID], it)
 	}
+	readings, err := meterReadingsFor(ctx, q, ids)
+	if err != nil {
+		return nil, 0, err
+	}
 	for _, r := range rows {
-		out = append(out, Log{ServiceLog: r, Items: byLog[r.ID]})
+		out = append(out, Log{ServiceLog: r, Items: byLog[r.ID], MeterReadings: readings[r.ID]})
 	}
 	return out, total, nil
 }

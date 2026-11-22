@@ -13,7 +13,7 @@ export type PowerUnit = 'kw' | 'ps' | 'hp'
 export type QuantityUnit = 'L' | 'mL' | 'qt' | 'gal' | 'fl_oz'
 
 /** Keys under common:units. */
-export type UnitKey = 'km' | 'mi' | 'l' | 'ml' | 'qt' | 'gal' | 'fl_oz' | 'nm' | 'lbft' | 'bar' | 'psi' | 'kpa' | 'cc' | 'ci' | 'kw' | 'ps' | 'hp'
+export type UnitKey = 'km' | 'mi' | 'l' | 'ml' | 'qt' | 'gal' | 'fl_oz' | 'nm' | 'lbft' | 'bar' | 'psi' | 'kpa' | 'cc' | 'ci' | 'kw' | 'ps' | 'hp' | 'h'
 
 /** A display unit: how many stored metric units one of it is, and its decimals. */
 export interface UnitSpec {

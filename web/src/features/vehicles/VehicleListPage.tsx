@@ -8,6 +8,7 @@ import { vehicleName } from '../../lib/types'
 import { Badge, EmptyState, ErrorBanner, Loading, PageHeader } from '../../components/ui'
 import { useVehicles, type ArchiveFilter } from './hooks'
 import { VehicleAvatar } from './VehicleAvatar'
+import { currentReading } from './readings'
 
 export function VehicleListPage() {
   const { t } = useTranslation('vehicles')
@@ -59,7 +60,7 @@ export function VehicleListPage() {
                   {[v.chassis_code, v.engine_code, v.model_year].filter(Boolean).join(' · ')}
                 </div>
                 <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
-                  <span className="tabular-nums text-zinc-300">{fmt.distance(v.current_odometer_km, v.odometer_unit)}</span>
+                  <span className="tabular-nums text-zinc-300">{currentReading(v, fmt, t)}</span>
                   {v.license_plate && <span className="rounded border border-zinc-700 px-1.5 text-xs text-zinc-400">{v.license_plate}</span>}
                   {v.reminder_counts.overdue > 0 && <Badge tone="red">{v.reminder_counts.overdue}</Badge>}
                   {v.reminder_counts.due_soon > 0 && <Badge tone="amber">{v.reminder_counts.due_soon}</Badge>}

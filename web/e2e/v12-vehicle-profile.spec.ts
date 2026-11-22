@@ -53,5 +53,6 @@ test('V12: technical profile shows kW (PS), cm³ and fuel; invalid values are re
   expect(json.vehicle).toMatchObject({ displacement_cc: 2148, power_kw: 110, fuel_type: 'diesel', hsn: null, tsn: null })
   const csv = await (await page.request.get(`/api/v1/vehicles/${String(id)}/history?format=csv`)).text()
   expect(csv.split('\n')[0]).toContain('hsn,tsn,displacement_cc,power_kw,fuel_type')
-  expect(csv.split('\n')[1]).toMatch(/^vehicle,.*,2148,110,diesel\r?$/)
+  // The vehicle columns are followed by the hour meter columns (empty here).
+  expect(csv.split('\n')[1]).toMatch(/^vehicle,.*,2148,110,diesel,[^,]*,[^,]*\r?$/)
 })

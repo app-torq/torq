@@ -62,7 +62,8 @@
     "tsn_invalid": "Die TSN muss genau 3 Buchstaben oder Ziffern haben.",
     "displacement_out_of_range": "Der Hubraum liegt außerhalb des gültigen Bereichs.",
     "power_out_of_range": "Die Leistung liegt außerhalb des gültigen Bereichs.",
-    "fuel_type_invalid": "Bitte einen Kraftstoff aus der Liste wählen."
+    "fuel_type_invalid": "Bitte einen Kraftstoff aus der Liste wählen.",
+    "tracking_required": "Ein Fahrzeug braucht einen Kilometerzähler, einen Betriebsstundenzähler oder beides."
   },
   "odometer": {
     "decrease_requires_confirmation": "Das Verringern des Kilometerstands muss bestätigt werden.",
@@ -126,5 +127,12 @@
   },
   "priority": {
     "order_mismatch": "Die Prioritätenliste wurde inzwischen geändert. Neu laden und erneut versuchen."
+  },
+  "hour_meter": {
+    "limit_reached": "Dieses Fahrzeug hat bereits einen Betriebsstundenzähler.",
+    "in_use": "Serviceeinträge, Reparaturen oder Erinnerungen nutzen diesen Zähler. Benenne ihn stattdessen um.",
+    "required": "Ein Fahrzeug ohne Kilometerzähler braucht seinen Betriebsstundenzähler.",
+    "decrease_requires_confirmation": "Das Verringern der Betriebsstunden muss bestätigt werden.",
+    "large_jump_requires_confirmation": "Dieser große Sprung muss bestätigt werden."
   }
 }

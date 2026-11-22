@@ -37,7 +37,8 @@
     "addTorque": "Anzugsmoment hinzufügen",
     "priority": "Priorität",
     "tags": "Tags",
-    "tagsHint": "Mit Enter oder Komma einen Tag hinzufügen. Vorhandene Tags werden vorgeschlagen."
+    "tagsHint": "Mit Enter oder Komma einen Tag hinzufügen. Vorhandene Tags werden vorgeschlagen.",
+    "completionReading": "Stand bei Abschluss"
   },
   "sections": {
     "diagnostics": "Diagnose",

@@ -23,7 +23,11 @@
     "perKm": "{{value}}/km",
     "costPerMi": "Cost per mile",
     "perMi": "{{value}}/mi",
-    "costPerDistance": "Cost per distance"
+    "costPerDistance": "Cost per distance",
+    "costPerHour": "Cost per hour",
+    "hours": "Operating hours",
+    "perHour": "{{value}}/h",
+    "costPerDistanceOrHour": "Cost per distance or hour"
   },
   "breakdown": {
     "bySource": "Routine service vs. self-repair",

@@ -35,9 +35,13 @@
     "aftermarketPart": "Aftermarket part number",
     "cost": "Cost",
     "costType": "Cost type",
-    "total": "Total"
+    "total": "Total",
+    "reading": "Reading"
   },
-  "costTypes": { "parts": "Parts", "fluids": "Fluids & consumables" },
+  "costTypes": {
+    "parts": "Parts",
+    "fluids": "Fluids & consumables"
+  },
   "items": {
     "title": "Work done",
     "add": "Add item",
@@ -74,6 +78,8 @@
     "deleteBody": "Delete the category \"{{name}}\"?",
     "editTitle": "Edit category"
   },
-  "quick": { "newService": "New service entry" },
+  "quick": {
+    "newService": "New service entry"
+  },
   "count": "{{count}} entries"
 }

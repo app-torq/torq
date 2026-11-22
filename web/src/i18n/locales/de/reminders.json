@@ -32,7 +32,11 @@
     "startHint": "Leer lassen, um ab heute zu zählen. Gilt, bis ein passender Wartungseintrag existiert.",
     "lastDoneUnknown": "Noch nie erledigt / unbekannt",
     "lastDoneUnknownHint": "Die Erinnerung ist sofort fällig, bis die Arbeit eingetragen ist.",
-    "kind": "Art"
+    "kind": "Art",
+    "intervalHours": "Alle ({{name}})",
+    "leadHours": "Bald fällig ab",
+    "leadHoursHint": "Stunden vor dem Fälligkeitspunkt. Standard: ein Zehntel des Intervalls.",
+    "startHours": "Zuletzt erledigt ({{name}})"
   },
   "due": {
     "km": "bei {{km}}",
@@ -46,7 +50,8 @@
     "dueToday": "heute fällig",
     "trigger": {
       "km": "nach Laufleistung",
-      "time": "nach Zeit"
+      "time": "nach Zeit",
+      "hours": "nach Stunden"
     },
     "interval": "Alle {{value}}",
     "intervalMonths_one": "{{count}} Monat",
@@ -57,7 +62,10 @@
     "whicheverFirst": "je nachdem, was zuerst eintritt",
     "baseline": "Zuletzt am {{date}} bei {{km}}",
     "baselineStart": "Gezählt ab {{date}} bei {{km}}",
-    "neverDone": "Jetzt fällig: nicht bekannt, wann dies zuletzt erledigt wurde"
+    "neverDone": "Jetzt fällig: nicht bekannt, wann dies zuletzt erledigt wurde",
+    "hours": "bei {{hours}}",
+    "remainingHours": "noch {{value}}",
+    "overHours": "{{value}} überschritten"
   },
   "actions": {
     "markDone": "Als erledigt markieren",

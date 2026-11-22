@@ -73,22 +73,23 @@ func (q *Queries) CountServiceLogs(ctx context.Context, arg CountServiceLogsPara
 }
 
 const createServiceLog = `-- name: CreateServiceLog :one
-INSERT INTO service_logs (vehicle_id, service_date, odometer_km, notes, extra_cost_cents, extra_cost_label,
+INSERT INTO service_logs (vehicle_id, service_date, odometer_km, odometer_recorded, notes, extra_cost_cents, extra_cost_label,
                           created_by, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-RETURNING id, vehicle_id, service_date, odometer_km, notes, extra_cost_cents, extra_cost_label, created_by, created_at, updated_at
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+RETURNING id, vehicle_id, service_date, odometer_km, notes, extra_cost_cents, extra_cost_label, created_by, created_at, updated_at, odometer_recorded
 `
 
 type CreateServiceLogParams struct {
-	VehicleID      int64
-	ServiceDate    string
-	OdometerKm     int64
-	Notes          string
-	ExtraCostCents int64
-	ExtraCostLabel string
-	CreatedBy      sql.NullInt64
-	CreatedAt      string
-	UpdatedAt      string
+	VehicleID        int64
+	ServiceDate      string
+	OdometerKm       int64
+	OdometerRecorded int64
+	Notes            string
+	ExtraCostCents   int64
+	ExtraCostLabel   string
+	CreatedBy        sql.NullInt64
+	CreatedAt        string
+	UpdatedAt        string
 }
 
 func (q *Queries) CreateServiceLog(ctx context.Context, arg CreateServiceLogParams) (ServiceLog, error) {
@@ -96,6 +97,7 @@ func (q *Queries) CreateServiceLog(ctx context.Context, arg CreateServiceLogPara
 		arg.VehicleID,
 		arg.ServiceDate,
 		arg.OdometerKm,
+		arg.OdometerRecorded,
 		arg.Notes,
 		arg.ExtraCostCents,
 		arg.ExtraCostLabel,
@@ -115,6 +117,7 @@ func (q *Queries) CreateServiceLog(ctx context.Context, arg CreateServiceLogPara
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.OdometerRecorded,
 	)
 	return i, err
 }
@@ -147,7 +150,7 @@ func (q *Queries) DeleteServiceLogReading(ctx context.Context, serviceLogID sql.
 }
 
 const getServiceLog = `-- name: GetServiceLog :one
-SELECT id, vehicle_id, service_date, odometer_km, notes, extra_cost_cents, extra_cost_label, created_by, created_at, updated_at FROM service_logs WHERE id = ?
+SELECT id, vehicle_id, service_date, odometer_km, notes, extra_cost_cents, extra_cost_label, created_by, created_at, updated_at, odometer_recorded FROM service_logs WHERE id = ?
 `
 
 func (q *Queries) GetServiceLog(ctx context.Context, id int64) (ServiceLog, error) {
@@ -164,6 +167,7 @@ func (q *Queries) GetServiceLog(ctx context.Context, id int64) (ServiceLog, erro
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.OdometerRecorded,
 	)
 	return i, err
 }
@@ -310,7 +314,7 @@ func (q *Queries) ListServiceLogItemsForLogs(ctx context.Context, ids []int64) (
 }
 
 const listServiceLogs = `-- name: ListServiceLogs :many
-SELECT sl.id, sl.vehicle_id, sl.service_date, sl.odometer_km, sl.notes, sl.extra_cost_cents, sl.extra_cost_label, sl.created_by, sl.created_at, sl.updated_at FROM service_logs sl
+SELECT sl.id, sl.vehicle_id, sl.service_date, sl.odometer_km, sl.notes, sl.extra_cost_cents, sl.extra_cost_label, sl.created_by, sl.created_at, sl.updated_at, sl.odometer_recorded FROM service_logs sl
 WHERE (CAST(?1 AS INTEGER) = 0 OR sl.vehicle_id = ?1)
   AND (CAST(?2 AS INTEGER) = 0
        OR EXISTS (SELECT 1 FROM service_log_items i WHERE i.service_log_id = sl.id AND i.category_id = ?2))
@@ -363,6 +367,7 @@ func (q *Queries) ListServiceLogs(ctx context.Context, arg ListServiceLogsParams
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.OdometerRecorded,
 		); err != nil {
 			return nil, err
 		}
@@ -379,20 +384,21 @@ func (q *Queries) ListServiceLogs(ctx context.Context, arg ListServiceLogsParams
 
 const updateServiceLog = `-- name: UpdateServiceLog :one
 UPDATE service_logs
-SET vehicle_id = ?, service_date = ?, odometer_km = ?, notes = ?, extra_cost_cents = ?, extra_cost_label = ?, updated_at = ?
+SET vehicle_id = ?, service_date = ?, odometer_km = ?, odometer_recorded = ?, notes = ?, extra_cost_cents = ?, extra_cost_label = ?, updated_at = ?
 WHERE id = ?
-RETURNING id, vehicle_id, service_date, odometer_km, notes, extra_cost_cents, extra_cost_label, created_by, created_at, updated_at
+RETURNING id, vehicle_id, service_date, odometer_km, notes, extra_cost_cents, extra_cost_label, created_by, created_at, updated_at, odometer_recorded
 `
 
 type UpdateServiceLogParams struct {
-	VehicleID      int64
-	ServiceDate    string
-	OdometerKm     int64
-	Notes          string
-	ExtraCostCents int64
-	ExtraCostLabel string
-	UpdatedAt      string
-	ID             int64
+	VehicleID        int64
+	ServiceDate      string
+	OdometerKm       int64
+	OdometerRecorded int64
+	Notes            string
+	ExtraCostCents   int64
+	ExtraCostLabel   string
+	UpdatedAt        string
+	ID               int64
 }
 
 func (q *Queries) UpdateServiceLog(ctx context.Context, arg UpdateServiceLogParams) (ServiceLog, error) {
@@ -400,6 +406,7 @@ func (q *Queries) UpdateServiceLog(ctx context.Context, arg UpdateServiceLogPara
 		arg.VehicleID,
 		arg.ServiceDate,
 		arg.OdometerKm,
+		arg.OdometerRecorded,
 		arg.Notes,
 		arg.ExtraCostCents,
 		arg.ExtraCostLabel,
@@ -418,6 +425,7 @@ func (q *Queries) UpdateServiceLog(ctx context.Context, arg UpdateServiceLogPara
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.OdometerRecorded,
 	)
 	return i, err
 }

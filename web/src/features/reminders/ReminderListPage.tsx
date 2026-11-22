@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { CheckCircle2, NotebookPen, Pause, Pencil, Play, Plus, Trash2 } from 'lucide-react'
 import { api } from '../../lib/api'
 import { queryKeys } from '../../lib/queryKeys'
-import { parseDistance } from '../../lib/format'
+import { hoursToInput, parseDistance, parseHours } from '../../lib/format'
 import { kmIn } from '../../lib/units'
 import { fieldErrors, useErrorText } from '../../lib/errors'
 import type { Reminder, ReminderState } from '../../lib/types'
@@ -146,7 +146,10 @@ function MarkDoneDialog({ reminder, onClose }: { reminder: Reminder; onClose: ()
   const unit = veh?.odometer_unit ?? user.distance_unit
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
   const [km, setKm] = useState('')
-  const [local, setLocal] = useState<string | undefined>()
+  const [hours, setHours] = useState('')
+  const [local, setLocal] = useState<Record<string, string>>({})
+  const hasOdometer = veh?.has_odometer ?? true
+  const meter = veh?.hour_meters.find((m) => m.id === reminder.hour_meter_id) ?? veh?.hour_meters[0]
   const done = useMutation({
     mutationFn: (body: Record<string, unknown>) => api.post(`/reminders/${reminder.id}/done`, body),
     onSuccess: async () => {
@@ -157,16 +160,20 @@ function MarkDoneDialog({ reminder, onClose }: { reminder: Reminder; onClose: ()
   const fe = fieldErrors(done.error)
   const submit = () => {
     const body: Record<string, unknown> = { done_on: date }
-    if (km.trim() !== '') {
+    const errs: Record<string, string> = {}
+    if (hasOdometer && km.trim() !== '') {
       const n = parseDistance(km, unit, user.number_format)
-      if (n === null) {
-        setLocal('validation.number')
-        return
-      }
+      if (n === null) errs.odometer_km = 'validation.number'
       body.odometer_km = n
     }
-    setLocal(undefined)
-    done.mutate(body)
+    // Empty fields default to the current readings on the server.
+    if (meter && hours.trim() !== '') {
+      const h = parseHours(hours, user.number_format)
+      if (h === null || h === undefined) errs.meter_readings = 'validation.number'
+      else body.meter_readings = [{ hour_meter_id: meter.id, hours: h }]
+    }
+    setLocal(errs)
+    if (Object.keys(errs).length === 0) done.mutate(body)
   }
   return (
     <Dialog
@@ -186,6 +193,18 @@ function MarkDoneDialog({ reminder, onClose }: { reminder: Reminder; onClose: ()
         <p className="text-sm text-zinc-300">{reminder.title}</p>
         {done.isError && Object.keys(fe).length === 0 && <ErrorBanner message={errorText(done.error)} />}
         <TextField label={t('markDone.date')} type="date" value={date} onChange={setDate} error={fe.done_on} />
+        {meter && (
+          <NumberField
+            label={meter.name}
+            unit={t('common:units.h')}
+            value={hours}
+            onChange={setHours}
+            placeholder={hoursToInput(meter.current_hours, user.number_format)}
+            error={local.meter_readings ?? fe.meter_readings}
+            optional
+          />
+        )}
+        {hasOdometer && (
         <NumberField
           label={t('markDone.odometer')}
           unit={t(`common:units.${unit}`)}
@@ -193,9 +212,10 @@ function MarkDoneDialog({ reminder, onClose }: { reminder: Reminder; onClose: ()
           value={km}
           onChange={setKm}
           placeholder={current !== undefined ? String(kmIn(current, unit)) : ''}
-          error={local ?? fe.odometer_km}
+          error={local.odometer_km ?? fe.odometer_km}
           optional
         />
+        )}
       </div>
     </Dialog>
   )

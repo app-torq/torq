@@ -37,7 +37,8 @@
     "addTorque": "Add torque spec",
     "priority": "Priority",
     "tags": "Tags",
-    "tagsHint": "Press Enter or comma to add a tag. Existing tags are suggested."
+    "tagsHint": "Press Enter or comma to add a tag. Existing tags are suggested.",
+    "completionReading": "Reading at completion"
   },
   "sections": {
     "diagnostics": "Diagnostics",

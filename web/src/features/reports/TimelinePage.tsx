@@ -11,6 +11,7 @@ import { Button } from '../../components/Button'
 import { EmptyState, ErrorBanner, Loading } from '../../components/ui'
 import { useVehicleContext } from '../vehicles/VehicleDetailLayout'
 import { categoryLabel, useCategories } from '../service-log/hooks'
+import { entryReading } from '../vehicles/readings'
 
 const PAGE = 50
 
@@ -54,7 +55,7 @@ export function TimelinePage() {
               </span>
               <Link to={it.kind === 'service' ? `/service/${it.id}` : `/repairs/${it.id}`} className="focus-ring block rounded-lg border border-zinc-800 bg-zinc-900 p-3 hover:border-zinc-700">
                 <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-400">
-                  <span className="tabular-nums">{fmt.date(it.date)} · {fmt.distance(it.odometer_km, v.odometer_unit)}</span>
+                  <span className="tabular-nums">{[fmt.date(it.date), entryReading(fmt, v.odometer_unit, it.odometer_km, it.odometer_recorded, it.meter_readings)].filter(Boolean).join(' · ')}</span>
                   <span>{t(`timeline.${it.kind}`)}</span>
                 </div>
                 <div className="mt-1 flex items-center justify-between gap-2">

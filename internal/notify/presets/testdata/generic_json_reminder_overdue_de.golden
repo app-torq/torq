@@ -4,11 +4,14 @@ Content-Type: application/json
   "event": "reminder_overdue",
   "message": "-350 km",
   "reminder": {
+    "hour_meter": null,
     "id": 7,
     "name": "Engine Oil \u0026 Filter",
     "next_due_date": "2027-10-15",
+    "next_due_hours": null,
     "next_due_km": 225000,
     "remaining_days": 350,
+    "remaining_hours": null,
     "remaining_km": -350,
     "state": "overdue",
     "trigger": "km"

@@ -50,6 +50,9 @@ export function ReportsPage() {
   const vehicleById = new Map(vehicles.data?.items.map((v) => [v.id, v]))
   const r = report.data
   const unit = vehicleById.get(Number(vehicle))?.odometer_unit ?? user.distance_unit
+  // A vehicle tracked by hours only shows cost per operating hour instead of per distance.
+  const byHours = vehicleById.get(Number(vehicle))?.has_odometer === false
+  const perHour = (cents: number) => t('tiles.perHour', { value: fmt.moneyPrecise(cents, cents < 1000 ? 2 : 0) })
   // Cost per km from the API, shown per km or per mile.
   const perDistance = (centsPerKm: number, u: DistanceUnit, decimals: number) =>
     t(u === 'mi' ? 'tiles.perMi' : 'tiles.perKm', { value: fmt.moneyPrecise(centsPerKm * DISTANCE[u].factor, decimals) })
@@ -78,8 +81,17 @@ export function ReportsPage() {
         <>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Tile label={t('tiles.total')} value={fmt.money(r.total_cents)} />
-            <Tile label={t(unit === 'mi' ? 'tiles.costPerMi' : 'tiles.costPerKm')} value={r.cost_per_km_cents === null ? t('tiles.notEnoughData') : perDistance(r.cost_per_km_cents, unit, r.cost_per_km_cents < 10 ? 3 : 2)} muted={r.cost_per_km_cents === null} />
-            <Tile label={t('tiles.distance')} value={r.distance_km === null ? t('tiles.notEnoughData') : fmt.distance(r.distance_km, unit)} muted={r.distance_km === null} />
+            {byHours ? (
+              <>
+                <Tile label={t('tiles.costPerHour')} value={r.cost_per_hour_cents === null ? t('tiles.notEnoughData') : perHour(r.cost_per_hour_cents)} muted={r.cost_per_hour_cents === null} />
+                <Tile label={t('tiles.hours')} value={r.hours === null ? t('tiles.notEnoughData') : fmt.hours(r.hours)} muted={r.hours === null} />
+              </>
+            ) : (
+              <>
+                <Tile label={t(unit === 'mi' ? 'tiles.costPerMi' : 'tiles.costPerKm')} value={r.cost_per_km_cents === null ? t('tiles.notEnoughData') : perDistance(r.cost_per_km_cents, unit, r.cost_per_km_cents < 10 ? 3 : 2)} muted={r.cost_per_km_cents === null} />
+                <Tile label={t('tiles.distance')} value={r.distance_km === null ? t('tiles.notEnoughData') : fmt.distance(r.distance_km, unit)} muted={r.distance_km === null} />
+              </>
+            )}
           </div>
           {r.total_cents === 0 ? (
             <p className="text-sm text-zinc-400">{t('empty')}</p>
@@ -115,7 +127,7 @@ export function ReportsPage() {
                     <th className="text-right">{t('breakdown.service')}</th>
                     <th className="text-right">{t('breakdown.repairs')}</th>
                     <th className="text-right">{t('tiles.total')}</th>
-                    <th className="text-right">{t('tiles.costPerDistance')}</th>
+                    <th className="text-right">{t(r.by_vehicle.some((v) => vehicleById.get(v.vehicle_id)?.has_odometer === false) ? 'tiles.costPerDistanceOrHour' : 'tiles.costPerDistance')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -127,7 +139,11 @@ export function ReportsPage() {
                         <td className="text-right tabular-nums">{fmt.money(v.by_source.routine_service_cents)}</td>
                         <td className="text-right tabular-nums">{fmt.money(v.by_source.self_repair_cents)}</td>
                         <td className="text-right tabular-nums text-zinc-100">{fmt.money(v.total_cents)}</td>
-                        <td className="text-right tabular-nums text-zinc-400">{v.cost_per_km_cents === null ? t('tiles.notEnoughData') : perDistance(v.cost_per_km_cents, veh?.odometer_unit ?? user.distance_unit, 3)}</td>
+                        <td className="text-right tabular-nums text-zinc-400">
+                          {veh?.has_odometer === false
+                            ? (v.cost_per_hour_cents === null ? t('tiles.notEnoughData') : perHour(v.cost_per_hour_cents))
+                            : (v.cost_per_km_cents === null ? t('tiles.notEnoughData') : perDistance(v.cost_per_km_cents, veh?.odometer_unit ?? user.distance_unit, 3))}
+                        </td>
                       </tr>
                     )
                   })}

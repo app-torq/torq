@@ -35,7 +35,10 @@
     "displacementUnit": "Displacement unit",
     "powerUnit": "Power unit",
     "unitPreference": "My preference ({{unit}})",
-    "vehicleUnitHint": "Shown and entered in these units for everyone. Leave on your preference to follow each person's settings."
+    "vehicleUnitHint": "Shown and entered in these units for everyone. Leave on your preference to follow each person's settings.",
+    "trackBy": "Track by",
+    "trackByHint": "Tractors and machinery without an odometer use hours only. A motorhome with a generator can track both.",
+    "trackByEditHint": "With hours only, the odometer is hidden; its history is kept."
   },
   "tabs": {
     "overview": "Overview",
@@ -142,5 +145,31 @@
   "odometerUnits": {
     "km": "Kilometres (km)",
     "mi": "Miles (mi)"
+  },
+  "trackBy": {
+    "odometer": "Odometer",
+    "hours": "Hours only",
+    "both": "Odometer and hours"
+  },
+  "hours": {
+    "title": "Hour meter",
+    "add": "Add hour meter",
+    "addHint": "For equipment maintained by operating hours, such as a generator.",
+    "name": "Hour meter name",
+    "nameHint": "e.g. Engine hours or Generator",
+    "defaultName": "Engine hours",
+    "current": "Current hours",
+    "named": "{{name}}: {{hours}}",
+    "update": "Update hours",
+    "newValue": "New reading ({{name}})",
+    "decreaseTitle": "Lower the hours?",
+    "decreaseBody": "The current reading is {{current}}. Set it to {{next}}? Use this only to fix a typo or after replacing the meter.",
+    "jumpTitle": "Large jump",
+    "jumpBody": "{{next}} is a big jump from {{current}}. Is that correct?",
+    "rename": "Rename hour meter",
+    "remove": "Remove hour meter",
+    "removeTitle": "Remove {{name}}?",
+    "removeBody": "Its reading history is deleted. Reminders that also use distance or time keep working without hours.",
+    "inUse": "Service entries, repairs or reminders use this hour meter, so it can't be removed. You can rename it instead."
   }
 }

@@ -52,9 +52,10 @@ func (q *Queries) CountReminderStatesByVehicle(ctx context.Context) ([]CountRemi
 const createReminder = `-- name: CreateReminder :one
 INSERT INTO reminders (vehicle_id, service_category_id, title, interval_km, interval_months, interval_days,
                        lead_km, lead_days, start_date, start_odometer_km, last_done_unknown,
+                       hour_meter_id, interval_hours, lead_hours, start_hours_tenths,
                        state_changed_at, created_by, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-RETURNING id, vehicle_id, service_category_id, title, interval_km, interval_months, interval_days, lead_km, lead_days, start_date, start_odometer_km, last_done_date, last_done_odometer_km, next_due_km, next_due_date, state, state_trigger, state_changed_at, last_notified_state, paused_at, created_by, created_at, updated_at, last_done_unknown
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+RETURNING id, vehicle_id, service_category_id, title, interval_km, interval_months, interval_days, lead_km, lead_days, start_date, start_odometer_km, last_done_date, last_done_odometer_km, next_due_km, next_due_date, state, state_trigger, state_changed_at, last_notified_state, paused_at, created_by, created_at, updated_at, last_done_unknown, hour_meter_id, interval_hours, lead_hours, start_hours_tenths, last_done_hours_tenths, next_due_hours_tenths
 `
 
 type CreateReminderParams struct {
@@ -69,6 +70,10 @@ type CreateReminderParams struct {
 	StartDate         string
 	StartOdometerKm   int64
 	LastDoneUnknown   int64
+	HourMeterID       sql.NullInt64
+	IntervalHours     sql.NullInt64
+	LeadHours         sql.NullInt64
+	StartHoursTenths  sql.NullInt64
 	StateChangedAt    string
 	CreatedBy         sql.NullInt64
 	CreatedAt         string
@@ -88,6 +93,10 @@ func (q *Queries) CreateReminder(ctx context.Context, arg CreateReminderParams) 
 		arg.StartDate,
 		arg.StartOdometerKm,
 		arg.LastDoneUnknown,
+		arg.HourMeterID,
+		arg.IntervalHours,
+		arg.LeadHours,
+		arg.StartHoursTenths,
 		arg.StateChangedAt,
 		arg.CreatedBy,
 		arg.CreatedAt,
@@ -119,6 +128,12 @@ func (q *Queries) CreateReminder(ctx context.Context, arg CreateReminderParams) 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.LastDoneUnknown,
+		&i.HourMeterID,
+		&i.IntervalHours,
+		&i.LeadHours,
+		&i.StartHoursTenths,
+		&i.LastDoneHoursTenths,
+		&i.NextDueHoursTenths,
 	)
 	return i, err
 }
@@ -133,7 +148,7 @@ func (q *Queries) DeleteReminder(ctx context.Context, id int64) error {
 }
 
 const getReminder = `-- name: GetReminder :one
-SELECT id, vehicle_id, service_category_id, title, interval_km, interval_months, interval_days, lead_km, lead_days, start_date, start_odometer_km, last_done_date, last_done_odometer_km, next_due_km, next_due_date, state, state_trigger, state_changed_at, last_notified_state, paused_at, created_by, created_at, updated_at, last_done_unknown FROM reminders WHERE id = ?
+SELECT id, vehicle_id, service_category_id, title, interval_km, interval_months, interval_days, lead_km, lead_days, start_date, start_odometer_km, last_done_date, last_done_odometer_km, next_due_km, next_due_date, state, state_trigger, state_changed_at, last_notified_state, paused_at, created_by, created_at, updated_at, last_done_unknown, hour_meter_id, interval_hours, lead_hours, start_hours_tenths, last_done_hours_tenths, next_due_hours_tenths FROM reminders WHERE id = ?
 `
 
 func (q *Queries) GetReminder(ctx context.Context, id int64) (Reminder, error) {
@@ -164,38 +179,54 @@ func (q *Queries) GetReminder(ctx context.Context, id int64) (Reminder, error) {
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.LastDoneUnknown,
+		&i.HourMeterID,
+		&i.IntervalHours,
+		&i.LeadHours,
+		&i.StartHoursTenths,
+		&i.LastDoneHoursTenths,
+		&i.NextDueHoursTenths,
 	)
 	return i, err
 }
 
 const latestServiceForCategory = `-- name: LatestServiceForCategory :one
-SELECT s.service_date, s.odometer_km
+SELECT s.service_date, s.odometer_km, s.odometer_recorded, hr.hours_tenths
 FROM service_log_items i
 JOIN service_logs s ON s.id = i.service_log_id
-WHERE s.vehicle_id = ? AND i.category_id = ?
+LEFT JOIN hour_meter_readings hr ON hr.service_log_id = s.id AND hr.hour_meter_id = ?1
+WHERE s.vehicle_id = ?2 AND i.category_id = ?3
 ORDER BY s.service_date DESC, s.odometer_km DESC, s.id DESC
 LIMIT 1
 `
 
 type LatestServiceForCategoryParams struct {
-	VehicleID  int64
-	CategoryID int64
+	HourMeterID sql.NullInt64
+	VehicleID   int64
+	CategoryID  int64
 }
 
 type LatestServiceForCategoryRow struct {
-	ServiceDate string
-	OdometerKm  int64
+	ServiceDate      string
+	OdometerKm       int64
+	OdometerRecorded int64
+	HoursTenths      sql.NullInt64
 }
 
+// hours_tenths is the entry's reading for hour_meter_id, if any.
 func (q *Queries) LatestServiceForCategory(ctx context.Context, arg LatestServiceForCategoryParams) (LatestServiceForCategoryRow, error) {
-	row := q.db.QueryRowContext(ctx, latestServiceForCategory, arg.VehicleID, arg.CategoryID)
+	row := q.db.QueryRowContext(ctx, latestServiceForCategory, arg.HourMeterID, arg.VehicleID, arg.CategoryID)
 	var i LatestServiceForCategoryRow
-	err := row.Scan(&i.ServiceDate, &i.OdometerKm)
+	err := row.Scan(
+		&i.ServiceDate,
+		&i.OdometerKm,
+		&i.OdometerRecorded,
+		&i.HoursTenths,
+	)
 	return i, err
 }
 
 const listReminders = `-- name: ListReminders :many
-SELECT r.id, r.vehicle_id, r.service_category_id, r.title, r.interval_km, r.interval_months, r.interval_days, r.lead_km, r.lead_days, r.start_date, r.start_odometer_km, r.last_done_date, r.last_done_odometer_km, r.next_due_km, r.next_due_date, r.state, r.state_trigger, r.state_changed_at, r.last_notified_state, r.paused_at, r.created_by, r.created_at, r.updated_at, r.last_done_unknown FROM reminders r
+SELECT r.id, r.vehicle_id, r.service_category_id, r.title, r.interval_km, r.interval_months, r.interval_days, r.lead_km, r.lead_days, r.start_date, r.start_odometer_km, r.last_done_date, r.last_done_odometer_km, r.next_due_km, r.next_due_date, r.state, r.state_trigger, r.state_changed_at, r.last_notified_state, r.paused_at, r.created_by, r.created_at, r.updated_at, r.last_done_unknown, r.hour_meter_id, r.interval_hours, r.lead_hours, r.start_hours_tenths, r.last_done_hours_tenths, r.next_due_hours_tenths FROM reminders r
 JOIN vehicles v ON v.id = r.vehicle_id
 WHERE (CAST(?1 AS INTEGER) = 0 OR r.vehicle_id = ?1)
   AND (CAST(?2 AS TEXT) = '' OR r.state = ?2)
@@ -250,6 +281,12 @@ func (q *Queries) ListReminders(ctx context.Context, arg ListRemindersParams) ([
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.LastDoneUnknown,
+			&i.HourMeterID,
+			&i.IntervalHours,
+			&i.LeadHours,
+			&i.StartHoursTenths,
+			&i.LastDoneHoursTenths,
+			&i.NextDueHoursTenths,
 		); err != nil {
 			return nil, err
 		}
@@ -265,7 +302,7 @@ func (q *Queries) ListReminders(ctx context.Context, arg ListRemindersParams) ([
 }
 
 const listRemindersForVehicle = `-- name: ListRemindersForVehicle :many
-SELECT id, vehicle_id, service_category_id, title, interval_km, interval_months, interval_days, lead_km, lead_days, start_date, start_odometer_km, last_done_date, last_done_odometer_km, next_due_km, next_due_date, state, state_trigger, state_changed_at, last_notified_state, paused_at, created_by, created_at, updated_at, last_done_unknown FROM reminders WHERE vehicle_id = ? ORDER BY id
+SELECT id, vehicle_id, service_category_id, title, interval_km, interval_months, interval_days, lead_km, lead_days, start_date, start_odometer_km, last_done_date, last_done_odometer_km, next_due_km, next_due_date, state, state_trigger, state_changed_at, last_notified_state, paused_at, created_by, created_at, updated_at, last_done_unknown, hour_meter_id, interval_hours, lead_hours, start_hours_tenths, last_done_hours_tenths, next_due_hours_tenths FROM reminders WHERE vehicle_id = ? ORDER BY id
 `
 
 func (q *Queries) ListRemindersForVehicle(ctx context.Context, vehicleID int64) ([]Reminder, error) {
@@ -302,6 +339,12 @@ func (q *Queries) ListRemindersForVehicle(ctx context.Context, vehicleID int64) 
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.LastDoneUnknown,
+			&i.HourMeterID,
+			&i.IntervalHours,
+			&i.LeadHours,
+			&i.StartHoursTenths,
+			&i.LastDoneHoursTenths,
+			&i.NextDueHoursTenths,
 		); err != nil {
 			return nil, err
 		}
@@ -344,20 +387,22 @@ func (q *Queries) ListVehicleIDsWithReminders(ctx context.Context) ([]int64, err
 }
 
 const setReminderDone = `-- name: SetReminderDone :exec
-UPDATE reminders SET last_done_date = ?, last_done_odometer_km = ?, updated_at = ? WHERE id = ?
+UPDATE reminders SET last_done_date = ?, last_done_odometer_km = ?, last_done_hours_tenths = ?, updated_at = ? WHERE id = ?
 `
 
 type SetReminderDoneParams struct {
-	LastDoneDate       sql.NullString
-	LastDoneOdometerKm sql.NullInt64
-	UpdatedAt          string
-	ID                 int64
+	LastDoneDate        sql.NullString
+	LastDoneOdometerKm  sql.NullInt64
+	LastDoneHoursTenths sql.NullInt64
+	UpdatedAt           string
+	ID                  int64
 }
 
 func (q *Queries) SetReminderDone(ctx context.Context, arg SetReminderDoneParams) error {
 	_, err := q.db.ExecContext(ctx, setReminderDone,
 		arg.LastDoneDate,
 		arg.LastDoneOdometerKm,
+		arg.LastDoneHoursTenths,
 		arg.UpdatedAt,
 		arg.ID,
 	)
@@ -366,29 +411,33 @@ func (q *Queries) SetReminderDone(ctx context.Context, arg SetReminderDoneParams
 
 const setReminderEvaluation = `-- name: SetReminderEvaluation :exec
 UPDATE reminders
-SET last_done_date = ?, last_done_odometer_km = ?, next_due_km = ?, next_due_date = ?,
-    state = ?, state_trigger = ?, state_changed_at = ?, last_notified_state = ?
+SET last_done_date = ?, last_done_odometer_km = ?, last_done_hours_tenths = ?, next_due_km = ?, next_due_date = ?,
+    next_due_hours_tenths = ?, state = ?, state_trigger = ?, state_changed_at = ?, last_notified_state = ?
 WHERE id = ?
 `
 
 type SetReminderEvaluationParams struct {
-	LastDoneDate       sql.NullString
-	LastDoneOdometerKm sql.NullInt64
-	NextDueKm          sql.NullInt64
-	NextDueDate        sql.NullString
-	State              string
-	StateTrigger       sql.NullString
-	StateChangedAt     string
-	LastNotifiedState  string
-	ID                 int64
+	LastDoneDate        sql.NullString
+	LastDoneOdometerKm  sql.NullInt64
+	LastDoneHoursTenths sql.NullInt64
+	NextDueKm           sql.NullInt64
+	NextDueDate         sql.NullString
+	NextDueHoursTenths  sql.NullInt64
+	State               string
+	StateTrigger        sql.NullString
+	StateChangedAt      string
+	LastNotifiedState   string
+	ID                  int64
 }
 
 func (q *Queries) SetReminderEvaluation(ctx context.Context, arg SetReminderEvaluationParams) error {
 	_, err := q.db.ExecContext(ctx, setReminderEvaluation,
 		arg.LastDoneDate,
 		arg.LastDoneOdometerKm,
+		arg.LastDoneHoursTenths,
 		arg.NextDueKm,
 		arg.NextDueDate,
+		arg.NextDueHoursTenths,
 		arg.State,
 		arg.StateTrigger,
 		arg.StateChangedAt,
@@ -399,7 +448,7 @@ func (q *Queries) SetReminderEvaluation(ctx context.Context, arg SetReminderEval
 }
 
 const setReminderPaused = `-- name: SetReminderPaused :one
-UPDATE reminders SET paused_at = ?, updated_at = ? WHERE id = ? RETURNING id, vehicle_id, service_category_id, title, interval_km, interval_months, interval_days, lead_km, lead_days, start_date, start_odometer_km, last_done_date, last_done_odometer_km, next_due_km, next_due_date, state, state_trigger, state_changed_at, last_notified_state, paused_at, created_by, created_at, updated_at, last_done_unknown
+UPDATE reminders SET paused_at = ?, updated_at = ? WHERE id = ? RETURNING id, vehicle_id, service_category_id, title, interval_km, interval_months, interval_days, lead_km, lead_days, start_date, start_odometer_km, last_done_date, last_done_odometer_km, next_due_km, next_due_date, state, state_trigger, state_changed_at, last_notified_state, paused_at, created_by, created_at, updated_at, last_done_unknown, hour_meter_id, interval_hours, lead_hours, start_hours_tenths, last_done_hours_tenths, next_due_hours_tenths
 `
 
 type SetReminderPausedParams struct {
@@ -436,6 +485,12 @@ func (q *Queries) SetReminderPaused(ctx context.Context, arg SetReminderPausedPa
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.LastDoneUnknown,
+		&i.HourMeterID,
+		&i.IntervalHours,
+		&i.LeadHours,
+		&i.StartHoursTenths,
+		&i.LastDoneHoursTenths,
+		&i.NextDueHoursTenths,
 	)
 	return i, err
 }
@@ -443,9 +498,10 @@ func (q *Queries) SetReminderPaused(ctx context.Context, arg SetReminderPausedPa
 const updateReminder = `-- name: UpdateReminder :one
 UPDATE reminders
 SET service_category_id = ?, title = ?, interval_km = ?, interval_months = ?, interval_days = ?,
-    lead_km = ?, lead_days = ?, start_date = ?, start_odometer_km = ?, last_done_unknown = ?, updated_at = ?
+    lead_km = ?, lead_days = ?, start_date = ?, start_odometer_km = ?, last_done_unknown = ?,
+    hour_meter_id = ?, interval_hours = ?, lead_hours = ?, start_hours_tenths = ?, updated_at = ?
 WHERE id = ?
-RETURNING id, vehicle_id, service_category_id, title, interval_km, interval_months, interval_days, lead_km, lead_days, start_date, start_odometer_km, last_done_date, last_done_odometer_km, next_due_km, next_due_date, state, state_trigger, state_changed_at, last_notified_state, paused_at, created_by, created_at, updated_at, last_done_unknown
+RETURNING id, vehicle_id, service_category_id, title, interval_km, interval_months, interval_days, lead_km, lead_days, start_date, start_odometer_km, last_done_date, last_done_odometer_km, next_due_km, next_due_date, state, state_trigger, state_changed_at, last_notified_state, paused_at, created_by, created_at, updated_at, last_done_unknown, hour_meter_id, interval_hours, lead_hours, start_hours_tenths, last_done_hours_tenths, next_due_hours_tenths
 `
 
 type UpdateReminderParams struct {
@@ -459,6 +515,10 @@ type UpdateReminderParams struct {
 	StartDate         string
 	StartOdometerKm   int64
 	LastDoneUnknown   int64
+	HourMeterID       sql.NullInt64
+	IntervalHours     sql.NullInt64
+	LeadHours         sql.NullInt64
+	StartHoursTenths  sql.NullInt64
 	UpdatedAt         string
 	ID                int64
 }
@@ -475,6 +535,10 @@ func (q *Queries) UpdateReminder(ctx context.Context, arg UpdateReminderParams) 
 		arg.StartDate,
 		arg.StartOdometerKm,
 		arg.LastDoneUnknown,
+		arg.HourMeterID,
+		arg.IntervalHours,
+		arg.LeadHours,
+		arg.StartHoursTenths,
 		arg.UpdatedAt,
 		arg.ID,
 	)
@@ -504,6 +568,12 @@ func (q *Queries) UpdateReminder(ctx context.Context, arg UpdateReminderParams) 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.LastDoneUnknown,
+		&i.HourMeterID,
+		&i.IntervalHours,
+		&i.LeadHours,
+		&i.StartHoursTenths,
+		&i.LastDoneHoursTenths,
+		&i.NextDueHoursTenths,
 	)
 	return i, err
 }

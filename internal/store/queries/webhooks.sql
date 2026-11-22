@@ -79,16 +79,20 @@ UPDATE webhooks SET last_weekly_digest_on = ? WHERE id = ?;
 UPDATE webhooks SET last_monthly_digest_on = ? WHERE id = ?;
 
 -- name: ListDueReminders :many
-SELECT r.*, v.make, v.model, v.license_plate, v.current_odometer_km, v.odometer_unit
+SELECT r.*, v.make, v.model, v.license_plate, v.current_odometer_km, v.odometer_unit, v.has_odometer,
+       m.name AS hour_meter_name, m.current_hours_tenths
 FROM reminders r
 JOIN vehicles v ON v.id = r.vehicle_id
+LEFT JOIN hour_meters m ON m.id = r.hour_meter_id
 WHERE r.state IN ('due_soon', 'overdue') AND r.paused_at IS NULL AND v.archived_at IS NULL
 ORDER BY CASE r.state WHEN 'overdue' THEN 0 ELSE 1 END, r.id;
 
 -- name: GetReminderWithVehicle :one
-SELECT r.*, v.make, v.model, v.license_plate, v.current_odometer_km, v.odometer_unit
+SELECT r.*, v.make, v.model, v.license_plate, v.current_odometer_km, v.odometer_unit, v.has_odometer,
+       m.name AS hour_meter_name, m.current_hours_tenths
 FROM reminders r
 JOIN vehicles v ON v.id = r.vehicle_id
+LEFT JOIN hour_meters m ON m.id = r.hour_meter_id
 WHERE r.id = ?;
 
 -- name: GetDelivery :one

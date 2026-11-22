@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { createFormatter, kwToPs, parseMoneyToCents, parseNumber, toInputValue, type FormatPrefs } from './format'
+import { createFormatter, hoursToInput, kwToPs, parseHours, parseMoneyToCents, parseNumber, toInputValue, type FormatPrefs } from './format'
 
 const units = (u: string) =>
-  ({ km: 'km', mi: 'mi', l: 'L', ml: 'mL', qt: 'qt', gal: 'gal', fl_oz: 'fl oz', nm: 'Nm', lbft: 'lb-ft', bar: 'bar', psi: 'psi', kpa: 'kPa', cc: 'cm³', ci: 'ci', kw: 'kW', ps: 'PS', hp: 'hp' })[u] ?? u
+  ({ km: 'km', mi: 'mi', l: 'L', ml: 'mL', qt: 'qt', gal: 'gal', fl_oz: 'fl oz', nm: 'Nm', lbft: 'lb-ft', bar: 'bar', psi: 'psi', kpa: 'kPa', cc: 'cm³', ci: 'ci', kw: 'kW', ps: 'PS', hp: 'hp', h: 'h' })[u] ?? u
 const nbsp = (s: string) => s.replace(/[\u00a0\u202f]/g, ' ')
 
 const comma: FormatPrefs = { dateFormat: 'DD.MM.YYYY', numberFormat: 'comma', currencyCode: 'EUR', currencySymbol: null }
@@ -27,6 +27,22 @@ describe('createFormatter', () => {
     expect(f.date('2026-10-15')).toBe('2026-10-15')
     expect(nbsp(f.volume(6500))).toBe('6.5 L')
     expect(nbsp(f.torque(7.5))).toBe('7.5 Nm')
+  })
+
+  it('formats hour meter hours with at most one decimal', () => {
+    expect(nbsp(createFormatter(point, units).hours(1250.4))).toBe('1,250.4 h')
+    expect(nbsp(createFormatter(point, units).hours(1262))).toBe('1,262 h')
+    expect(nbsp(createFormatter(comma, units).hours(1250.4))).toBe('1.250,4 h')
+  })
+
+  it('parses typed hours to tenths', () => {
+    expect(parseHours('1.250,4', 'comma')).toBe(1250.4)
+    expect(parseHours('1,250.46', 'point')).toBe(1250.5)
+    expect(parseHours('', 'point')).toBeNull()
+    expect(parseHours('-1', 'point')).toBeUndefined()
+    expect(parseHours('1000000', 'point')).toBeUndefined()
+    expect(parseHours('abc', 'point')).toBeUndefined()
+    expect(hoursToInput(1250.4, 'comma')).toBe('1250,4')
   })
 
   it('replaces the currency part with a custom symbol', () => {

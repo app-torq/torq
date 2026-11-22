@@ -1,0 +1,31 @@
+Content-Type: application/json
+
+{
+  "event": "reminder_due_soon",
+  "message": "22 h",
+  "reminder": {
+    "hour_meter": "Engine hours",
+    "id": 8,
+    "name": "Engine Oil \u0026 Filter",
+    "next_due_date": "2027-10-15",
+    "next_due_hours": 1512,
+    "next_due_km": null,
+    "remaining_days": 350,
+    "remaining_hours": 22,
+    "remaining_km": null,
+    "state": "due_soon",
+    "trigger": "hours"
+  },
+  "schema": "torq.notification/v1",
+  "sent_at": "2026-10-30T08:00:00Z",
+  "severity": "warning",
+  "title": "Bald fällig: Motoröl \u0026 Filter — Mercedes-Benz C 220 CDI",
+  "url": "https://torq.example/vehicles/2/reminders",
+  "vehicle": {
+    "current_odometer_km": 0,
+    "id": 2,
+    "license_plate": null,
+    "name": "Deutz D 6206",
+    "odometer_unit": "km"
+  }
+}

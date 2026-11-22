@@ -171,7 +171,8 @@ func TestHistoryExport(t *testing.T) {
 	if err != nil {
 		t.Fatalf("not RFC 4180: %v", err)
 	}
-	if strings.Join(rows[0], ",") != "record_type,date,odometer_km,record_title,category_or_part,brand,specification,quantity,unit,oem_part_number,aftermarket_part_number,cost,cost_type,status,notes,hsn,tsn,displacement_cc,power_kw,fuel_type" {
+	// The hour meter columns are appended (#24), so earlier columns keep their positions.
+	if strings.Join(rows[0], ",") != "record_type,date,odometer_km,record_title,category_or_part,brand,specification,quantity,unit,oem_part_number,aftermarket_part_number,cost,cost_type,status,notes,hsn,tsn,displacement_cc,power_kw,fuel_type,hour_meter,hours" {
 		t.Fatalf("header %v", rows[0])
 	}
 	// FR-027: the leading vehicle record carries the extended profile; JSON has the fields too.
@@ -182,7 +183,7 @@ func TestHistoryExport(t *testing.T) {
 		t.Fatalf("json vehicle %+v", hv)
 	}
 	for _, r := range rows[2:] {
-		if len(r) != 20 || r[15] != "" || r[19] != "" {
+		if len(r) != len(CSVHeader) || r[15] != "" || r[19] != "" {
 			t.Fatalf("line item carries vehicle columns: %v", r)
 		}
 	}
@@ -239,7 +240,7 @@ func TestExportPerformance(t *testing.T) {
 func TestCSVNeutralizesFormulas(t *testing.T) {
 	h := History{
 		Vehicle: HistoryVehicle{Make: "=HYPERLINK(\"http://x\")", Model: "C 220"},
-		Repairs: []HistoryRepair{{CompletedOn: "2026-10-30", Title: "@SUM(A1)", Procedure: "-2+3"}},
+		Repairs: []HistoryRepair{{CompletedOn: "2026-10-30", Title: "@SUM(A1)", Procedure: "-2+3", OdometerRecorded: true}},
 	}
 	var buf bytes.Buffer
 	if err := WriteCSV(&buf, h); err != nil {
@@ -257,5 +258,86 @@ func TestCSVNeutralizesFormulas(t *testing.T) {
 	}
 	if got := neutralize([]string{"-12.50", "+5", "a=b"}); strings.Join(got, "|") != "-12.50|+5|a=b" {
 		t.Fatalf("numbers and inner signs must stay: %v", got)
+	}
+}
+
+// TestHoursReports covers a vehicle tracked by hours only (#24): cost per
+// operating hour (€840 over 1,250 → 1,450 h = €4.20/h), no distance, and
+// hours in the history and CSV.
+func TestHoursReports(t *testing.T) {
+	f := setup(t)
+	f.seed2026(t)
+	tractor, err := f.veh.Create(f.ctx, vehicles.Profile{Make: "Deutz", Model: "D 6206", NoOdometer: true,
+		InitialMeter: &vehicles.MeterInput{Name: "Engine hours", HoursTenths: 12500, ReadingDate: "2026-01-02"}}, 0, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	meters, err := f.veh.Meters(f.ctx, []int64{tractor.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	meter := meters[tractor.ID][0].ID
+	if _, _, err := f.svc.Create(f.ctx, servicelog.Input{VehicleID: tractor.ID, ServiceDate: "2026-06-01", NoOdometerKm: true,
+		MeterReadings: []vehicles.HoursReading{{MeterID: meter, HoursTenths: 14500}},
+		Items:         []servicelog.ItemInput{{CategoryID: 1, CostCents: i64(84000)}}}, 0); err != nil {
+		t.Fatal(err)
+	}
+
+	rep, err := f.r.CostReport(f.ctx, tractor.ID, "2026-01-01", "2026-12-31")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rep.DistanceKm != nil || rep.HoursTenths == nil || *rep.HoursTenths != 2000 || rep.CostPerHourCents() == nil || *rep.CostPerHourCents() != 420 {
+		t.Fatalf("tractor report %+v", rep)
+	}
+	// The garage's distance and cost per km ignore the tractor.
+	all, err := f.r.CostReport(f.ctx, 0, "2026-01-01", "2026-12-31")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if all.DistanceKm == nil || *all.DistanceKm != 20000 || all.HoursTenths != nil {
+		t.Fatalf("garage report %+v", all)
+	}
+	// One reading in the period: not enough data.
+	single, err := f.r.CostReport(f.ctx, tractor.ID, "2026-05-01", "2026-12-31")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if single.HoursTenths != nil || single.CostPerHourCents() != nil {
+		t.Fatalf("single reading %+v", single)
+	}
+
+	h, err := f.r.History(f.ctx, tractor.ID, ExportOptions{IncludeCosts: true, Locale: i18n.Default})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h.Vehicle.HasOdometer || len(h.Vehicle.HourMeters) != 1 || h.Vehicle.HourMeters[0].CurrentHours != 1450 {
+		t.Fatalf("history vehicle %+v", h.Vehicle)
+	}
+	if s := h.Services[0]; s.OdometerRecorded || len(s.MeterReadings) != 1 || s.MeterReadings[0].Hours != 1450 {
+		t.Fatalf("history service %+v", s)
+	}
+	var buf bytes.Buffer
+	if err := WriteCSV(&buf, h); err != nil {
+		t.Fatal(err)
+	}
+	rows, err := csv.NewReader(bytes.NewReader(buf.Bytes()[3:])).ReadAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := len(CSVHeader)
+	if v := rows[1]; v[2] != "" || v[n-2] != "Engine hours" || v[n-1] != "1450" {
+		t.Fatalf("vehicle row %v", v)
+	}
+	if s := rows[2]; s[0] != "service" || s[2] != "" || s[n-2] != "Engine hours" || s[n-1] != "1450" {
+		t.Fatalf("service row %v", s)
+	}
+
+	items, _, err := f.r.Timeline(f.ctx, tractor.ID, "", "", 50, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) != 1 || items[0].OdometerRecorded || len(items[0].MeterReadings) != 1 {
+		t.Fatalf("timeline %+v", items)
 	}
 }

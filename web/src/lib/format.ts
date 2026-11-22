@@ -83,6 +83,8 @@ export interface Formatter {
   power: (w: number, unit?: PowerUnit | null) => string
   /** Power in watts in the preferred unit only, e.g. "150 PS". */
   powerShort: (w: number) => string
+  /** Hour meter hours, e.g. "1,250.4 h"; never converted. */
+  hours: (h: number) => string
 }
 
 /** Metric horsepower (PS) from kW. */
@@ -197,6 +199,7 @@ export function createFormatter(prefs: FormatPrefs, unit: UnitLabel): Formatter 
       return `${inUnit(w, POWER[primary])} (${inUnit(w, POWER[secondary])})`
     },
     powerShort: (w) => inUnit(w, POWER[prefs.powerUnit ?? 'kw']),
+    hours: (h) => `${number(h, { maxDecimals: 1 })} ${unit('h')}`,
   }
 }
 
@@ -228,6 +231,25 @@ export function toInputValue(n: number | null | undefined, numberFormat: NumberF
   if (n === null || n === undefined) return ''
   const s = String(Number(n.toFixed(maxDecimals)))
   return numberFormat === 'comma' ? s.replace('.', ',') : s
+}
+
+/** The largest hour meter value, 999,999.9 h. */
+export const MAX_HOURS = 999999.9
+
+/**
+ * Parses typed hours ("1.250,4" or "1,250.4") rounded to a tenth: null for
+ * empty input, undefined when it does not parse or is out of range.
+ */
+export function parseHours(raw: string, nf: NumberFormat): number | null | undefined {
+  if (raw.trim() === '') return null
+  const n = parseNumber(raw, nf)
+  if (n === null || n < 0 || n > MAX_HOURS) return undefined
+  return Math.round(n * 10) / 10
+}
+
+/** Input text for hours. */
+export function hoursToInput(h: number | null | undefined, nf: NumberFormat): string {
+  return toInputValue(h, nf, 1)
 }
 
 /** Input text for a stored metric value in the display unit. */

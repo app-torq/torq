@@ -36,6 +36,7 @@ Self-hosted · one small Docker container · your data stays on your server
 - 🛢️ **Service logbook**: oil changes, fluids, filters, brakes. Each entry records brand, spec, quantity, part numbers and cost, and resets its reminder.
 - 🔧 **Self-repair projects**: a board from *Planned* to *Completed*, with OBD2 fault codes, root cause, procedure notes, torque specs, a parts list and photos. Your own priorities (name, color, order) sort and filter the board and the list, and free-form tags filter it further (also from the search box: `tags:brakes,abs`).
 - ⏰ **Reminders** by distance, by time or whichever comes first, re-checked with every odometer update. Work that was never done is due right away.
+- ⏱️ **Hour meters** for tractors, machinery or a motorhome's generator: track operating hours next to the odometer or instead of it, with reminders by hours (e.g. every 250 h or 12 months).
 - 🚗 **Vehicle catalog that works offline**: enter the HSN/TSN from the German registration certificate, or pick make → model → chassis code (W203, E46, Golf IV) → engine to fill in the technical data.
 - 📋 **Spec sheet** with oil and fluid specs, capacities, lug torque and tyre pressure, filled in from the web on request, with a source link for every value.
 - 🔔 **Notifications** via webhooks to Discord, ntfy, Gotify, Home Assistant or any JSON endpoint.
