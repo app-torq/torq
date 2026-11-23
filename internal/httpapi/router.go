@@ -50,7 +50,7 @@ const (
 // info.version in openapi.yaml. Within /api/v1 changes are additive only, and
 // every release that adds operations, fields or capabilities raises it by one
 // so clients can detect features (research M7).
-const APIVersion = 7
+const APIVersion = 8
 
 // Server holds the handler dependencies, domain services and the route table.
 type Server struct {

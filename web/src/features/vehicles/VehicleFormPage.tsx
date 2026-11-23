@@ -8,7 +8,7 @@ import { metricField, metricToInput, parseDistance, parseHours, powerW, readMetr
 import { DISPLACEMENT, POWER, type DisplacementUnit, type DistanceUnit, type PowerUnit, type UnitSpec } from '../../lib/units'
 import { vinWarning } from '../../lib/vin'
 import { fieldErrors, useErrorText } from '../../lib/errors'
-import { FUEL_TYPES, type CatalogEngine, type CatalogGeneration, type CatalogModel, type KbaVariant, type NumberFormat, type User, type Vehicle } from '../../lib/types'
+import { FUEL_TYPES, VEHICLE_TYPES, type CatalogEngine, type CatalogGeneration, type CatalogModel, type KbaVariant, type NumberFormat, type User, type Vehicle, type VehicleType } from '../../lib/types'
 import { useSession } from '../../app/session'
 import { Button } from '../../components/Button'
 import { SelectField, TextField } from '../../components/Field'
@@ -18,7 +18,7 @@ import { useVehicle } from './hooks'
 import { AvatarUpload } from './AvatarUpload'
 import { HsnTsnQuickFill } from './HsnTsnQuickFill'
 import { useAutoFill } from './useAutoFill'
-import { useCatalogEngines, useCatalogGenerations, useCatalogMakes, useCatalogModels } from './catalog'
+import { useCatalogEngines, useCatalogGenerations, useCatalogMakes, useCatalogModels, versionLabel, yearRange as years } from './catalog'
 import { CreatableCombobox } from '../../components/CreatableCombobox'
 import { useDebouncedValue } from '../../lib/useDebouncedValue'
 import { useFormat } from '../../lib/useFormat'
@@ -39,6 +39,7 @@ function EditVehicle({ id }: { id: number }) {
 
 /** Raw form text per field; numbers are parsed on submit with the user's number format. */
 export interface VehicleFormValues extends Record<string, string> {
+  vehicleType: VehicleType
   make: string
   model: string
   chassis: string
@@ -99,6 +100,7 @@ function initialValues(user: User, v?: Vehicle): VehicleFormValues {
   const powerUnit = v?.power_unit ?? ''
   const text = valueText(specsFor(user, displacementUnit, powerUnit), user.number_format)
   return {
+    vehicleType: v?.vehicle_type === 'motorcycle' ? 'motorcycle' : 'car',
     make: v?.make ?? '',
     model: v?.model ?? '',
     chassis: v?.chassis_code ?? '',
@@ -143,9 +145,6 @@ const dependants: Record<TaxonomyField, TaxonomyField[]> = {
   chassis: ['trim'],
   trim: [],
 }
-
-const years = (from: number | null, to: number | null) =>
-  from == null ? '' : to == null ? `${String(from)}–` : from === to ? String(from) : `${String(from)}–${String(to)}`
 
 function VehicleForm({ vehicle }: { vehicle?: Vehicle }) {
   const { t } = useTranslation('vehicles')
@@ -205,13 +204,17 @@ function VehicleForm({ vehicle }: { vehicle?: Vehicle }) {
   const [focused, setFocused] = useState<TaxonomyField | null>(null)
   const focus = (field: TaxonomyField) => (on: boolean) => { setFocused((f) => (on ? field : f === field ? null : f)) }
   const q = useDebouncedValue(values, 120)
-  const makes = useCatalogMakes(q.make, focused === 'make')
-  const models = useCatalogModels(values.make, q.model, focused === 'model')
-  const modelsAll = useCatalogModels(values.make, '', focused === 'model')
-  const gens = useCatalogGenerations(values.make, values.model, q.chassis, focused === 'chassis')
-  const gensAll = useCatalogGenerations(values.make, values.model, '', focused === 'chassis')
-  const engines = useCatalogEngines(values.make, values.model, values.chassis, q.trim, focused === 'trim')
-  const enginesAll = useCatalogEngines(values.make, values.model, values.chassis, '', focused === 'trim')
+  // Motorcycles have no catalog generations: the chassis code stays free
+  // text and the step after Model lists versions (specs/006-motorcycles).
+  const vt = values.vehicleType
+  const motorcycle = vt === 'motorcycle'
+  const makes = useCatalogMakes(vt, q.make, focused === 'make')
+  const models = useCatalogModels(vt, values.make, q.model, focused === 'model')
+  const modelsAll = useCatalogModels(vt, values.make, '', focused === 'model')
+  const gens = useCatalogGenerations(vt, values.make, values.model, q.chassis, focused === 'chassis' && !motorcycle)
+  const gensAll = useCatalogGenerations(vt, values.make, values.model, '', focused === 'chassis' && !motorcycle)
+  const engines = useCatalogEngines(vt, values.make, values.model, values.chassis, q.trim, focused === 'trim')
+  const enginesAll = useCatalogEngines(vt, values.make, values.model, values.chassis, '', focused === 'trim')
 
   /** A committed change of a taxonomy level clears the levels below it. */
   const commit = (field: TaxonomyField) => (_text: string, changed: boolean) => {
@@ -220,7 +223,7 @@ function VehicleForm({ vehicle }: { vehicle?: Vehicle }) {
     setValues((prev) => ({ ...prev, ...cleared }))
   }
   const pickEngine = (e: CatalogEngine) => {
-    setValues((prev) => ({ ...prev, trim: e.name }))
+    setValues((prev) => ({ ...prev, trim: prev.vehicleType === 'motorcycle' ? versionLabel(e, fmt) : e.name }))
     fill({
       ...(e.engine_code ? { engine: e.engine_code } : {}),
       ...(e.power_kw != null ? { power: text.power(e.power_kw * 1000) } : {}),
@@ -277,7 +280,7 @@ function VehicleForm({ vehicle }: { vehicle?: Vehicle }) {
     const w = readMetricField(v.power, stored.power, powerSpec, nf, true)
     if (w === undefined) errs.power_kw = 'validation.number'
     const body: Record<string, unknown> = {
-      make: v.make, model: v.model, chassis_code: v.chassis, model_year: yearNum, engine_code: v.engine,
+      vehicle_type: v.vehicleType, make: v.make, model: v.model, chassis_code: v.chassis, model_year: yearNum, engine_code: v.engine,
       vin: v.vin.trim() === '' ? null : v.vin, license_plate: v.plate.trim() === '' ? null : v.plate,
       // HSN/TSN are saved whenever present, whether or not they matched (FR-022).
       hsn: v.hsn === '' ? null : v.hsn, tsn: v.tsn === '' ? null : v.tsn,
@@ -325,6 +328,15 @@ function VehicleForm({ vehicle }: { vehicle?: Vehicle }) {
             tsnError={fe.tsn}
           />
           <div className="form-grid grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {/* Switching the type never clears what is filled in (spec US1, scenario 6). */}
+            <SelectField
+              label={t('fields.vehicleType')}
+              value={values.vehicleType}
+              onChange={(type) => { setValues((prev) => ({ ...prev, vehicleType: type as VehicleType })) }}
+              options={VEHICLE_TYPES.map((type) => ({ value: type, label: t(`vehicleType.${type}`) }))}
+              error={fe.vehicle_type}
+              className="sm:col-span-2"
+            />
             <CreatableCombobox
               label={t('fields.make')}
               value={values.make}
@@ -363,29 +375,29 @@ function VehicleForm({ vehicle }: { vehicle?: Vehicle }) {
               onSelect={(g: CatalogGeneration) => { set('chassis')(g.name) }}
               onCommit={commit('chassis')}
               onFocusChange={focus('chassis')}
-              items={gens.data}
+              items={motorcycle ? undefined : gens.data}
               itemText={(g) => g.name}
               renderItem={generationLabel}
-              catalogAvailable={(gensAll.data?.length ?? 0) > 0}
+              catalogAvailable={!motorcycle && (gensAll.data?.length ?? 0) > 0}
               loading={gens.isFetching}
               error={fe.chassis_code}
-              hint={t('fields.chassisCodeHint')}
+              hint={motorcycle ? t('fields.frameCodeHint') : t('fields.chassisCodeHint')}
               highlighted={hi('chassis')}
               optional
             />
             <CreatableCombobox
-              label={t('fields.engineTrim')}
+              label={motorcycle ? t('fields.version') : t('fields.engineTrim')}
               value={values.trim}
               onChange={set('trim')}
               onSelect={pickEngine}
               onCommit={commit('trim')}
               onFocusChange={focus('trim')}
               items={engines.data}
-              itemText={(e) => e.name}
-              renderItem={engineLabel}
+              itemText={(e) => (motorcycle ? versionLabel(e, fmt) : e.name)}
+              renderItem={motorcycle ? (e) => versionLabel(e, fmt) : engineLabel}
               catalogAvailable={(enginesAll.data?.length ?? 0) > 0}
               loading={engines.isFetching}
-              hint={t('fields.engineTrimHint')}
+              hint={motorcycle ? t('fields.versionHint') : t('fields.engineTrimHint')}
               optional
             />
             <TextField label={t('fields.engineCode')} value={values.engine} onChange={set('engine')} error={fe.engine_code} hint={t('fields.engineCodeHint')} highlighted={hi('engine')} optional />

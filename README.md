@@ -37,7 +37,8 @@ Self-hosted · one small Docker container · your data stays on your server
 - 🔧 **Self-repair projects**: a board from *Planned* to *Completed*, with OBD2 fault codes, root cause, procedure notes, torque specs, a parts list and photos. Your own priorities (name, color, order) sort and filter the board and the list, and free-form tags filter it further (also from the search box: `tags:brakes,abs`).
 - ⏰ **Reminders** by distance, by time or whichever comes first, re-checked with every odometer update. Work that was never done is due right away.
 - ⏱️ **Hour meters** for tractors, machinery or a motorhome's generator: track operating hours next to the odometer or instead of it, with reminders by hours (e.g. every 250 h or 12 months).
-- 🚗 **Vehicle catalog that works offline**: enter the HSN/TSN from the German registration certificate, or pick make → model → chassis code (W203, E46, Golf IV) → engine to fill in the technical data.
+- 🏍️ **Cars and motorcycles**: motorcycles get their own spec sheet fields (final drive, sprockets, chain, fork oil, valve clearance) and service categories (chain care, valve clearance, fork oil).
+- 🚗 **Vehicle catalog that works offline**: enter the HSN/TSN from the German registration certificate, or pick make → model → chassis code (W203, E46, Golf IV) → engine to fill in the technical data. Motorcycles go make → model → version.
 - 📋 **Spec sheet** with oil and fluid specs, capacities, lug torque and tyre pressure, filled in from the web on request, with a source link for every value.
 - 🔔 **Notifications** via webhooks to Discord, ntfy, Gotify, Home Assistant or any JSON endpoint.
 - 📊 **Reports**: costs per vehicle, service vs. repair, cost per km, a timeline and a printable history with JSON/CSV export.
@@ -104,8 +105,9 @@ The [wiki](https://github.com/app-torq/torq/wiki) covers installation, all setti
 The vehicle catalog ships with torq and lookups run offline. Admins can refresh it from its sources under **Settings → About & data sources** (disable with `TORQ_CATALOG_ONLINE_UPDATES=false`). The bundled data comes from:
 
 - **Kraftfahrt-Bundesamt (KBA), FZ 6**: "Bestand an Kraftfahrzeugen und Kraftfahrzeuganhängern nach Herstellern und Typen", stand 1 January 2024, [kba.de](https://www.kba.de/DE/Statistik/Fahrzeuge/Bestand/ListeHerstellerTypSchluesselnummern/typschluesselnummern_node.html).
-  © Kraftfahrt-Bundesamt, Flensburg. Datenquelle: Kraftfahrt-Bundesamt, FZ 6, 2026-10-31; [Datenlizenz Deutschland – Namensnennung – Version 2.0](https://www.govdata.de/dl-de/by-2-0) (dl-de/by-2-0); Daten geändert (data modified by torq).
+  © Kraftfahrt-Bundesamt, Flensburg. Datenquelle: Kraftfahrt-Bundesamt, FZ 6, 2026-11-23; [Datenlizenz Deutschland – Namensnennung – Version 2.0](https://www.govdata.de/dl-de/by-2-0) (dl-de/by-2-0); Daten geändert (data modified by torq).
 - **vehicle-makes-models**: [github.com/gor3a/vehicle-makes-models](https://github.com/gor3a/vehicle-makes-models), `data/json/all.json` at commit `ee99776470a45214bf524cdfe22e5dbf4bd67f93`, compiled from publicly available information on [autoevolution.com](https://www.autoevolution.com). Licensed under the [Open Database License (ODbL) 1.0](https://opendatacommons.org/licenses/odbl/1-0/); changes were made.
+- **RDW Open Data** (motorcycles): [Gekentekende_voertuigen](https://opendata.rdw.nl/Voertuigen/Open-Data-RDW-Gekentekende_voertuigen/m9d7-ebf2) and [Gekentekende_voertuigen_brandstof](https://opendata.rdw.nl/Voertuigen/Open-Data-RDW-Gekentekende_voertuigen_brandstof/8ys7-d773) of the Dutch vehicle authority RDW, Public Domain. Bron: RDW Open Data, 2026-11-23; aggregated and cleaned up by torq.
 
 The combined catalog (`internal/catalog/data/catalog_seed.json.gz`) is a derived database distributed under the ODbL 1.0 ([full text](internal/catalog/data/LICENSE-ODbL.txt)). Sources, retrieval dates and every transformation are documented in [`NOTICE.md`](internal/catalog/data/NOTICE.md). The same attributions appear in the app under **Settings → About & data sources**.
 

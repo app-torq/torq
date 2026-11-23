@@ -52,6 +52,13 @@ func Doc() catalog.SeedDoc {
 				Engine: "2.0 HDi", DisplacementCC: i64(1997), PowerKW: i64(100), FuelType: str("diesel")},
 			{Make: "Tesla", Model: "Model 3", Generation: "2017–2023", YearFrom: i64(2017), YearTo: i64(2023),
 				Engine: "Long Range AWD", PowerKW: i64(324), FuelType: str("electric")},
+			// Motorcycles: no generation; each row is a version.
+			{Make: "BMW", Model: "R 1200 GS", YearFrom: i64(2004), YearTo: i64(2012), Engine: "1170 cm³ 81 kW",
+				DisplacementCC: i64(1170), PowerKW: i64(81), FuelType: str("petrol"), VehicleType: catalog.TypeMotorcycle},
+			{Make: "BMW", Model: "R 1200 GS", YearFrom: i64(2013), YearTo: i64(2018), Engine: "1170 cm³ 92 kW",
+				DisplacementCC: i64(1170), PowerKW: i64(92), FuelType: str("petrol"), VehicleType: catalog.TypeMotorcycle},
+			{Make: "Ducati", Model: "Monster 821", YearFrom: i64(2014), Engine: "821 cm³ 82 kW",
+				DisplacementCC: i64(821), PowerKW: i64(82), FuelType: str("petrol"), VehicleType: catalog.TypeMotorcycle},
 		},
 	}
 }

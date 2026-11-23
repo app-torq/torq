@@ -29,6 +29,16 @@ var (
 // FuelTypes are the stored fuel_type values; the UI translates them.
 var FuelTypes = []string{"diesel", "petrol", "hybrid", "electric", "lpg", "cng", "other"}
 
+// Vehicle types. The catalog uses the same values (catalog.TypeCar and
+// catalog.TypeMotorcycle).
+const (
+	TypeCar        = "car"
+	TypeMotorcycle = "motorcycle"
+)
+
+// Types are the stored vehicle_type values; more may follow.
+var Types = []string{TypeCar, TypeMotorcycle}
+
 // OdometerUnits are the units a vehicle's odometer can read in. Distances are
 // always stored in km; the unit only decides how they are shown and entered.
 var OdometerUnits = []string{"km", "mi"}
@@ -83,6 +93,8 @@ type Profile struct {
 	NoOdometer bool
 	// InitialMeter adds an hour meter on Create; Update ignores it.
 	InitialMeter *MeterInput
+	// VehicleType is one of Types; empty means car.
+	VehicleType string
 }
 
 func boolInt(b bool) int64 {
@@ -106,6 +118,9 @@ func (p *Profile) normalize() {
 	p.PowerUnit = trimOrNil(p.PowerUnit, false)
 	if p.OdometerUnit == "" {
 		p.OdometerUnit = "km"
+	}
+	if p.VehicleType == "" {
+		p.VehicleType = TypeCar
 	}
 	switch {
 	case p.PowerW != nil:
@@ -151,6 +166,7 @@ func (s *Service) validate(p Profile, v *apperr.Validation) {
 	v.Check(p.PowerKW != nil && (*p.PowerKW < 1 || *p.PowerKW > 2000), "power_kw", "vehicle.power_out_of_range")
 	v.Check(p.PowerW != nil && (*p.PowerW < 1 || *p.PowerW > 2_000_000), "power_w", "vehicle.power_out_of_range")
 	v.Check(!slices.Contains(OdometerUnits, p.OdometerUnit), "odometer_unit", "validation.invalid_choice")
+	v.Check(!slices.Contains(Types, p.VehicleType), "vehicle_type", "validation.invalid_choice")
 	v.Check(p.DisplacementUnit != nil && !slices.Contains(DisplacementUnits, *p.DisplacementUnit), "displacement_unit", "validation.invalid_choice")
 	v.Check(p.PowerUnit != nil && !slices.Contains(PowerUnits, *p.PowerUnit), "power_unit", "validation.invalid_choice")
 	v.Check(p.FuelType != nil && !slices.Contains(FuelTypes, *p.FuelType), "fuel_type", "vehicle.fuel_type_invalid")
@@ -202,7 +218,7 @@ func (s *Service) Create(ctx context.Context, p Profile, odometerKm int64, creat
 			Hsn: nullStringPtr(p.HSN), Tsn: nullStringPtr(p.TSN), DisplacementCc: nullInt(p.DisplacementCC),
 			PowerKw: nullInt(p.PowerKW), PowerW: nullInt(p.PowerW), FuelType: nullStringPtr(p.FuelType),
 			OdometerUnit: p.OdometerUnit, DisplacementUnit: nullStringPtr(p.DisplacementUnit), PowerUnit: nullStringPtr(p.PowerUnit),
-			HasOdometer: boolInt(!p.NoOdometer), CurrentOdometerKm: odometerKm, CreatedBy: sql.NullInt64{Int64: createdBy, Valid: createdBy > 0},
+			HasOdometer: boolInt(!p.NoOdometer), CurrentOdometerKm: odometerKm, VehicleType: p.VehicleType, CreatedBy: sql.NullInt64{Int64: createdBy, Valid: createdBy > 0},
 			CreatedAt: now, UpdatedAt: now,
 		})
 		if err != nil {
@@ -289,7 +305,7 @@ func (s *Service) Update(ctx context.Context, id int64, p Profile) (store.Vehicl
 			Hsn: nullStringPtr(p.HSN), Tsn: nullStringPtr(p.TSN), DisplacementCc: nullInt(p.DisplacementCC),
 			PowerKw: nullInt(p.PowerKW), PowerW: nullInt(p.PowerW), FuelType: nullStringPtr(p.FuelType),
 			OdometerUnit: p.OdometerUnit, DisplacementUnit: nullStringPtr(p.DisplacementUnit), PowerUnit: nullStringPtr(p.PowerUnit),
-			HasOdometer: boolInt(!p.NoOdometer), UpdatedAt: clock.Timestamp(s.Clock.Now()), ID: id,
+			HasOdometer: boolInt(!p.NoOdometer), VehicleType: p.VehicleType, UpdatedAt: clock.Timestamp(s.Clock.Now()), ID: id,
 		})
 		if err != nil || cur.HasOdometer == out.HasOdometer {
 			return err

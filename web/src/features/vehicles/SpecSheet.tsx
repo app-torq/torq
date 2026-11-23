@@ -8,16 +8,16 @@ import { useFormat } from '../../lib/useFormat'
 import { powerW } from '../../lib/format'
 import { PRESSURE, TORQUE, VOLUME } from '../../lib/units'
 import { fieldErrors, useErrorText } from '../../lib/errors'
-import type { AutofillValue, SpecEntry, SpecFieldKey, SpecMeta, VehicleSpecs } from '../../lib/types'
+import { FINAL_DRIVES, type AutofillValue, type MotoFieldKey, type SpecEntry, type SpecFieldKey, type SpecMeta, type VehicleSpecs } from '../../lib/types'
 import { useSession } from '../../app/session'
 import { Button, IconButton } from '../../components/Button'
-import { Checkbox, TextAreaField, TextField } from '../../components/Field'
+import { Checkbox, SelectField, TextAreaField, TextField } from '../../components/Field'
 import { NumberField, NumberRangeField } from '../../components/NumberField'
 import { ConfirmDialog, Dialog } from '../../components/Dialog'
 import { Card, ErrorBanner, Loading, Notice } from '../../components/ui'
 import { useVehicleContext } from './VehicleDetailLayout'
 import { SpecEntryAttachments } from './SpecEntryAttachments'
-import { applyAutofill, editField, initialDraft, rangeMeta, toRequestBody, type AutofillSummary, type SpecUnits } from './specsDraft'
+import { applyAutofill, editField, editMoto, initialDraft, rangeMeta, toRequestBody, type AutofillSummary, type SpecUnits } from './specsDraft'
 
 interface SpecsResponse {
   specs: VehicleSpecs
@@ -46,6 +46,20 @@ function fluidCapacity(s: VehicleSpecs, k: FluidKey): number | null {
   return k === 'coolant' ? s.coolant_capacity_ml : s[`${k}_capacity_ml`]
 }
 
+/**
+ * The fluid groups a vehicle shows. On a motorcycle the differential fields
+ * hold the final drive oil, shown for shaft drive only (FR-014).
+ */
+function fluidGroupsFor(motorcycle: boolean, finalDrive: string | null) {
+  if (!motorcycle) return fluidGroups
+  return fluidGroups
+    .filter((g) => g.key !== 'differential_fluid' || finalDrive === 'shaft')
+    .map((g) => (g.key === 'differential_fluid' ? { ...g, label: 'groups.finalDriveOil' } : g))
+}
+
+/** Chain and sprocket data apply to chain drive, or while the drive is not set. */
+const hasChain = (finalDrive: string | null) => !finalDrive || finalDrive === 'chain'
+
 export function SpecSheetPage() {
   const v = useVehicleContext()
   const { t } = useTranslation('specs')
@@ -57,8 +71,13 @@ export function SpecSheetPage() {
   if (specs.isPending) return <Loading />
   if (specs.isError) return <ErrorBanner message={errorText(specs.error)} onRetry={() => void specs.refetch()} />
   const s = specs.data.specs
+  const m = s.motorcycle
+  const motorcycle = v.vehicle_type === 'motorcycle'
   const none = t('common:state.none')
   const join = (...parts: (string | null)[]) => parts.filter((p): p is string => !!p).join(' · ') || none
+  const mm = (lo: number | null, hi: number | null) =>
+    lo == null ? none : `${[lo, hi].filter((x): x is number => x != null).map((x) => fmt.number(x, { decimals: 2 })).join('–')} mm`
+  const teeth = (n: number | null) => (n == null ? '—' : String(n))
 
   return (
     <div className="space-y-6">
@@ -82,7 +101,7 @@ export function SpecSheetPage() {
         <Pin title={t('groups.engineOil')}>
           {join(s.engine_oil_viscosity, s.engine_oil_spec, s.engine_oil_capacity_ml ? fmt.volume(s.engine_oil_capacity_ml) : null)}
         </Pin>
-        {fluidGroups.map((g) => {
+        {fluidGroupsFor(motorcycle, m.final_drive).map((g) => {
           const cap = fluidCapacity(s, g.key)
           return (
             <Pin key={g.key} title={t(g.label)}>
@@ -90,9 +109,38 @@ export function SpecSheetPage() {
             </Pin>
           )
         })}
+        {motorcycle && (
+          <>
+            <Pin title={t('groups.drivetrain')}>
+              <div className="space-y-0.5">
+                <div>{t('fields.finalDrive')}: {m.final_drive ? t(`finalDrive.${m.final_drive}`) : none}</div>
+                {hasChain(m.final_drive) && (
+                  <>
+                    <div>
+                      {t('fields.sprockets')}:{' '}
+                      {m.sprocket_front_teeth != null || m.sprocket_rear_teeth != null ? `${teeth(m.sprocket_front_teeth)} / ${teeth(m.sprocket_rear_teeth)}` : none}
+                    </div>
+                    <div>
+                      {t('fields.chain')}: {join(m.chain_size || null, m.chain_links != null ? t('fields.chainLinksValue', { count: m.chain_links }) : null)}
+                    </div>
+                  </>
+                )}
+              </div>
+            </Pin>
+            <Pin title={t('groups.forkOil')}>
+              {join(m.fork_oil_spec || null, m.fork_oil_capacity_ml ? t('fields.perLeg', { volume: fmt.volume(m.fork_oil_capacity_ml) }) : null)}
+            </Pin>
+            <Pin title={t('groups.valveClearance')}>
+              <div className="space-y-0.5">
+                <div>{t('fields.intake')}: {mm(m.valve_clearance_intake_min_mm, m.valve_clearance_intake_max_mm)}</div>
+                <div>{t('fields.exhaust')}: {mm(m.valve_clearance_exhaust_min_mm, m.valve_clearance_exhaust_max_mm)}</div>
+              </div>
+            </Pin>
+          </>
+        )}
         <Pin title={t('groups.wheels')}>
           <div className="space-y-0.5">
-            <div>{t('fields.lugTorque')}: {s.wheel_lug_torque_nm ? fmt.torque(s.wheel_lug_torque_nm) : none}</div>
+            {!motorcycle && <div>{t('fields.lugTorque')}: {s.wheel_lug_torque_nm ? fmt.torque(s.wheel_lug_torque_nm) : none}</div>}
             <div>
               {t('fields.pressureFront')}: {s.tire_pressure_front_bar ? fmt.pressureRange(s.tire_pressure_front_bar, s.tire_pressure_front_max_bar) : none}
             </div>
@@ -103,7 +151,7 @@ export function SpecSheetPage() {
         </Pin>
       </div>
       <CustomEntries vehicleId={v.id} entries={specs.data.entries} />
-      {editing && <SpecsEditDialog vehicleId={v.id} specs={s} onClose={() => { setEditing(false) }} />}
+      {editing && <SpecsEditDialog vehicleId={v.id} specs={s} motorcycle={motorcycle} onClose={() => { setEditing(false) }} />}
     </div>
   )
 }
@@ -117,7 +165,13 @@ function Pin({ title, children }: { title: ReactNode; children: ReactNode }) {
   )
 }
 
-export function SpecsEditDialog({ vehicleId, specs, onClose }: { vehicleId: number; specs: VehicleSpecs; onClose: () => void }) {
+export function SpecsEditDialog({ vehicleId, specs, motorcycle = false, onClose }: {
+  vehicleId: number
+  specs: VehicleSpecs
+  /** Shows the motorcycle fields and hides the car-only ones. */
+  motorcycle?: boolean
+  onClose: () => void
+}) {
   const { t } = useTranslation('specs')
   const { user, instance } = useSession()
   const qc = useQueryClient()
@@ -165,6 +219,14 @@ export function SpecsEditDialog({ vehicleId, specs, onClose }: { vehicleId: numb
     error: fe[k],
   })
 
+  /** Props of a motorcycle input. */
+  const bindMoto = (k: MotoFieldKey) => ({
+    value: draft.moto[k],
+    onChange: (x: string) => { setDraft((prev) => editMoto(prev, k, x)) },
+    error: fe[`motorcycle.${k}`],
+  })
+  const finalDrive = draft.moto.final_drive
+
   const L = t(`common:units.${VOLUME[units.volume].label}`)
   return (
     <Dialog
@@ -207,16 +269,64 @@ export function SpecsEditDialog({ vehicleId, specs, onClose }: { vehicleId: numb
           <TextField label={t('fields.spec')} placeholder="MB 229.51" {...bind('engine_oil_spec')} />
           <NumberField label={t('fields.capacity')} unit={L} {...bind('engine_oil_capacity_ml')} />
         </fieldset>
-        {fluidGroups.map((g) => (
+        {fluidGroupsFor(motorcycle, finalDrive).map((g) => (
           <fieldset key={g.key} className="form-grid grid grid-cols-1 gap-3 sm:grid-cols-3">
             <legend className="mb-2 text-sm font-semibold text-zinc-200">{t(g.label)}</legend>
             <TextField label={t('fields.spec')} className="sm:col-span-2" {...bind(`${g.key}_spec`)} />
             <NumberField label={t('fields.capacity')} unit={L} {...bind(`${g.key}_capacity_ml`)} />
           </fieldset>
         ))}
+        {motorcycle && (
+          <>
+            <fieldset className="form-grid grid grid-cols-1 gap-3 sm:grid-cols-4">
+              <legend className="mb-2 text-sm font-semibold text-zinc-200">{t('groups.drivetrain')}</legend>
+              <SelectField
+                label={t('fields.finalDrive')}
+                className="sm:col-span-4"
+                options={[{ value: '', label: t('common:state.none') }, ...FINAL_DRIVES.map((d) => ({ value: d, label: t(`finalDrive.${d}`) }))]}
+                {...bindMoto('final_drive')}
+              />
+              {hasChain(finalDrive) && (
+                <>
+                  <NumberField label={t('fields.sprocketFront')} decimal={false} {...bindMoto('sprocket_front_teeth')} />
+                  <NumberField label={t('fields.sprocketRear')} decimal={false} {...bindMoto('sprocket_rear_teeth')} />
+                  <TextField label={t('fields.chainSize')} placeholder="525" maxLength={40} {...bindMoto('chain_size')} />
+                  <NumberField label={t('fields.chainLinks')} decimal={false} {...bindMoto('chain_links')} />
+                </>
+              )}
+            </fieldset>
+            <fieldset className="form-grid grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <legend className="mb-2 text-sm font-semibold text-zinc-200">{t('groups.forkOil')}</legend>
+              <TextField label={t('fields.spec')} placeholder="SAE 7.5W" className="sm:col-span-2" maxLength={120} {...bindMoto('fork_oil_spec')} />
+              <NumberField label={t('fields.capacity')} unit={L} hint={t('fields.perLegHint')} {...bindMoto('fork_oil_capacity_ml')} />
+            </fieldset>
+            <fieldset className="form-grid grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <legend className="mb-2 text-sm font-semibold text-zinc-200">{t('groups.valveClearance')}</legend>
+              {(['intake', 'exhaust'] as const).map((side) => {
+                const lo = `valve_clearance_${side}_min_mm` as const
+                const hi = `valve_clearance_${side}_max_mm` as const
+                const label = t(side === 'intake' ? 'fields.intake' : 'fields.exhaust')
+                return (
+                  <NumberRangeField
+                    key={side}
+                    label={label}
+                    from={draft.moto[lo]}
+                    to={draft.moto[hi]}
+                    onFromChange={(x) => { setDraft((prev) => editMoto(prev, lo, x)) }}
+                    onToChange={(x) => { setDraft((prev) => editMoto(prev, hi, x)) }}
+                    toLabel={t('fields.clearanceUpTo', { field: label })}
+                    toPlaceholder={t('fields.pressureMax')}
+                    unit="mm"
+                    error={fe[`motorcycle.${lo}`] ?? fe[`motorcycle.${hi}`]}
+                  />
+                )
+              })}
+            </fieldset>
+          </>
+        )}
         <fieldset className="form-grid grid grid-cols-1 gap-3 sm:grid-cols-3">
           <legend className="mb-2 text-sm font-semibold text-zinc-200">{t('groups.wheels')}</legend>
-          <NumberField label={t('fields.lugTorque')} unit={t(`common:units.${TORQUE[units.torque].label}`)} {...bind('wheel_lug_torque_nm')} />
+          {!motorcycle && <NumberField label={t('fields.lugTorque')} unit={t(`common:units.${TORQUE[units.torque].label}`)} {...bind('wheel_lug_torque_nm')} />}
           {(['front', 'rear'] as const).map((axle) => {
             const lo = `tire_pressure_${axle}_bar` as const
             const hi = `tire_pressure_${axle}_max_bar` as const

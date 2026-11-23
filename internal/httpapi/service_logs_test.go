@@ -21,8 +21,9 @@ func categoryIDs(t *testing.T, c *client) map[string]int64 {
 			out[*cat.BuiltinKey] = cat.ID
 		}
 	}
-	if len(out) != 11 {
-		t.Fatalf("expected 11 built-in categories, got %d", len(out))
+	// 11 shared or car built-ins plus 6 for motorcycles (migration 00019).
+	if len(out) != 17 {
+		t.Fatalf("expected 17 built-in categories, got %d", len(out))
 	}
 	return out
 }

@@ -1,0 +1,42 @@
+# Curated corrections for motorcycle model names from the RDW open data
+# (research M4). One rule per line:
+#
+#   Make | model as cleaned up by the rules | display name
+#
+# Make and model are matched like catalog searches (case, spaces, hyphens and
+# dots ignored). A display name merges the model into another one or renames
+# it; "-" leaves it out. The build report lists the most registered names that
+# look like frame or type-approval codes: look each one up by its
+# typegoedkeuringsnummer in the RDW register before adding a rule, never
+# guess.
+
+# Frame codes used as trade names
+Honda | RC46 | VFR 800
+
+# Honda appends A (ABS) or D (DCT) to some model codes; each pair shares a
+# type approval in the register
+Honda | CB500XA | CB500X
+Honda | NC750XA | NC750X
+Honda | NC750XD | NC750X
+Honda | CBF600SA | CBF600S
+Honda | CB1000RA | CB1000R
+Honda | ST1300A | ST1300
+Honda | NT700VA | NT700V
+
+# Suffix variants that share their model's type approval in the register
+Suzuki | DL650A | DL650
+Yamaha | MTN890D | MTN890
+Yamaha | MTT890D | MTT890
+
+# Harley-Davidson: the bare family code next to its registered full name
+Harley-Davidson | FLSTF | FLSTF Fat Boy
+Harley-Davidson | FLSTC | FLSTC Heritage Classic
+Harley-Davidson | FLHX | FLHX Street Glide
+Harley-Davidson | FLHRCI | FLHRCI Road King Classic
+
+# Truncated or misspelled trade names
+Harley-Davidson | FLHRCI Road King CLA | FLHRCI Road King Classic
+Harley-Davidson | FLSTCI Heritage Softail Classi | FLSTCI Heritage Softail Classic
+Harley-Davidson | FLSTFI Fatboy Fuel Inject | FLSTFI Fatboy Fuel Injected
+Harley-Davidson | FLHXS Street Glide Spec | FLHXS Street Glide Special
+Harley-Davidson | FLH Elektra Glide | FLH Electra Glide

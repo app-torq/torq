@@ -1,8 +1,8 @@
 -- name: CreateVehicle :one
 INSERT INTO vehicles (make, model, chassis_code, model_year, engine_code, vin, license_plate,
                       hsn, tsn, displacement_cc, power_kw, power_w, fuel_type, odometer_unit,
-                      displacement_unit, power_unit, has_odometer, current_odometer_km, created_by, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                      displacement_unit, power_unit, has_odometer, current_odometer_km, vehicle_type, created_by, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING *;
 
 -- name: GetVehicle :one
@@ -21,7 +21,7 @@ ORDER BY archived_at IS NOT NULL, make COLLATE NOCASE, model COLLATE NOCASE, id;
 UPDATE vehicles
 SET make = ?, model = ?, chassis_code = ?, model_year = ?, engine_code = ?, vin = ?, license_plate = ?,
     hsn = ?, tsn = ?, displacement_cc = ?, power_kw = ?, power_w = ?, fuel_type = ?, odometer_unit = ?,
-    displacement_unit = ?, power_unit = ?, has_odometer = ?, updated_at = ?
+    displacement_unit = ?, power_unit = ?, has_odometer = ?, vehicle_type = ?, updated_at = ?
 WHERE id = ?
 RETURNING *;
 
@@ -63,6 +63,17 @@ SET engine_oil_viscosity = ?, engine_oil_spec = ?, engine_oil_capacity_ml = ?,
     wheel_lug_torque_nm = ?, tire_pressure_front_bar = ?, tire_pressure_rear_bar = ?,
     tire_pressure_front_max_bar = ?, tire_pressure_rear_max_bar = ?, specs_meta = ?,
     updated_at = ?
+WHERE vehicle_id = ?
+RETURNING *;
+
+-- name: UpdateMotorcycleSpecs :one
+-- Only run when a request carries the motorcycle fields, so clients that
+-- don't know them never clear them.
+UPDATE vehicle_specs
+SET final_drive = ?, sprocket_front_teeth = ?, sprocket_rear_teeth = ?, chain_size = ?, chain_links = ?,
+    fork_oil_spec = ?, fork_oil_capacity_ml = ?,
+    valve_clearance_intake_min_mm = ?, valve_clearance_intake_max_mm = ?,
+    valve_clearance_exhaust_min_mm = ?, valve_clearance_exhaust_max_mm = ?
 WHERE vehicle_id = ?
 RETURNING *;
 

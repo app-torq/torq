@@ -40,6 +40,33 @@ export function HistoryPrintPage() {
   const { branding } = useSession().instance
   const contact = branding.contact
   const contactLines = contact ? [contact.address, contact.phone, contact.email, contact.website].filter(Boolean) : []
+  const motorcycle = h?.vehicle.vehicle_type === 'motorcycle'
+  // Drivetrain, fork oil and valve clearance of a motorcycle (#28), in the user's units.
+  const motorcycleSpecLines = (s: Record<string, string | number | null>): string[] => {
+    const n = (k: string) => (typeof s[k] === 'number' ? s[k] : null)
+    const mm = (lo: number | null, hi: number | null) =>
+      lo === null ? null : `${[lo, hi].filter((x): x is number => x !== null).map((x) => fmt.number(x, { decimals: 2 })).join('–')} mm`
+    const drive = typeof s.final_drive === 'string' ? s.final_drive : null
+    const chain = !drive || drive === 'chain'
+    const front = n('sprocket_front_teeth')
+    const rear = n('sprocket_rear_teeth')
+    const links = n('chain_links')
+    const forkOil = n('fork_oil_capacity_ml')
+    const intake = mm(n('valve_clearance_intake_min_mm'), n('valve_clearance_intake_max_mm'))
+    const exhaust = mm(n('valve_clearance_exhaust_min_mm'), n('valve_clearance_exhaust_max_mm'))
+    return [
+      drive ? `${t('specs:fields.finalDrive')}: ${t(`specs:finalDrive.${drive}`)}` : null,
+      chain && (front !== null || rear !== null) ? `${t('specs:fields.sprockets')}: ${front === null ? '—' : String(front)} / ${rear === null ? '—' : String(rear)}` : null,
+      chain && (s.chain_size || links !== null)
+        ? `${t('specs:fields.chain')}: ${[s.chain_size || null, links !== null ? t('specs:fields.chainLinksValue', { count: links }) : null].filter(Boolean).join(' · ')}`
+        : null,
+      s.fork_oil_spec || forkOil !== null
+        ? `${t('specs:groups.forkOil')}: ${[s.fork_oil_spec || null, forkOil !== null ? t('specs:fields.perLeg', { volume: fmt.volume(forkOil) }) : null].filter(Boolean).join(' · ')}`
+        : null,
+      intake ? `${t('specs:groups.valveClearance')}, ${t('specs:fields.intake')}: ${intake}` : null,
+      exhaust ? `${t('specs:groups.valveClearance')}, ${t('specs:fields.exhaust')}: ${exhaust}` : null,
+    ].filter((l): l is string => l !== null)
+  }
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6 print:max-w-none print:bg-white print:p-0 print:text-black">
@@ -88,6 +115,7 @@ export function HistoryPrintPage() {
             <h2 className="mb-2 text-base font-semibold">{t('history.profile')}</h2>
             <dl className="grid grid-cols-2 gap-x-6 gap-y-1 sm:grid-cols-3">
               {[
+                [t('vehicles:fields.vehicleType'), t(`vehicles:vehicleType.${motorcycle ? 'motorcycle' : 'car'}`)],
                 [t('vehicles:fields.chassisCode'), h.vehicle.chassis_code || none],
                 [t('vehicles:fields.engineCode'), h.vehicle.engine_code || none],
                 [t('vehicles:fields.displacement'), h.vehicle.displacement_cc != null ? fmt.displacement(h.vehicle.displacement_cc, h.vehicle.displacement_unit) : none],
@@ -114,7 +142,8 @@ export function HistoryPrintPage() {
               {h.specs.engine_oil_viscosity || h.specs.engine_oil_spec ? (
                 <li>{t('specs:groups.engineOil')}: {[h.specs.engine_oil_viscosity, h.specs.engine_oil_spec, typeof h.specs.engine_oil_capacity_ml === 'number' ? fmt.volume(h.specs.engine_oil_capacity_ml) : null].filter(Boolean).join(' · ')}</li>
               ) : null}
-              {typeof h.specs.wheel_lug_torque_nm === 'number' && <li>{t('specs:fields.lugTorque')}: {fmt.torque(h.specs.wheel_lug_torque_nm)}</li>}
+              {!motorcycle && typeof h.specs.wheel_lug_torque_nm === 'number' && <li>{t('specs:fields.lugTorque')}: {fmt.torque(h.specs.wheel_lug_torque_nm)}</li>}
+              {motorcycle && motorcycleSpecLines(h.specs).map((line) => <li key={line}>{line}</li>)}
               {h.spec_entries.map((e) => <li key={e.label}>{e.label}: {e.value}</li>)}
             </ul>
           </section>

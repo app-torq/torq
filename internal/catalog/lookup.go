@@ -14,9 +14,25 @@ func KBA(ctx context.Context, q *store.Queries, hsn, tsn string) ([]store.Catalo
 	return q.LookupKBA(ctx, store.LookupKBAParams{Hsn: hsn, Tsn: strings.ToUpper(tsn)})
 }
 
-// Makes suggests makes matching query (empty query lists the first 25).
-func Makes(ctx context.Context, q *store.Queries, query string) ([]string, error) {
-	return q.CatalogMakes(ctx, Key(query))
+// Vehicle types of catalog rows; VehicleType maps "" to car.
+const (
+	TypeCar        = "car"
+	TypeMotorcycle = "motorcycle"
+)
+
+// VehicleType returns the catalog vehicle type for a request value: "" means
+// car, so clients that don't send a type get today's answers.
+func VehicleType(t string) string {
+	if t == "" {
+		return TypeCar
+	}
+	return t
+}
+
+// Makes suggests makes of vehicleType matching query (empty query lists the
+// first 25).
+func Makes(ctx context.Context, q *store.Queries, vehicleType, query string) ([]string, error) {
+	return q.CatalogMakes(ctx, store.CatalogMakesParams{VehicleType: VehicleType(vehicleType), Q: Key(query)})
 }
 
 // Lang returns the catalog language for a UI locale: "de" or "en".
@@ -30,21 +46,22 @@ func Lang(locale string) string {
 // Models suggests models of make, named in lang. Parents are matched by Key
 // in either language, so a parent typed with different case or spacing still
 // finds its children; an unknown parent yields no rows (FR-011).
-func Models(ctx context.Context, q *store.Queries, make, query, lang string) ([]store.CatalogModelsRow, error) {
-	return q.CatalogModels(ctx, store.CatalogModelsParams{MakeKey: Key(make), Q: Key(query), Lang: Lang(lang)})
+func Models(ctx context.Context, q *store.Queries, vehicleType, make, query, lang string) ([]store.CatalogModelsRow, error) {
+	return q.CatalogModels(ctx, store.CatalogModelsParams{VehicleType: VehicleType(vehicleType), MakeKey: Key(make), Q: Key(query), Lang: Lang(lang)})
 }
 
 // Generations suggests generations of make + model, named in lang.
-func Generations(ctx context.Context, q *store.Queries, make, model, query, lang string) ([]store.CatalogGenerationsRow, error) {
+func Generations(ctx context.Context, q *store.Queries, vehicleType, make, model, query, lang string) ([]store.CatalogGenerationsRow, error) {
 	return q.CatalogGenerations(ctx, store.CatalogGenerationsParams{
-		MakeKey: Key(make), ModelKey: Key(model), Q: Key(query), Lang: Lang(lang),
+		VehicleType: VehicleType(vehicleType), MakeKey: Key(make), ModelKey: Key(model), Q: Key(query), Lang: Lang(lang),
 	})
 }
 
-// Engines suggests engines of make + model + generation.
-func Engines(ctx context.Context, q *store.Queries, make, model, generation, query string) ([]store.CatalogEnginesRow, error) {
+// Engines suggests engines of make + model + generation. Motorcycles have no
+// generations: their versions are the engines of the empty generation.
+func Engines(ctx context.Context, q *store.Queries, vehicleType, make, model, generation, query string) ([]store.CatalogEnginesRow, error) {
 	return q.CatalogEngines(ctx, store.CatalogEnginesParams{
-		MakeKey: Key(make), ModelKey: Key(model), GenerationKey: Key(generation), Q: Key(query),
+		VehicleType: VehicleType(vehicleType), MakeKey: Key(make), ModelKey: Key(model), GenerationKey: Key(generation), Q: Key(query),
 	})
 }
 

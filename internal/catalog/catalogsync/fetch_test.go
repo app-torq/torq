@@ -14,7 +14,7 @@ import (
 )
 
 // upstream fakes the KBA page and GitHub with the synthetic fixtures.
-func upstream(t *testing.T, fail *bool) *Fetcher {
+func upstream(t *testing.T, fail, rdwFail *bool) *Fetcher {
 	t.Helper()
 	workbook := xlsx(t, fz6Rows)
 	mux := http.NewServeMux()
@@ -43,20 +43,51 @@ func upstream(t *testing.T, fail *bool) *Fetcher {
 		}
 		_, _ = w.Write([]byte(gor3aFixture))
 	})
+	mux.HandleFunc("GET /rdw/api/views/m9d7-ebf2.json", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"rowsUpdatedAt": 1795158553}`))
+	})
+	mux.HandleFunc("GET /rdw/resource/m9d7-ebf2.csv", func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		if q.Get("$where") != RDWAggregateWhere || q.Get("$group") != RDWAggregateGroup {
+			http.Error(w, "bad query", http.StatusBadRequest)
+			return
+		}
+		if q.Get("$offset") != "0" { // one page only
+			_, _ = w.Write([]byte(strings.SplitN(rdwAggregateCSV, "\n", 2)[0] + "\n"))
+			return
+		}
+		_, _ = w.Write([]byte(rdwAggregateCSV))
+	})
+	mux.HandleFunc("GET /rdw/resource/8ys7-d773.csv", func(w http.ResponseWriter, r *http.Request) {
+		if *rdwFail {
+			http.Error(w, "throttled", http.StatusTooManyRequests)
+			return
+		}
+		if !strings.HasPrefix(r.URL.Query().Get("$where"), "kenteken in('") {
+			http.Error(w, "bad query", http.StatusBadRequest)
+			return
+		}
+		_, _ = w.Write([]byte(rdwFuelCSV))
+	})
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	f := NewFetcher("torq/test")
-	f.KBAPage, f.GitHubAPI, f.GitHubRaw = srv.URL+"/kba/page.html", srv.URL+"/api", srv.URL+"/raw"
+	f.KBAPage, f.GitHubAPI, f.GitHubRaw, f.RDW = srv.URL+"/kba/page.html", srv.URL+"/api", srv.URL+"/raw", srv.URL+"/rdw"
 	return f
 }
 
 func TestFetcherUpdate(t *testing.T) {
 	ctx := context.Background()
 	d := testutil.NewDB(t)
-	fail := true
-	f := upstream(t, &fail)
+	fail, rdwFail := true, true
+	f := upstream(t, &fail, &rdwFail)
 	now := time.Date(2026, 11, 2, 9, 30, 0, 0, time.UTC)
 
+	// RDW fails first (before gor3a is downloaded), then gor3a.
+	if _, err := f.Update(ctx, d, now); err == nil || !strings.Contains(err.Error(), "HTTP 429") {
+		t.Fatalf("failed RDW download: %v", err)
+	}
+	rdwFail = false
 	if _, err := f.Update(ctx, d, now); err == nil || !strings.Contains(err.Error(), "HTTP 503") {
 		t.Fatalf("failed download: %v", err)
 	}
@@ -68,6 +99,10 @@ func TestFetcherUpdate(t *testing.T) {
 	res, err := f.Update(ctx, d, now)
 	if err != nil || !res.Imported || res.KBA == 0 || res.Vehicles == 0 {
 		t.Fatalf("update %+v %v", res, err)
+	}
+	makes, err := catalog.Makes(ctx, store.New(d.Reader), catalog.TypeMotorcycle, "duc")
+	if err != nil || len(makes) != 1 || makes[0] != "Ducati" {
+		t.Fatalf("motorcycle makes after update: %v %v", makes, err)
 	}
 	meta, err := catalog.LoadMeta(ctx, store.New(d.Reader))
 	if err != nil {

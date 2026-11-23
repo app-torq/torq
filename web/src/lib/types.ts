@@ -102,8 +102,13 @@ export interface ReminderCounts {
 export const FUEL_TYPES = ['diesel', 'petrol', 'hybrid', 'electric', 'lpg', 'cng', 'other'] as const
 export type FuelType = (typeof FUEL_TYPES)[number]
 
+/** Vehicle types; the API may add more, which the app treats like a car. */
+export type VehicleType = 'car' | 'motorcycle'
+export const VEHICLE_TYPES: readonly VehicleType[] = ['car', 'motorcycle']
+
 export interface Vehicle {
   id: number
+  vehicle_type: VehicleType
   make: string
   model: string
   chassis_code: string
@@ -171,6 +176,9 @@ export interface CatalogEngine {
   displacement_cc: number | null
   power_kw: number | null
   fuel_type: FuelType | null
+  /** Generation years for cars; years of first registration of a motorcycle version. */
+  year_from: number | null
+  year_to: number | null
 }
 
 export interface CatalogDataset {
@@ -205,7 +213,7 @@ export interface CatalogMeta {
   /** Bundled with this release, or fetched by an online update. */
   source: 'bundled' | 'online'
   datasets: CatalogDataset[]
-  counts: { kba: number; vehicles: number }
+  counts: { kba: number; vehicles: number; motorcycles: number }
   update: CatalogUpdate
 }
 
@@ -236,7 +244,31 @@ export interface VehicleSpecs {
   tire_pressure_rear_max_bar: number | null
   /** Provenance per field; fields without an entry were entered by hand. */
   meta: Partial<Record<SpecFieldKey, SpecMeta>>
+  motorcycle: MotorcycleSpecs
 }
+
+export type FinalDrive = 'chain' | 'belt' | 'shaft'
+export const FINAL_DRIVES: readonly FinalDrive[] = ['chain', 'belt', 'shaft']
+
+/** Motorcycle fields of the spec sheet, kept for every vehicle type. */
+export interface MotorcycleSpecs {
+  final_drive: FinalDrive | null
+  sprocket_front_teeth: number | null
+  sprocket_rear_teeth: number | null
+  /** Free text such as "525" or "520 X-ring". */
+  chain_size: string
+  chain_links: number | null
+  fork_oil_spec: string
+  /** Per fork leg. */
+  fork_oil_capacity_ml: number | null
+  /** Valve clearances in mm; the max is the optional upper end of a range. */
+  valve_clearance_intake_min_mm: number | null
+  valve_clearance_intake_max_mm: number | null
+  valve_clearance_exhaust_min_mm: number | null
+  valve_clearance_exhaust_max_mm: number | null
+}
+
+export type MotoFieldKey = keyof MotorcycleSpecs
 
 export const SPEC_FIELD_KEYS = [
   'engine_oil_viscosity', 'engine_oil_spec', 'engine_oil_capacity_ml',
@@ -302,6 +334,8 @@ export interface ServiceCategory {
   default_interval_km: number | null
   default_interval_months: number | null
   archived: boolean
+  /** Set when a built-in only applies to one vehicle type; null for all types and for custom categories. */
+  vehicle_type: VehicleType | null
 }
 
 export interface ServiceItem {
@@ -560,7 +594,7 @@ export interface VehicleHistory {
   schema: string
   instance: { name: string }
   vehicle: {
-    id: number; make: string; model: string; chassis_code: string; model_year: number | null; engine_code: string; vin: string | null
+    id: number; vehicle_type: VehicleType; make: string; model: string; chassis_code: string; model_year: number | null; engine_code: string; vin: string | null
     license_plate: string | null; current_odometer_km: number; hsn: string | null; tsn: string | null
     displacement_cc: number | null; power_kw: number | null; power_w: number | null; fuel_type: FuelType | null; odometer_unit: DistanceUnit
     displacement_unit: DisplacementUnit | null; power_unit: PowerUnit | null

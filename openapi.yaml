@@ -5,7 +5,7 @@
 openapi: "3.1.0"
 info:
   title: torq API
-  version: "7"
+  version: "8"
   description: |-
     The REST API of torq, a self-hosted vehicle maintenance and DIY repair tracker. It is used by the web app and the torq mobile app.
 
@@ -623,11 +623,19 @@ paths:
         - cookieAuth: []
         - bearerAuth: []
       parameters:
+        - name: vehicle_type
+          in: query
+          description: "car (default) or motorcycle. Only catalog entries of this vehicle type are returned."
+          schema:
+            type: string
         - name: q
           in: query
           description: Search text.
           schema:
             type: string
+      x-torq-error-codes:
+        - validation.failed
+        - validation.invalid_choice
       responses:
         "200":
           description: Success.
@@ -653,6 +661,11 @@ paths:
         - cookieAuth: []
         - bearerAuth: []
       parameters:
+        - name: vehicle_type
+          in: query
+          description: "car (default) or motorcycle. Only catalog entries of this vehicle type are returned."
+          schema:
+            type: string
         - name: make
           in: query
           description: Make.
@@ -674,6 +687,7 @@ paths:
               - de
       x-torq-error-codes:
         - validation.failed
+        - validation.invalid_choice
         - validation.required
       responses:
         "200":
@@ -700,6 +714,11 @@ paths:
         - cookieAuth: []
         - bearerAuth: []
       parameters:
+        - name: vehicle_type
+          in: query
+          description: "car (default) or motorcycle. Only catalog entries of this vehicle type are returned."
+          schema:
+            type: string
         - name: make
           in: query
           description: Make.
@@ -727,6 +746,7 @@ paths:
               - de
       x-torq-error-codes:
         - validation.failed
+        - validation.invalid_choice
         - validation.required
       responses:
         "200":
@@ -753,6 +773,11 @@ paths:
         - cookieAuth: []
         - bearerAuth: []
       parameters:
+        - name: vehicle_type
+          in: query
+          description: "car (default) or motorcycle. Only catalog entries of this vehicle type are returned."
+          schema:
+            type: string
         - name: make
           in: query
           description: Make.
@@ -767,10 +792,9 @@ paths:
           required: true
         - name: generation
           in: query
-          description: Generation.
+          description: "Generation. Required for cars; motorcycles have none (omit it or send it empty)."
           schema:
             type: string
-          required: true
         - name: q
           in: query
           description: Search text.
@@ -778,6 +802,7 @@ paths:
             type: string
       x-torq-error-codes:
         - validation.failed
+        - validation.invalid_choice
         - validation.required
       responses:
         "200":
@@ -1574,6 +1599,11 @@ paths:
             enum:
               - "true"
               - "false"
+        - name: vehicle_type
+          in: query
+          description: "car or motorcycle: only categories for all types and for this one. Omitted: every category."
+          schema:
+            type: string
       responses:
         "200":
           description: Success.
@@ -1661,6 +1691,8 @@ paths:
       parameters:
         - $ref: "#/components/parameters/id"
       x-torq-error-codes:
+        - validation.failed
+        - validation.invalid_choice
         - category.in_use
       responses:
         "204":
@@ -1678,6 +1710,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/id"
       x-torq-error-codes:
+        - validation.failed
         - category.builtin_readonly
       responses:
         "200":
@@ -3625,10 +3658,14 @@ components:
       type: object
       required:
         - kba
+        - motorcycles
         - vehicles
       properties:
         kba:
           type: integer
+        motorcycles:
+          type: integer
+          description: Motorcycle rows, included in vehicles.
         vehicles:
           type: integer
     CatalogDataset:
@@ -3677,6 +3714,8 @@ components:
         - fuel_type
         - name
         - power_kw
+        - year_from
+        - year_to
       properties:
         displacement_cc:
           type:
@@ -3695,6 +3734,16 @@ components:
           type:
             - integer
             - "null"
+        year_from:
+          type:
+            - integer
+            - "null"
+          description: "First year: of the generation for cars, of first registration of the version for motorcycles."
+        year_to:
+          type:
+            - integer
+            - "null"
+          description: "Last year, null while still current."
     CatalogGeneration:
       type: object
       required:
@@ -4260,6 +4309,7 @@ components:
         - power_unit
         - power_w
         - tsn
+        - vehicle_type
         - vin
       properties:
         chassis_code:
@@ -4327,6 +4377,9 @@ components:
           type:
             - string
             - "null"
+        vehicle_type:
+          type: string
+          description: "car or motorcycle. More types may follow; treat unknown values like car."
         vin:
           type:
             - string
@@ -4509,6 +4562,129 @@ components:
           description: "Bearer token; only present when the request asked for one."
         user:
           $ref: "#/components/schemas/User"
+    MotorcycleSpecs:
+      type: object
+      description: "Motorcycle fields of the spec sheet, stored for every vehicle type (null or empty when not set)."
+      required:
+        - chain_links
+        - chain_size
+        - final_drive
+        - fork_oil_capacity_ml
+        - fork_oil_spec
+        - sprocket_front_teeth
+        - sprocket_rear_teeth
+        - valve_clearance_exhaust_max_mm
+        - valve_clearance_exhaust_min_mm
+        - valve_clearance_intake_max_mm
+        - valve_clearance_intake_min_mm
+      properties:
+        chain_links:
+          type:
+            - integer
+            - "null"
+          description: 'Number of chain links, 20–300.'
+        chain_size:
+          type: string
+          description: 'Free text such as "525" or "520 X-ring", at most 40 characters; "" when empty.'
+        final_drive:
+          type:
+            - string
+            - "null"
+          description: 'chain, belt or shaft.'
+        fork_oil_capacity_ml:
+          type:
+            - integer
+            - "null"
+          description: 'Fork oil per fork leg in mL, 1–5000.'
+        fork_oil_spec:
+          type: string
+          description: 'At most 120 characters; "" when empty.'
+        sprocket_front_teeth:
+          type:
+            - integer
+            - "null"
+          description: 'Front sprocket teeth, 5–99.'
+        sprocket_rear_teeth:
+          type:
+            - integer
+            - "null"
+          description: 'Rear sprocket teeth, 10–150.'
+        valve_clearance_exhaust_max_mm:
+          type:
+            - number
+            - "null"
+          description: 'Upper end of the exhaust valve clearance in mm; needs the minimum and is not below it.'
+        valve_clearance_exhaust_min_mm:
+          type:
+            - number
+            - "null"
+          description: 'Exhaust valve clearance in mm (lower end of the range), 0 < x ≤ 2.'
+        valve_clearance_intake_max_mm:
+          type:
+            - number
+            - "null"
+          description: 'Upper end of the intake valve clearance in mm; needs the minimum and is not below it.'
+        valve_clearance_intake_min_mm:
+          type:
+            - number
+            - "null"
+          description: 'Intake valve clearance in mm (lower end of the range), 0 < x ≤ 2.'
+    MotorcycleSpecsInput:
+      type: object
+      description: "Replaces all motorcycle fields; omitted fields are cleared."
+      properties:
+        chain_links:
+          type:
+            - integer
+            - "null"
+          description: 'Number of chain links, 20–300.'
+        chain_size:
+          type: string
+          description: 'Free text such as "525" or "520 X-ring", at most 40 characters; "" when empty.'
+        final_drive:
+          type:
+            - string
+            - "null"
+          description: 'chain, belt or shaft.'
+        fork_oil_capacity_ml:
+          type:
+            - integer
+            - "null"
+          description: 'Fork oil per fork leg in mL, 1–5000.'
+        fork_oil_spec:
+          type: string
+          description: 'At most 120 characters; "" when empty.'
+        sprocket_front_teeth:
+          type:
+            - integer
+            - "null"
+          description: 'Front sprocket teeth, 5–99.'
+        sprocket_rear_teeth:
+          type:
+            - integer
+            - "null"
+          description: 'Rear sprocket teeth, 10–150.'
+        valve_clearance_exhaust_max_mm:
+          type:
+            - number
+            - "null"
+          description: 'Upper end of the exhaust valve clearance in mm; needs the minimum and is not below it.'
+        valve_clearance_exhaust_min_mm:
+          type:
+            - number
+            - "null"
+          description: 'Exhaust valve clearance in mm (lower end of the range), 0 < x ≤ 2.'
+        valve_clearance_intake_max_mm:
+          type:
+            - number
+            - "null"
+          description: 'Upper end of the intake valve clearance in mm; needs the minimum and is not below it.'
+        valve_clearance_intake_min_mm:
+          type:
+            - number
+            - "null"
+          description: 'Intake valve clearance in mm (lower end of the range), 0 < x ≤ 2.'
+      additionalProperties: false
     OdometerReading:
       type: object
       required:
@@ -5156,6 +5332,7 @@ components:
         - default_interval_months
         - id
         - is_fluid
+        - vehicle_type
       properties:
         archived:
           type: boolean
@@ -5179,6 +5356,11 @@ components:
           type: integer
         is_fluid:
           type: boolean
+        vehicle_type:
+          type:
+            - string
+            - "null"
+          description: "car or motorcycle when the category only applies to that vehicle type; null for all types (always for custom categories)."
     ServiceCategoryInput:
       type: object
       properties:
@@ -5573,6 +5755,7 @@ components:
         - reminder_counts
         - tsn
         - updated_at
+        - vehicle_type
         - vin
       properties:
         archived:
@@ -5655,6 +5838,9 @@ components:
             - "null"
         updated_at:
           type: string
+        vehicle_type:
+          type: string
+          description: "car or motorcycle. More types may follow; treat unknown values like car."
         vin:
           type:
             - string
@@ -5746,6 +5932,9 @@ components:
           type:
             - string
             - "null"
+        vehicle_type:
+          type: string
+          description: "car (default on create) or motorcycle. Omitted on update: unchanged."
         vin:
           type:
             - string
@@ -5765,6 +5954,7 @@ components:
         - engine_oil_spec
         - engine_oil_viscosity
         - meta
+        - motorcycle
         - tire_pressure_front_bar
         - tire_pressure_front_max_bar
         - tire_pressure_rear_bar
@@ -5804,6 +5994,8 @@ components:
           description: "Per-field provenance: auto-filled from a web source or changed by hand. Fields without an entry were entered by hand."
           additionalProperties:
             $ref: "#/components/schemas/SpecMeta"
+        motorcycle:
+          $ref: "#/components/schemas/MotorcycleSpecs"
         tire_pressure_front_bar:
           type:
             - number
@@ -5864,6 +6056,9 @@ components:
           description: "Per-field provenance: auto-filled from a web source or changed by hand. Fields without an entry were entered by hand."
           additionalProperties:
             $ref: "#/components/schemas/SpecMeta"
+        motorcycle:
+          $ref: "#/components/schemas/MotorcycleSpecsInput"
+          description: "Omitted: the stored motorcycle values stay unchanged, so clients that don't know them never clear them."
         tire_pressure_front_bar:
           type:
             - number

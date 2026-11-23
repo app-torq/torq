@@ -2,7 +2,7 @@
 // field, where the value came from (web auto-fill or a manual adjustment).
 // Pure functions so the rules are easy to test; nothing is saved until the
 // user saves the dialog.
-import { metricField, readMetricField, type MetricField } from "../../lib/format";
+import { metricField, parseNumber, readMetricField, toInputValue, type MetricField } from "../../lib/format";
 import {
   PRESSURE,
   TORQUE,
@@ -15,6 +15,8 @@ import {
 import {
   SPEC_FIELD_KEYS,
   type AutofillValue,
+  type MotoFieldKey,
+  type MotorcycleSpecs,
   type NumberFormat,
   type SpecFieldKey,
   type SpecMeta,
@@ -28,6 +30,29 @@ export interface SpecsDraft {
   auto: Partial<Record<SpecFieldKey, { value: string; meta: SpecMeta }>>;
   /** Saved numbers and their texts: an untouched field is saved unchanged. */
   stored: Partial<Record<SpecFieldKey, MetricField>>;
+  /** Motorcycle fields (specs/006-motorcycles); never auto-filled. */
+  moto: Record<MotoFieldKey, string>;
+  /** The saved fork oil quantity, so an untouched value is saved unchanged. */
+  forkOil: MetricField;
+}
+
+const MOTO_TEXT: readonly MotoFieldKey[] = ["final_drive", "chain_size", "fork_oil_spec"];
+const MOTO_INTEGER: readonly MotoFieldKey[] = ["sprocket_front_teeth", "sprocket_rear_teeth", "chain_links"];
+const MOTO_MM: readonly MotoFieldKey[] = [
+  "valve_clearance_intake_min_mm",
+  "valve_clearance_intake_max_mm",
+  "valve_clearance_exhaust_min_mm",
+  "valve_clearance_exhaust_max_mm",
+];
+
+/** Input texts of the motorcycle fields; fork oil in the user's volume unit, clearances in mm. */
+function motoValues(m: MotorcycleSpecs, nf: NumberFormat, forkOil: MetricField): Record<MotoFieldKey, string> {
+  const out = {} as Record<MotoFieldKey, string>;
+  for (const k of MOTO_TEXT) out[k] = (m[k] as string | null) ?? "";
+  for (const k of MOTO_INTEGER) out[k] = m[k] == null ? "" : String(m[k]);
+  for (const k of MOTO_MM) out[k] = toInputValue(m[k] as number | null, nf, 2);
+  out.fork_oil_capacity_ml = forkOil.text;
+  return out;
 }
 
 /** The units the dialog shows capacities, torque and pressure in. */
@@ -90,7 +115,13 @@ export function initialDraft(
     const m = specs.meta[k];
     if (m?.is_auto && values[k] !== "") auto[k] = { value: values[k], meta: m };
   }
-  return { values, meta: { ...specs.meta }, auto, stored };
+  const forkOil = metricField(specs.motorcycle.fork_oil_capacity_ml, VOLUME[units.volume], nf);
+  return { values, meta: { ...specs.meta }, auto, stored, moto: motoValues(specs.motorcycle, nf, forkOil), forkOil };
+}
+
+/** A change of a motorcycle field. */
+export function editMoto(d: SpecsDraft, k: MotoFieldKey, text: string): SpecsDraft {
+  return { ...d, moto: { ...d.moto, [k]: text } };
 }
 
 /**
@@ -144,10 +175,10 @@ export function applyAutofill(
   units: SpecUnits = METRIC_SPEC_UNITS,
 ): { draft: SpecsDraft; summary: AutofillSummary } {
   const draft: SpecsDraft = {
+    ...d,
     values: { ...d.values },
     meta: { ...d.meta },
     auto: { ...d.auto },
-    stored: d.stored,
   };
   // Capacities arrive in litres, torque in Nm and pressure in bar.
   const metric = (k: SpecFieldKey, n: number) => (isCapacity(k) ? n * 1000 : n);
@@ -227,5 +258,19 @@ export function toRequestBody(
     if (m && raw !== "") meta[k] = m;
   }
   body.meta = meta;
+  // The web app always sends the motorcycle fields; errors use the server's keys.
+  const moto: Record<string, unknown> = {};
+  for (const k of MOTO_TEXT) moto[k] = d.moto[k].trim();
+  moto.final_drive = d.moto.final_drive === "" ? null : d.moto.final_drive;
+  for (const k of [...MOTO_INTEGER, ...MOTO_MM]) {
+    const raw = d.moto[k].trim();
+    const n = raw === "" ? null : parseNumber(raw, nf);
+    if (raw !== "" && (n === null || (MOTO_INTEGER.includes(k) && !Number.isInteger(n)))) errors[`motorcycle.${k}`] = "validation.number";
+    moto[k] = n;
+  }
+  const oil = readMetricField(d.moto.fork_oil_capacity_ml, d.forkOil, VOLUME[units.volume], nf, true);
+  if (oil === undefined) errors["motorcycle.fork_oil_capacity_ml"] = "validation.number";
+  moto.fork_oil_capacity_ml = oil ?? null;
+  body.motorcycle = moto;
   return { body, errors };
 }

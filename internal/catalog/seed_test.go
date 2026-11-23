@@ -35,10 +35,10 @@ func TestSeedImportsOnceAndReplacesOnChange(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !res.Imported || res.KBA != 4 || res.Vehicles != 8 {
+	if !res.Imported || res.KBA != 4 || res.Vehicles != 11 {
 		t.Fatalf("first import %+v", res)
 	}
-	if k, v := counts(t, d); k != 4 || v != 8 {
+	if k, v := counts(t, d); k != 4 || v != 11 {
 		t.Fatalf("rows %d %d", k, v)
 	}
 	// German names default to the English name when the seed omits them.
@@ -108,6 +108,7 @@ func TestSeedRejectsBadSeedAndKeepsCatalog(t *testing.T) {
 		"missing trade": func(doc *catalog.SeedDoc) { doc.KBA[1].TradeName = "" },
 		"symbol engine": func(doc *catalog.SeedDoc) { doc.Vehicles[1].Engine = "--" },
 		"unknown body":  func(doc *catalog.SeedDoc) { doc.Vehicles[0].Body = "Coupe" },
+		"unknown type":  func(doc *catalog.SeedDoc) { doc.Vehicles[0].VehicleType = "truck" },
 	}
 	for name, mutate := range bad {
 		doc := catalogtest.Doc()
@@ -138,7 +139,7 @@ func TestSeedRejectsBadSeedAndKeepsCatalog(t *testing.T) {
 		}
 	}
 
-	if k, v := counts(t, d); k != 4 || v != 8 {
+	if k, v := counts(t, d); k != 4 || v != 11 {
 		t.Fatalf("previous catalog changed: %d %d", k, v)
 	}
 	if after, _ := store.New(d.Reader).GetCatalogMeta(ctx); after != before {

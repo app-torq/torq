@@ -6,9 +6,10 @@ import (
 )
 
 // manufacturers maps KBA "Herstellerklartext" spellings to canonical makes
-// (research C4). Only passenger-car manufacturers are listed; everything else
-// (trailers, tractors, trucks, motorcycle-only makers) is skipped and the
-// largest skipped names appear in the sync report for review.
+// (research C4). Passenger-car and motorcycle manufacturers are listed;
+// everything else (trailers, tractors, trucks) is skipped and the largest
+// skipped names appear in the sync report for review. Motorcycle makes use
+// the names of the RDW motorcycle catalog, so FZ 6 keys find its models.
 var manufacturers = map[string]string{
 	"VOLKSWAGEN-VW":          "Volkswagen",
 	"BAYER.MOT.WERKE-BMW":    "BMW",
@@ -162,6 +163,20 @@ var manufacturers = map[string]string{
 	"TATA ENG.(IND)":         "Tata",
 	"SANTANA (E)":            "Santana",
 	"GLAS":                   "Glas",
+
+	// Motorcycle manufacturers (specs/006-motorcycles); Honda, Suzuki and
+	// BMW plants that also build motorcycles are listed above.
+	"YAMAHA (J)":           "Yamaha",
+	"KAWASAKI (J)":         "Kawasaki",
+	"KTM (A)":              "KTM",
+	"HARLEY-DAVIDSON(USA)": "Harley-Davidson",
+	"HONDA (I)":            "Honda",
+	"THAI HONDA (THA)":     "Honda",
+	"HONDA (RC)":           "Honda",
+	"TRIUMPH (UK)":         "Triumph",
+	"DUCATI (I)":           "Ducati",
+	"PIAGGIO (I)":          "Piaggio",
+	"MBK (F)":              "MBK",
 }
 
 // brandWords re-assign a trade-name variant to another brand of the same

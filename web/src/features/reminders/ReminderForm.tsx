@@ -14,7 +14,7 @@ import { NumberField } from '../../components/NumberField'
 import { Dialog } from '../../components/Dialog'
 import { ErrorBanner } from '../../components/ui'
 import { invalidateOdometerDependents, useOdometerUnit, useVehicles } from '../vehicles/hooks'
-import { categoryLabel, useCategories } from '../service-log/hooks'
+import { appliesTo, categoryLabel, useCategories } from '../service-log/hooks'
 
 interface Props {
   reminder: Reminder | null
@@ -177,7 +177,12 @@ export function ReminderForm({ reminder, vehicleId, onClose }: Props) {
               onChange={onCategory}
               error={fe.service_category_id}
               className="sm:col-span-2"
-              options={[{ value: '', label: '—' }, ...(categories.data?.items ?? []).map((c) => ({ value: String(c.id), label: categoryLabel(c, t) }))]}
+              options={[
+                { value: '', label: '—' },
+                ...(categories.data?.items ?? [])
+                  .filter((c) => String(c.id) === categoryId || appliesTo(c, selected?.vehicle_type))
+                  .map((c) => ({ value: String(c.id), label: categoryLabel(c, t) })),
+              ]}
             />
           ) : (
             <TextField label={t('fields.title')} value={title} onChange={setTitle} hint={t('fields.titleHint')} error={fe.title} maxLength={120} className="sm:col-span-2" />

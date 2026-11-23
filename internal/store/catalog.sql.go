@@ -12,10 +12,12 @@ import (
 
 const catalogEngines = `-- name: CatalogEngines :many
 SELECT CAST(MIN(engine) AS TEXT) AS name, CAST(MIN(engine_code) AS TEXT) AS engine_code,
-       displacement_cc, power_kw, fuel_type
+       displacement_cc, power_kw, fuel_type,
+       CAST(COALESCE(MIN(year_from), 0) AS INTEGER) AS year_from,
+       CAST(CASE WHEN SUM(year_to IS NULL) > 0 THEN 0 ELSE MAX(year_to) END AS INTEGER) AS year_to
 FROM catalog_vehicles, (SELECT CAST(?1 AS TEXT) AS q) AS p
-WHERE make_key = ?2 AND (model_key = ?3 OR model_de_key = ?3)
-  AND (generation_key = ?4 OR generation_de_key = ?4)
+WHERE vehicle_type = ?2 AND make_key = ?3 AND (model_key = ?4 OR model_de_key = ?4)
+  AND (generation_key = ?5 OR generation_de_key = ?5)
   AND instr(engine_key, p.q) > 0
 GROUP BY engine_key, displacement_cc, power_kw, fuel_type
 ORDER BY substr(engine_key, 1, length(p.q)) <> p.q,
@@ -25,6 +27,7 @@ LIMIT 25
 
 type CatalogEnginesParams struct {
 	Q             string
+	VehicleType   string
 	MakeKey       string
 	ModelKey      string
 	GenerationKey string
@@ -36,11 +39,14 @@ type CatalogEnginesRow struct {
 	DisplacementCc sql.NullInt64
 	PowerKw        sql.NullInt64
 	FuelType       sql.NullString
+	YearFrom       int64
+	YearTo         int64
 }
 
 func (q *Queries) CatalogEngines(ctx context.Context, arg CatalogEnginesParams) ([]CatalogEnginesRow, error) {
 	rows, err := q.db.QueryContext(ctx, catalogEngines,
 		arg.Q,
+		arg.VehicleType,
 		arg.MakeKey,
 		arg.ModelKey,
 		arg.GenerationKey,
@@ -58,6 +64,8 @@ func (q *Queries) CatalogEngines(ctx context.Context, arg CatalogEnginesParams) 
 			&i.DisplacementCc,
 			&i.PowerKw,
 			&i.FuelType,
+			&i.YearFrom,
+			&i.YearTo,
 		); err != nil {
 			return nil, err
 		}
@@ -78,7 +86,7 @@ SELECT CAST(MIN(CASE WHEN p.lang = 'de' THEN generation_de ELSE generation END) 
        CAST(CASE WHEN SUM(year_to IS NULL) > 0 THEN 0 ELSE MAX(year_to) END AS INTEGER) AS year_to,
        CAST(CASE WHEN COUNT(DISTINCT body) = 1 THEN MIN(body) ELSE '' END AS TEXT) AS body
 FROM catalog_vehicles, (SELECT CAST(?1 AS TEXT) AS q, CAST(?2 AS TEXT) AS lang) AS p
-WHERE make_key = ?3 AND (model_key = ?4 OR model_de_key = ?4)
+WHERE vehicle_type = ?3 AND make_key = ?4 AND (model_key = ?5 OR model_de_key = ?5)
   AND (instr(generation_key, p.q) > 0 OR instr(generation_de_key, p.q) > 0)
 GROUP BY generation_key
 ORDER BY substr(generation_key, 1, length(p.q)) <> p.q AND substr(generation_de_key, 1, length(p.q)) <> p.q,
@@ -87,10 +95,11 @@ LIMIT 25
 `
 
 type CatalogGenerationsParams struct {
-	Q        string
-	Lang     string
-	MakeKey  string
-	ModelKey string
+	Q           string
+	Lang        string
+	VehicleType string
+	MakeKey     string
+	ModelKey    string
 }
 
 type CatalogGenerationsRow struct {
@@ -106,6 +115,7 @@ func (q *Queries) CatalogGenerations(ctx context.Context, arg CatalogGenerations
 	rows, err := q.db.QueryContext(ctx, catalogGenerations,
 		arg.Q,
 		arg.Lang,
+		arg.VehicleType,
 		arg.MakeKey,
 		arg.ModelKey,
 	)
@@ -138,14 +148,19 @@ func (q *Queries) CatalogGenerations(ctx context.Context, arg CatalogGenerations
 const catalogMakes = `-- name: CatalogMakes :many
 SELECT CAST(MIN(make) AS TEXT) AS name
 FROM catalog_vehicles, (SELECT CAST(?1 AS TEXT) AS q) AS p
-WHERE instr(make_key, p.q) > 0
+WHERE vehicle_type = ?2 AND instr(make_key, p.q) > 0
 GROUP BY make_key
 ORDER BY substr(make_key, 1, length(p.q)) <> p.q, name COLLATE NOCASE
 LIMIT 25
 `
 
-func (q *Queries) CatalogMakes(ctx context.Context, q_ string) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, catalogMakes, q_)
+type CatalogMakesParams struct {
+	Q           string
+	VehicleType string
+}
+
+func (q *Queries) CatalogMakes(ctx context.Context, arg CatalogMakesParams) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, catalogMakes, arg.Q, arg.VehicleType)
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +187,7 @@ SELECT CAST(MIN(CASE WHEN p.lang = 'de' THEN model_de ELSE model END) AS TEXT) A
        CAST(COALESCE(MIN(year_from), 0) AS INTEGER) AS year_from,
        CAST(CASE WHEN SUM(year_to IS NULL) > 0 THEN 0 ELSE MAX(year_to) END AS INTEGER) AS year_to
 FROM catalog_vehicles, (SELECT CAST(?1 AS TEXT) AS q, CAST(?2 AS TEXT) AS lang) AS p
-WHERE make_key = ?3 AND (instr(model_key, p.q) > 0 OR instr(model_de_key, p.q) > 0)
+WHERE vehicle_type = ?3 AND make_key = ?4 AND (instr(model_key, p.q) > 0 OR instr(model_de_key, p.q) > 0)
 GROUP BY model_key
 ORDER BY substr(model_key, 1, length(p.q)) <> p.q AND substr(model_de_key, 1, length(p.q)) <> p.q,
          name COLLATE NOCASE
@@ -180,9 +195,10 @@ LIMIT 25
 `
 
 type CatalogModelsParams struct {
-	Q       string
-	Lang    string
-	MakeKey string
+	Q           string
+	Lang        string
+	VehicleType string
+	MakeKey     string
 }
 
 type CatalogModelsRow struct {
@@ -194,7 +210,12 @@ type CatalogModelsRow struct {
 // Names are returned in the requested language (lang 'de' or 'en'); queries
 // and parents match either language.
 func (q *Queries) CatalogModels(ctx context.Context, arg CatalogModelsParams) ([]CatalogModelsRow, error) {
-	rows, err := q.db.QueryContext(ctx, catalogModels, arg.Q, arg.Lang, arg.MakeKey)
+	rows, err := q.db.QueryContext(ctx, catalogModels,
+		arg.Q,
+		arg.Lang,
+		arg.VehicleType,
+		arg.MakeKey,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -300,8 +321,8 @@ func (q *Queries) InsertCatalogKBA(ctx context.Context, arg InsertCatalogKBAPara
 const insertCatalogVehicle = `-- name: InsertCatalogVehicle :exec
 INSERT INTO catalog_vehicles (make, make_key, model, model_key, model_de, model_de_key, generation, generation_key,
                               generation_de, generation_de_key, year_from, year_to, body, engine, engine_key,
-                              engine_code, displacement_cc, power_kw, fuel_type)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                              engine_code, displacement_cc, power_kw, fuel_type, vehicle_type)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertCatalogVehicleParams struct {
@@ -324,6 +345,7 @@ type InsertCatalogVehicleParams struct {
 	DisplacementCc  sql.NullInt64
 	PowerKw         sql.NullInt64
 	FuelType        sql.NullString
+	VehicleType     string
 }
 
 func (q *Queries) InsertCatalogVehicle(ctx context.Context, arg InsertCatalogVehicleParams) error {
@@ -347,6 +369,7 @@ func (q *Queries) InsertCatalogVehicle(ctx context.Context, arg InsertCatalogVeh
 		arg.DisplacementCc,
 		arg.PowerKw,
 		arg.FuelType,
+		arg.VehicleType,
 	)
 	return err
 }

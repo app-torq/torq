@@ -49,14 +49,17 @@ e2e: build
 # files (see the wiki page "Development"). Never run by builds or CI.
 #   FZ6       KBA FZ 6 workbook (.xlsx), dl-de/by-2-0
 #   GOR3A     gor3a/vehicle-makes-models data/json/all.json at GOR3A_SHA, ODbL 1.0
+#   RDW       directory with rdw-aggregate.csv and rdw-fuel.csv from
+#             `go run ./cmd/catalog-sync --fetch-rdw <dir>`, Public Domain
 #   RETRIEVED retrieval date of the source files (YYYY-MM-DD)
 #   SV42      optional: KBA SV 4.2 converted with `pdftotext -layout` (poppler).
 #             SV 4.2 is "all rights reserved"; only use it with written KBA
 #             consent and set SV42_CONSENT=yes.
 catalog:
-	@test -n "$(FZ6)" -a -n "$(GOR3A)" -a -n "$(GOR3A_SHA)" -a -n "$(RETRIEVED)" || \
-		{ echo "usage: make catalog FZ6=fz6.xlsx GOR3A=all.json GOR3A_SHA=<commit> RETRIEVED=YYYY-MM-DD [SV42=sv42.txt SV42_CONSENT=yes]"; exit 2; }
+	@test -n "$(FZ6)" -a -n "$(GOR3A)" -a -n "$(GOR3A_SHA)" -a -n "$(RDW)" -a -n "$(RETRIEVED)" || \
+		{ echo "usage: make catalog FZ6=fz6.xlsx GOR3A=all.json GOR3A_SHA=<commit> RDW=<dir> RETRIEVED=YYYY-MM-DD [SV42=sv42.txt SV42_CONSENT=yes]"; exit 2; }
 	go run ./cmd/catalog-sync --fz6-xlsx "$(FZ6)" --gor3a-json "$(GOR3A)" --gor3a-commit "$(GOR3A_SHA)" \
+		--rdw-aggregate "$(RDW)/rdw-aggregate.csv" --rdw-fuel "$(RDW)/rdw-fuel.csv" \
 		--retrieved "$(RETRIEVED)" $(if $(SV42),--sv42-text "$(SV42)" --sv42-consent="$(SV42_CONSENT)") \
 		--out internal/catalog/data/catalog_seed.json.gz
 

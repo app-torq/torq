@@ -143,6 +143,7 @@ func fixtures(t *testing.T) Inputs {
 	t.Helper()
 	return Inputs{
 		FZ6: xlsx(t, fz6Rows), FZ6Stand: "2024-01-01", Gor3a: strings.NewReader(gor3aFixture), Gor3aCommit: "0123abc",
+		RDWAggregate: strings.NewReader(rdwAggregateCSV), RDWFuel: strings.NewReader(rdwFuelCSV),
 		Retrieved: "2026-10-31",
 	}
 }
@@ -231,7 +232,20 @@ func TestBuildFromFZ6AndGor3a(t *testing.T) {
 		t.Error("trailer or UNBEKANNT row kept")
 	}
 
-	if len(doc.Datasets) != 2 || doc.Datasets[0].LicenseID != "dl-de/by-2-0" || doc.Datasets[0].Stand != "2024-01-01" ||
+	// Motorcycles from RDW: counted, typed, and after the cars.
+	motorcycles := 0
+	for _, v := range doc.Vehicles {
+		if v.VehicleType == catalog.TypeMotorcycle {
+			motorcycles++
+		}
+	}
+	if motorcycles == 0 || doc.Counts.Motorcycles != motorcycles {
+		t.Errorf("motorcycles %d, counted %d", motorcycles, doc.Counts.Motorcycles)
+	}
+	if len(doc.Datasets) != 3 || doc.Datasets[2].ID != "rdw-open-data" || doc.Datasets[2].LicenseID != "public-domain" {
+		t.Errorf("RDW dataset %+v", doc.Datasets)
+	}
+	if len(doc.Datasets) != 3 || doc.Datasets[0].LicenseID != "dl-de/by-2-0" || doc.Datasets[0].Stand != "2024-01-01" ||
 		doc.Datasets[1].Commit != "0123abc" || !strings.Contains(doc.Datasets[0].Attribution, "Kraftfahrt-Bundesamt") ||
 		doc.GeneratedAt != "2026-10-31T00:00:00Z" {
 		t.Errorf("datasets %+v", doc.Header)
@@ -241,7 +255,8 @@ func TestBuildFromFZ6AndGor3a(t *testing.T) {
 		t.Fatal(err)
 	}
 	if r := out.String(); !strings.Contains(r, "SCHMITZ CARGOBULL") || !strings.Contains(r, "KBA model match:") ||
-		!strings.Contains(r, "Mercedes-Benz    2 of 2") {
+		!strings.Contains(r, "Mercedes-Benz    2 of 2") || !strings.Contains(r, "Ducati           Monster 821 (448)") ||
+		!strings.Contains(r, "motorcycles: ") {
 		t.Errorf("report:\n%s", r)
 	}
 
@@ -284,7 +299,7 @@ func TestSV42RequiresConsentAndWins(t *testing.T) {
 	if y := kbaVariants(doc, "9909", "ABD"); len(y) != 1 || *y[0].FuelType != "other" || !strings.Contains(out.String(), "SV42 0099") {
 		t.Errorf("unknown fuel code %+v\n%s", y, out.String())
 	}
-	if len(doc.Datasets) != 3 || doc.Datasets[2].ID != "kba-sv42" {
+	if len(doc.Datasets) != 4 || doc.Datasets[2].ID != "kba-sv42" || doc.Datasets[3].ID != "rdw-open-data" {
 		t.Errorf("datasets %+v", doc.Datasets)
 	}
 }

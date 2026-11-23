@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -19,6 +20,16 @@ type Report struct {
 	rejected    int
 	matched     int
 	unmatched   int
+	// RDW: models dropped by motorcycles.txt, and registrations per
+	// make/model key that passed the make threshold.
+	rdwDropped int
+	rdwModels  []rdwModelStat
+}
+
+// rdwModelStat is one motorcycle model with its registrations.
+type rdwModelStat struct {
+	Make, Model string
+	Count       int64
 }
 
 func newReport() *Report {
@@ -79,6 +90,40 @@ func (r *Report) Print(w io.Writer, doc catalog.SeedDoc, size int) error {
 	for _, n := range names {
 		fmt.Fprintf(&b, "  %-28s %d\n", n, r.unmapped[n])
 	}
+	r.printMotorcycles(&b, doc)
 	_, err := io.WriteString(w, b.String())
 	return err
+}
+
+// reportMakes are the makes issue #28 names; the report lists their models
+// so the maintainer can check SC-001 (each spelled once).
+var reportMakes = []string{"Harley-Davidson", "Honda", "Yamaha", "Suzuki", "Kawasaki", "BMW", "KTM", "Ducati"}
+
+// codeLikeRe matches model names that are probably frame or type-approval
+// codes rather than names ("RC46", "H3"); review them for motorcycles.txt.
+var codeLikeRe = regexp.MustCompile(`^[A-Z]{1,3}\d{1,4}[A-Z]?$`)
+
+func (r *Report) printMotorcycles(b *strings.Builder, doc catalog.SeedDoc) {
+	models := slices.SortedFunc(slices.Values(r.rdwModels), func(x, y rdwModelStat) int {
+		return cmp.Or(cmp.Compare(y.Count, x.Count), cmp.Compare(x.Make, y.Make), cmp.Compare(x.Model, y.Model))
+	})
+	fmt.Fprintf(b, "motorcycles: %d versions of %d models (%d left out by motorcycles.txt)\n",
+		doc.Counts.Motorcycles, len(models), r.rdwDropped)
+	for _, mk := range reportMakes {
+		var top []string
+		for _, m := range models {
+			if m.Make == mk && len(top) < 15 {
+				top = append(top, fmt.Sprintf("%s (%d)", m.Model, m.Count))
+			}
+		}
+		fmt.Fprintf(b, "  %-16s %s\n", mk, strings.Join(top, ", "))
+	}
+	fmt.Fprintln(b, "most registered motorcycle names that look like codes (check the type approval, then motorcycles.txt):")
+	n := 0
+	for _, m := range models {
+		if n < 30 && codeLikeRe.MatchString(m.Model) {
+			fmt.Fprintf(b, "  %-16s %-12s %d\n", m.Make, m.Model, m.Count)
+			n++
+		}
+	}
 }

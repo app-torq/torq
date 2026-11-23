@@ -25,7 +25,7 @@ func (q *Queries) CategoryInUse(ctx context.Context, id int64) (int64, error) {
 const createCustomCategory = `-- name: CreateCustomCategory :one
 INSERT INTO service_categories (custom_name, is_fluid, default_interval_km, default_interval_months, sort_order)
 VALUES (?, ?, ?, ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM service_categories))
-RETURNING id, builtin_key, custom_name, is_fluid, default_interval_km, default_interval_months, sort_order, archived_at
+RETURNING id, builtin_key, custom_name, is_fluid, default_interval_km, default_interval_months, sort_order, archived_at, vehicle_type
 `
 
 type CreateCustomCategoryParams struct {
@@ -52,6 +52,7 @@ func (q *Queries) CreateCustomCategory(ctx context.Context, arg CreateCustomCate
 		&i.DefaultIntervalMonths,
 		&i.SortOrder,
 		&i.ArchivedAt,
+		&i.VehicleType,
 	)
 	return i, err
 }
@@ -66,7 +67,7 @@ func (q *Queries) DeleteCategory(ctx context.Context, id int64) error {
 }
 
 const getCategory = `-- name: GetCategory :one
-SELECT id, builtin_key, custom_name, is_fluid, default_interval_km, default_interval_months, sort_order, archived_at FROM service_categories WHERE id = ?
+SELECT id, builtin_key, custom_name, is_fluid, default_interval_km, default_interval_months, sort_order, archived_at, vehicle_type FROM service_categories WHERE id = ?
 `
 
 func (q *Queries) GetCategory(ctx context.Context, id int64) (ServiceCategory, error) {
@@ -81,18 +82,27 @@ func (q *Queries) GetCategory(ctx context.Context, id int64) (ServiceCategory, e
 		&i.DefaultIntervalMonths,
 		&i.SortOrder,
 		&i.ArchivedAt,
+		&i.VehicleType,
 	)
 	return i, err
 }
 
 const listCategories = `-- name: ListCategories :many
-SELECT id, builtin_key, custom_name, is_fluid, default_interval_km, default_interval_months, sort_order, archived_at FROM service_categories
-WHERE CAST(?1 AS INTEGER) = 1 OR archived_at IS NULL
+SELECT id, builtin_key, custom_name, is_fluid, default_interval_km, default_interval_months, sort_order, archived_at, vehicle_type FROM service_categories
+WHERE (CAST(?1 AS INTEGER) = 1 OR archived_at IS NULL)
+  AND (CAST(?2 AS TEXT) = '' OR vehicle_type IS NULL OR vehicle_type = ?2)
 ORDER BY builtin_key IS NULL, sort_order, custom_name COLLATE NOCASE
 `
 
-func (q *Queries) ListCategories(ctx context.Context, includeArchived int64) ([]ServiceCategory, error) {
-	rows, err := q.db.QueryContext(ctx, listCategories, includeArchived)
+type ListCategoriesParams struct {
+	IncludeArchived int64
+	VehicleType     string
+}
+
+// vehicle_type ” lists every category; otherwise the ones for all types
+// and those for that type.
+func (q *Queries) ListCategories(ctx context.Context, arg ListCategoriesParams) ([]ServiceCategory, error) {
+	rows, err := q.db.QueryContext(ctx, listCategories, arg.IncludeArchived, arg.VehicleType)
 	if err != nil {
 		return nil, err
 	}
@@ -109,6 +119,7 @@ func (q *Queries) ListCategories(ctx context.Context, includeArchived int64) ([]
 			&i.DefaultIntervalMonths,
 			&i.SortOrder,
 			&i.ArchivedAt,
+			&i.VehicleType,
 		); err != nil {
 			return nil, err
 		}
@@ -124,7 +135,7 @@ func (q *Queries) ListCategories(ctx context.Context, includeArchived int64) ([]
 }
 
 const setCategoryArchived = `-- name: SetCategoryArchived :one
-UPDATE service_categories SET archived_at = ? WHERE id = ? RETURNING id, builtin_key, custom_name, is_fluid, default_interval_km, default_interval_months, sort_order, archived_at
+UPDATE service_categories SET archived_at = ? WHERE id = ? RETURNING id, builtin_key, custom_name, is_fluid, default_interval_km, default_interval_months, sort_order, archived_at, vehicle_type
 `
 
 type SetCategoryArchivedParams struct {
@@ -144,6 +155,7 @@ func (q *Queries) SetCategoryArchived(ctx context.Context, arg SetCategoryArchiv
 		&i.DefaultIntervalMonths,
 		&i.SortOrder,
 		&i.ArchivedAt,
+		&i.VehicleType,
 	)
 	return i, err
 }
@@ -152,7 +164,7 @@ const updateCategory = `-- name: UpdateCategory :one
 UPDATE service_categories
 SET custom_name = ?, is_fluid = ?, default_interval_km = ?, default_interval_months = ?
 WHERE id = ?
-RETURNING id, builtin_key, custom_name, is_fluid, default_interval_km, default_interval_months, sort_order, archived_at
+RETURNING id, builtin_key, custom_name, is_fluid, default_interval_km, default_interval_months, sort_order, archived_at, vehicle_type
 `
 
 type UpdateCategoryParams struct {
@@ -181,6 +193,7 @@ func (q *Queries) UpdateCategory(ctx context.Context, arg UpdateCategoryParams) 
 		&i.DefaultIntervalMonths,
 		&i.SortOrder,
 		&i.ArchivedAt,
+		&i.VehicleType,
 	)
 	return i, err
 }

@@ -16,6 +16,7 @@ type reminderCounts struct {
 
 type vehicleJSON struct {
 	ID                int64           `json:"id"`
+	VehicleType       string          `json:"vehicle_type"`
 	Make              string          `json:"make"`
 	Model             string          `json:"model"`
 	ChassisCode       string          `json:"chassis_code"`
@@ -51,7 +52,7 @@ type vehicleExtras struct {
 
 func (s *Server) toVehicleJSON(v store.Vehicle, x vehicleExtras) vehicleJSON {
 	out := vehicleJSON{
-		ID: v.ID, Make: v.Make, Model: v.Model, ChassisCode: v.ChassisCode, ModelYear: intPtr(v.ModelYear),
+		ID: v.ID, VehicleType: v.VehicleType, Make: v.Make, Model: v.Model, ChassisCode: v.ChassisCode, ModelYear: intPtr(v.ModelYear),
 		EngineCode: v.EngineCode, VIN: strPtr(v.Vin), LicensePlate: strPtr(v.LicensePlate),
 		HSN: strPtr(v.Hsn), TSN: strPtr(v.Tsn), DisplacementCC: intPtr(v.DisplacementCc), PowerKW: intPtr(v.PowerKw),
 		PowerW: intPtr(v.PowerW), FuelType: strPtr(v.FuelType), CurrentOdometerKm: v.CurrentOdometerKm,
@@ -93,6 +94,7 @@ func (s *Server) vehicleOut(ctx context.Context, v store.Vehicle) (vehicleJSON, 
 }
 
 type vehicleInput struct {
+	VehicleType       string  `json:"vehicle_type"`
 	Make              string  `json:"make"`
 	Model             string  `json:"model"`
 	ChassisCode       string  `json:"chassis_code"`
@@ -124,7 +126,7 @@ func (in vehicleInput) profile() vehicles.Profile {
 		Make: in.Make, Model: in.Model, ChassisCode: in.ChassisCode, ModelYear: in.ModelYear, EngineCode: in.EngineCode,
 		HSN: in.HSN, TSN: in.TSN, DisplacementCC: in.DisplacementCC, PowerKW: in.PowerKW, PowerW: in.PowerW,
 		FuelType: in.FuelType, DisplacementUnit: in.DisplacementUnit, PowerUnit: in.PowerUnit,
-		NoOdometer: in.HasOdometer != nil && !*in.HasOdometer,
+		NoOdometer: in.HasOdometer != nil && !*in.HasOdometer, VehicleType: in.VehicleType,
 	}
 	if in.OdometerUnit != nil {
 		p.OdometerUnit = *in.OdometerUnit
@@ -234,7 +236,7 @@ func (s *Server) updateVehicle(w http.ResponseWriter, r *http.Request) error {
 	hasOdometer := cur.HasOdometer == 1
 	// PATCH: start from the stored profile and overlay supplied fields.
 	in := vehicleInput{
-		Make: cur.Make, Model: cur.Model, ChassisCode: cur.ChassisCode, ModelYear: intPtr(cur.ModelYear),
+		VehicleType: cur.VehicleType, Make: cur.Make, Model: cur.Model, ChassisCode: cur.ChassisCode, ModelYear: intPtr(cur.ModelYear),
 		EngineCode: cur.EngineCode, VIN: strPtr(cur.Vin), LicensePlate: strPtr(cur.LicensePlate),
 		HSN: strPtr(cur.Hsn), TSN: strPtr(cur.Tsn), DisplacementCC: intPtr(cur.DisplacementCc),
 		PowerKW: intPtr(cur.PowerKw), FuelType: strPtr(cur.FuelType), OdometerUnit: &cur.OdometerUnit, HasOdometer: &hasOdometer,

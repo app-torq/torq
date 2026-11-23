@@ -172,7 +172,7 @@ func TestCatalogMetaForMembers(t *testing.T) {
 	member := e.login("lena", testPassword)
 	member.call(http.MethodGet, "/catalog/meta", nil, http.StatusOK, &meta)
 	if meta.ImportedAt == nil || *meta.ImportedAt != "2026-10-31T12:00:00Z" || len(meta.Datasets) != 1 ||
-		meta.Datasets[0].ID != "fixture" || meta.Datasets[0].Attribution != "Test data" || meta.Counts.KBA != 4 || meta.Counts.Vehicles != 8 ||
+		meta.Datasets[0].ID != "fixture" || meta.Datasets[0].Attribution != "Test data" || meta.Counts.KBA != 4 || meta.Counts.Vehicles != 11 || meta.Counts.Motorcycles != 3 ||
 		meta.Source != "bundled" {
 		t.Fatalf("meta %+v", meta)
 	}

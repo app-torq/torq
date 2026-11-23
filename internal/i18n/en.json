@@ -37,5 +37,11 @@
   "categories.timing_belt_chain": "Timing Belt/Chain",
   "sample.reminder": "Engine Oil & Filter",
   "sample.vehicle": "Example vehicle",
-  "unit.mi": "mi"
+  "unit.mi": "mi",
+  "categories.chain_maintenance": "Chain: Clean, Lube, Adjust",
+  "categories.chain_sprockets": "Chain and Sprockets",
+  "categories.valve_clearance": "Valve Clearance Check",
+  "categories.fork_oil": "Fork Oil",
+  "categories.final_drive_oil": "Final Drive Oil",
+  "categories.drive_belt": "Drive Belt"
 }

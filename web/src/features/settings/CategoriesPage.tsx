@@ -66,6 +66,7 @@ export function CategoriesPage() {
                 <td>
                   <span className="text-zinc-100">{categoryLabel(c, t)}</span>
                   <span className="ml-2">{c.builtin_key ? <Badge>{t('categoryAdmin.builtin')}</Badge> : <Badge tone="sky">{t('categoryAdmin.custom')}</Badge>}</span>
+                  {c.vehicle_type && <span className="ml-2"><Badge>{t(`vehicles:vehicleType.${c.vehicle_type}`)}</Badge></span>}
                   {c.archived && <span className="ml-2"><Badge tone="amber">{t('categoryAdmin.archived')}</Badge></span>}
                 </td>
                 <td className="text-zinc-400">{t(c.is_fluid ? 'costTypes.fluids' : 'costTypes.parts')}</td>
