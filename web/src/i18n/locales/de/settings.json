@@ -202,7 +202,7 @@
     "imported": "Importiert",
     "update": "Jetzt aktualisieren",
     "updating": "Wird aktualisiert…",
-    "updateHint": "Lädt die aktuelle KBA-FZ-6-Liste und die vehicle-makes-models-Daten, baut den Katalog neu auf und ersetzt ihn in einem Schritt. Das dauert einige Minuten; die Suche funktioniert währenddessen weiter.",
+    "updateHint": "Lädt die aktuelle KBA-FZ-6-Liste, die vehicle-makes-models-Daten und die RDW-Motorraddaten, baut den Katalog neu auf und ersetzt ihn in einem Schritt. Das dauert einige Minuten; die Suche funktioniert währenddessen weiter.",
     "updateDisabled": "Online-Aktualisierungen sind auf diesem Server abgeschaltet (TORQ_CATALOG_ONLINE_UPDATES=false).",
     "updateStates": {
       "running": "Aktualisierung läuft seit {{time}}.",

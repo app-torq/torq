@@ -202,7 +202,7 @@
     "imported": "Imported",
     "update": "Update now",
     "updating": "Updating…",
-    "updateHint": "Downloads the current KBA FZ 6 list and the vehicle-makes-models data, rebuilds the catalog and replaces it in one step. This takes a few minutes; lookups keep working meanwhile.",
+    "updateHint": "Downloads the current KBA FZ 6 list, the vehicle-makes-models data and the RDW motorcycle data, rebuilds the catalog and replaces it in one step. This takes a few minutes; lookups keep working meanwhile.",
     "updateDisabled": "Online updates are turned off on this server (TORQ_CATALOG_ONLINE_UPDATES=false).",
     "updateStates": {
       "running": "Update running since {{time}}.",
