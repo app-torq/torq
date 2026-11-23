@@ -28,7 +28,9 @@ export default defineConfig({
           command: '../bin/torq',
           url: `http://127.0.0.1:${port}/healthz`,
           reuseExistingServer: false,
-          env: { TORQ_DATA_DIR: dataDir, TORQ_LISTEN_ADDR: `127.0.0.1:${port}`, TORQ_LOG_LEVEL: 'warn' },
+          // The suite expects the optional spec auto-fill to be off, even when
+          // a developer's .env (exported by the Makefile) sets its keys.
+          env: { TORQ_DATA_DIR: dataDir, TORQ_LISTEN_ADDR: `127.0.0.1:${port}`, TORQ_LOG_LEVEL: 'warn', GEMINI_API_KEY: '', TAVILY_API_KEY: '' },
         },
       }),
 })
