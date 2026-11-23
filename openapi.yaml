@@ -5,7 +5,7 @@
 openapi: "3.1.0"
 info:
   title: torq API
-  version: "6"
+  version: "7"
   description: |-
     The REST API of torq, a self-hosted vehicle maintenance and DIY repair tracker. It is used by the web app and the torq mobile app.
 
@@ -33,6 +33,25 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ServerInfo"
+        default:
+          $ref: "#/components/responses/Error"
+  /instance/logo:
+    get:
+      operationId: getLogo
+      summary: The instance logo
+      description: "Public, since the sign-in page shows it. Use the versioned URL from `branding.logo_url`; an SVG is meant for display as an image only and is served in a sandbox without scripts."
+      x-torq-access: public
+      security: []
+      x-torq-error-codes:
+        - not_found
+      responses:
+        "200":
+          description: "The logo as PNG, JPEG or SVG."
+          content:
+            "*/*":
+              schema:
+                type: string
+                contentMediaType: application/octet-stream
         default:
           $ref: "#/components/responses/Error"
   /setup/status:
@@ -3234,7 +3253,7 @@ paths:
           $ref: "#/components/responses/Error"
     patch:
       operationId: patchInstanceSettings
-      summary: Change digest schedules
+      summary: Change digest schedules, defaults and branding
       x-torq-access: admin
       security:
         - cookieAuth: []
@@ -3246,6 +3265,8 @@ paths:
             schema:
               type: object
               properties:
+                branding:
+                  $ref: "#/components/schemas/BrandingInput"
                 defaults:
                   $ref: "#/components/schemas/FormatsInput"
                 monthly_digest_day:
@@ -3258,7 +3279,9 @@ paths:
                   type: integer
               additionalProperties: false
       x-torq-error-codes:
+        - demo.branding_locked
         - validation.failed
+        - validation.length
         - validation.range
       responses:
         "200":
@@ -3267,6 +3290,60 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/InstanceSettings"
+        default:
+          $ref: "#/components/responses/Error"
+  /settings/instance/logo:
+    put:
+      operationId: putLogo
+      summary: Set the instance logo
+      x-torq-access: admin
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  description: "PNG, JPEG or SVG; at most 512 KB."
+                  contentMediaType: application/octet-stream
+      x-torq-error-codes:
+        - attachment.empty
+        - attachment.missing_file
+        - demo.branding_locked
+        - instance.logo_too_large
+        - instance.logo_type_not_allowed
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandingResponse"
+        default:
+          $ref: "#/components/responses/Error"
+    delete:
+      operationId: deleteLogo
+      summary: Remove the instance logo
+      x-torq-access: admin
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      x-torq-error-codes:
+        - demo.branding_locked
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandingResponse"
         default:
           $ref: "#/components/responses/Error"
   /reports/costs:
@@ -3483,6 +3560,67 @@ components:
             - number
             - "null"
           description: "Upper end of a range, e.g. tyre pressure at full load; absent for single values."
+    Branding:
+      type: object
+      description: "The instance name and logo, shown in the apps and on the printed history. Contact details are only included for signed-in users."
+      required:
+        - logo_url
+        - name
+      properties:
+        contact:
+          $ref: "#/components/schemas/Contact"
+        logo_url:
+          type:
+            - string
+            - "null"
+          description: "Versioned URL of the logo (GET /instance/logo), null without one."
+        name:
+          type: string
+          description: "Instance name, empty when not set."
+    BrandingInput:
+      type: object
+      description: "Replaces all branding fields; an omitted field is cleared. Values are trimmed."
+      properties:
+        address:
+          type: string
+          description: "At most 300 characters; may span several lines."
+        email:
+          type: string
+          description: At most 120 characters.
+        name:
+          type: string
+          description: At most 60 characters.
+        phone:
+          type: string
+          description: At most 40 characters.
+        website:
+          type: string
+          description: At most 200 characters.
+      additionalProperties: false
+    BrandingResponse:
+      type: object
+      required:
+        - branding
+      properties:
+        branding:
+          $ref: "#/components/schemas/Branding"
+    Contact:
+      type: object
+      description: "Contact details for the printed history; empty strings when not set."
+      required:
+        - address
+        - email
+        - phone
+        - website
+      properties:
+        address:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        website:
+          type: string
     CatalogCounts:
       type: object
       required:
@@ -3767,6 +3905,7 @@ components:
     History:
       type: object
       required:
+        - instance
         - repairs
         - schema
         - service_logs
@@ -3774,6 +3913,8 @@ components:
         - specs
         - vehicle
       properties:
+        instance:
+          $ref: "#/components/schemas/HistoryInstance"
         repairs:
           type: array
           items:
@@ -3820,6 +3961,14 @@ components:
           type: string
         value:
           type: string
+    HistoryInstance:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: "Instance name, empty when not set."
     HistoryPart:
       type: object
       required:
@@ -4235,18 +4384,21 @@ components:
       type: object
       required:
         - api_version
+        - branding
         - demo_mode
         - max_upload_mb
         - spec_autofill
         - token_auth
         - version
       properties:
+        branding:
+          $ref: "#/components/schemas/Branding"
         api_version:
           type: integer
           description: "API level; rises with every release that adds to the API."
         demo_mode:
           type: boolean
-          description: "The server is a public demo: account changes, webhooks and uploads are off."
+          description: "The server is a public demo: account changes, webhooks, uploads and branding changes are off."
         max_upload_mb:
           type: integer
           description: "Upload limit per file in MB; 0 when uploads are off."
@@ -4263,6 +4415,7 @@ components:
       type: object
       required:
         - base_url_configured
+        - branding
         - defaults
         - max_upload_mb
         - monthly_digest_day
@@ -4274,6 +4427,9 @@ components:
       properties:
         base_url_configured:
           type: boolean
+        branding:
+          $ref: "#/components/schemas/Branding"
+          description: Always includes the contact details.
         defaults:
           $ref: "#/components/schemas/Formats"
           description: The formats and units new users start with.
@@ -4959,6 +5115,7 @@ components:
       type: object
       required:
         - api_version
+        - branding
         - demo_mode
         - max_upload_mb
         - setup_required
@@ -4966,12 +5123,14 @@ components:
         - token_auth
         - version
       properties:
+        branding:
+          $ref: "#/components/schemas/Branding"
         api_version:
           type: integer
           description: "API level; rises with every release that adds to the API."
         demo_mode:
           type: boolean
-          description: "The server is a public demo: account changes, webhooks and uploads are off."
+          description: "The server is a public demo: account changes, webhooks, uploads and branding changes are off."
         max_upload_mb:
           type: integer
           description: "Upload limit per file in MB; 0 when uploads are off."

@@ -12,6 +12,7 @@ import (
 func (s *Server) routes() {
 	// Setup & auth
 	s.route("GET /instance", public, s.instance)
+	s.route("GET /instance/logo", public, s.getLogo)
 	s.route("GET /setup/status", public, s.setupStatus)
 	s.route("POST /setup", public, s.setup)
 	s.route("POST /auth/login", public, s.login)
@@ -130,6 +131,8 @@ func (s *Server) routes() {
 	s.route("GET /webhooks/{id}/deliveries", admin, s.listDeliveries)
 	s.route("GET /settings/instance", admin, s.getInstanceSettings)
 	s.route("PATCH /settings/instance", admin, s.patchInstanceSettings)
+	s.route("PUT /settings/instance/logo", admin, s.demoLocked(brandingLocked, s.putLogo))
+	s.route("DELETE /settings/instance/logo", admin, s.demoLocked(brandingLocked, s.deleteLogo))
 
 	// Reports & export
 	s.route("GET /reports/costs", member, s.costReport)
@@ -142,6 +145,7 @@ const (
 	accountsLocked = "demo.accounts_locked"
 	webhooksLocked = "demo.webhooks_locked"
 	uploadsLocked  = "demo.uploads_locked"
+	brandingLocked = "demo.branding_locked"
 )
 
 // demoLocked refuses fn with code in demo mode. Accounts are locked so nobody
@@ -149,7 +153,8 @@ const (
 // Devices list: it would show visitors each other's IP addresses and let them
 // sign each other out; webhooks so the
 // public demo cannot be used to send requests to arbitrary URLs; uploads so
-// visitors cannot store files on the demo server.
+// visitors cannot store files on the demo server; the instance name and logo
+// because every visitor sees them on the sign-in page.
 func (s *Server) demoLocked(code string, fn handlerFunc) handlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) error {
 		if s.Config.DemoMode {

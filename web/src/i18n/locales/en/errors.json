@@ -26,7 +26,8 @@
   "demo": {
     "accounts_locked": "Accounts cannot be changed in the demo.",
     "webhooks_locked": "Webhooks are turned off in the demo.",
-    "uploads_locked": "Uploads are turned off in the demo."
+    "uploads_locked": "Uploads are turned off in the demo.",
+    "branding_locked": "The name and logo cannot be changed in the demo."
   },
   "user": {
     "last_admin": "At least one active administrator is required.",
@@ -134,5 +135,9 @@
     "required": "A vehicle without an odometer needs its hour meter.",
     "decrease_requires_confirmation": "Lowering the hours needs confirmation.",
     "large_jump_requires_confirmation": "This large jump needs confirmation."
+  },
+  "instance": {
+    "logo_type_not_allowed": "The logo must be a PNG, JPEG or SVG image.",
+    "logo_too_large": "The logo is larger than {{max_kb}} KB."
   }
 }

@@ -48,6 +48,9 @@ func TestDemoModeLocksAccountsAndWebhooks(t *testing.T) {
 		{http.MethodDelete, hookPath, nil, webhooksLocked},
 		{http.MethodPost, "/repairs/1/attachments", nil, uploadsLocked},
 		{http.MethodPut, "/vehicles/1/avatar", nil, uploadsLocked},
+		{http.MethodPatch, "/settings/instance", map[string]any{"branding": map[string]string{"name": "Spam"}}, brandingLocked},
+		{http.MethodPut, "/settings/instance/logo", nil, brandingLocked},
+		{http.MethodDelete, "/settings/instance/logo", nil, brandingLocked},
 	}
 	for _, c := range locked {
 		if code := adm.errorCode(c.method, c.path, c.body, http.StatusForbidden); code != c.code {

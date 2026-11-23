@@ -73,6 +73,8 @@ type Message struct {
 	// MoreText is the localized "+N more" template result for truncated digests (Discord).
 	MoreText func(n int) string
 	SentAt   time.Time
+	// Instance is the instance name set in the settings, empty when unset.
+	Instance string
 }
 
 // Rendered is the HTTP request a preset produces (always POST).

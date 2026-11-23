@@ -13,6 +13,7 @@ import { Button } from '../../components/Button'
 import { Checkbox } from '../../components/Field'
 import { ErrorBanner, Loading } from '../../components/ui'
 import { BRAND } from '../../lib/brand'
+import { useSession } from '../../app/session'
 import { entryReading } from '../vehicles/readings'
 
 /**
@@ -36,6 +37,9 @@ export function HistoryPrintPage() {
   const exportUrl = (format: 'json' | 'csv') => API_BASE + withQuery(`/vehicles/${vehicleId}/history`, { ...params, format })
   const h = history.data
   const none = t('common:state.none')
+  const { branding } = useSession().instance
+  const contact = branding.contact
+  const contactLines = contact ? [contact.address, contact.phone, contact.email, contact.website].filter(Boolean) : []
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6 print:max-w-none print:bg-white print:p-0 print:text-black">
@@ -64,10 +68,20 @@ export function HistoryPrintPage() {
       {history.isError && <ErrorBanner message={errorText(history.error)} />}
       {h && (
         <article className="space-y-8 text-sm print:text-[11pt]">
-          <header className="border-b border-zinc-800 pb-4 print:border-black">
-            <div className="text-xs uppercase tracking-wide text-zinc-400 print:text-black">{BRAND} · {t('history.title')}</div>
-            <h1 className="mt-1 text-2xl font-semibold print:text-black">{h.vehicle.make} {h.vehicle.model}</h1>
-            <p className="text-zinc-400 print:text-black">{t('history.generated', { date: fmt.date(new Date().toISOString().slice(0, 10)) })}</p>
+          <header className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3 border-b border-zinc-800 pb-4 print:flex-nowrap print:border-black">
+            <div className="min-w-0">
+              <div className="text-xs uppercase tracking-wide text-zinc-400 print:text-black">{branding.name || BRAND} · {t('history.title')}</div>
+              <h1 className="mt-1 text-2xl font-semibold print:text-black">{h.vehicle.make} {h.vehicle.model}</h1>
+              <p className="text-zinc-400 print:text-black">{t('history.generated', { date: fmt.date(new Date().toISOString().slice(0, 10)) })}</p>
+            </div>
+            {(branding.logo_url || contactLines.length > 0) && (
+              <div className="space-y-2 text-xs text-zinc-400 sm:text-right print:text-right print:text-black">
+                {branding.logo_url && <img src={branding.logo_url} alt={branding.name} className="max-h-16 max-w-48 object-contain sm:ml-auto print:ml-auto" />}
+                {contactLines.length > 0 && (
+                  <address className="whitespace-pre-line not-italic">{contactLines.join('\n')}</address>
+                )}
+              </div>
+            )}
           </header>
 
           <section>

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"mime"
 	"os"
 	"path/filepath"
 	"sort"
@@ -156,6 +157,33 @@ func TestPresetRules(t *testing.T) {
 	// Generic JSON schema and omitted URL.
 	j, _ := Render(GenericJSON, m["test"])
 	if !bytes.Contains(j.Body, []byte(`"schema":"torq.notification/v1"`)) || bytes.Contains(j.Body, []byte(`"url"`)) {
+		t.Fatalf("generic %s", j.Body)
+	}
+}
+
+func TestInstanceName(t *testing.T) {
+	m := messages(locales[0])["test"]
+	m.Instance = "Garage Nord"
+	r, _ := Render(Discord, m)
+	if !bytes.Contains(r.Body, []byte(`"username":"Garage Nord"`)) {
+		t.Fatalf("discord %s", r.Body)
+	}
+	m.Instance = "My Discord Garage"
+	r, _ = Render(Discord, m)
+	if !bytes.Contains(r.Body, []byte(`"username":"torq"`)) {
+		t.Fatalf("discord with refused username %s", r.Body)
+	}
+	m.Instance = "Garage Nord"
+	n, _ := Render(Ntfy, m)
+	if title, err := new(mime.WordDecoder).DecodeHeader(n.Headers["Title"]); err != nil || title != "Garage Nord · "+m.Title {
+		t.Fatalf("ntfy title %q", n.Headers["Title"])
+	}
+	g, _ := Render(Gotify, m)
+	if !bytes.Contains(g.Body, []byte(`"title":"Garage Nord · `)) {
+		t.Fatalf("gotify %s", g.Body)
+	}
+	j, _ := Render(GenericJSON, m)
+	if !bytes.Contains(j.Body, []byte(`"instance":{"name":"Garage Nord"}`)) {
 		t.Fatalf("generic %s", j.Body)
 	}
 }

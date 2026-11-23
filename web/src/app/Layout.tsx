@@ -102,7 +102,7 @@ export function Layout() {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-zinc-800 bg-zinc-900/95 px-4 py-2 backdrop-blur md:hidden">
+        <header className="sticky top-0 z-20 flex items-center justify-between gap-2 border-b border-zinc-800 bg-zinc-900/95 px-4 py-2 backdrop-blur md:hidden">
           <IconButton aria-label={t('nav.openMenu')} onClick={() => { setDrawer(true) }}>
             <Menu size={20} />
           </IconButton>

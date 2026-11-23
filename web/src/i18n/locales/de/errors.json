@@ -26,7 +26,8 @@
   "demo": {
     "accounts_locked": "In der Demo können Konten nicht geändert werden.",
     "webhooks_locked": "Webhooks sind in der Demo abgeschaltet.",
-    "uploads_locked": "Uploads sind in der Demo abgeschaltet."
+    "uploads_locked": "Uploads sind in der Demo abgeschaltet.",
+    "branding_locked": "Name und Logo können in der Demo nicht geändert werden."
   },
   "user": {
     "last_admin": "Mindestens ein aktiver Administrator ist erforderlich.",
@@ -134,5 +135,9 @@
     "required": "Ein Fahrzeug ohne Kilometerzähler braucht seinen Betriebsstundenzähler.",
     "decrease_requires_confirmation": "Das Verringern der Betriebsstunden muss bestätigt werden.",
     "large_jump_requires_confirmation": "Dieser große Sprung muss bestätigt werden."
+  },
+  "instance": {
+    "logo_type_not_allowed": "Das Logo muss ein PNG-, JPEG- oder SVG-Bild sein.",
+    "logo_too_large": "Das Logo ist größer als {{max_kb}} KB."
   }
 }

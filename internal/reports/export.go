@@ -28,11 +28,17 @@ type ExportOptions struct {
 // History is the torq.vehicle-history/v1 document (research R19).
 type History struct {
 	Schema   string           `json:"schema"`
+	Instance HistoryInstance  `json:"instance"`
 	Vehicle  HistoryVehicle   `json:"vehicle"`
 	Specs    map[string]any   `json:"specs"`
 	Entries  []HistoryEntry   `json:"spec_entries"`
 	Services []HistoryService `json:"service_logs"`
 	Repairs  []HistoryRepair  `json:"repairs"`
+}
+
+// HistoryInstance names the torq instance the history comes from (#32).
+type HistoryInstance struct {
+	Name string `json:"name"`
 }
 
 type HistoryVehicle struct {
@@ -200,8 +206,13 @@ func (s *Service) History(ctx context.Context, vehicleID int64, opt ExportOption
 	if err != nil {
 		return History{}, err
 	}
+	settings, err := q.GetInstanceSettings(ctx)
+	if err != nil {
+		return History{}, err
+	}
 	h := History{
-		Schema: "torq.vehicle-history/v1",
+		Schema:   "torq.vehicle-history/v1",
+		Instance: HistoryInstance{Name: settings.BrandName},
 		Vehicle: HistoryVehicle{ID: v.ID, Make: v.Make, Model: v.Model, ChassisCode: v.ChassisCode, ModelYear: ptrI(v.ModelYear),
 			EngineCode: v.EngineCode, VIN: ptrS(v.Vin), LicensePlate: ptrS(v.LicensePlate), CurrentOdometerKm: v.CurrentOdometerKm,
 			HSN: ptrS(v.Hsn), TSN: ptrS(v.Tsn), DisplacementCC: ptrI(v.DisplacementCc), PowerKW: ptrI(v.PowerKw), PowerW: ptrI(v.PowerW), FuelType: ptrS(v.FuelType),
@@ -416,6 +427,13 @@ func WriteCSV(w io.Writer, h History) error {
 	cw := csv.NewWriter(w)
 	if err := cw.Write(CSVHeader); err != nil {
 		return err
+	}
+	if h.Instance.Name != "" {
+		rec := make([]string, len(CSVHeader))
+		rec[0], rec[3] = "instance", h.Instance.Name
+		if err := cw.Write(neutralize(rec)); err != nil {
+			return err
+		}
 	}
 	v := h.Vehicle
 	meters := map[int64]string{}

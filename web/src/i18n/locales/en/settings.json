@@ -158,7 +158,25 @@
       "7": "Sunday"
     },
     "defaults": "Defaults for new users",
-    "defaultsIntro": "New accounts start with these formats and units. Existing users keep theirs."
+    "defaultsIntro": "New accounts start with these formats and units. Existing users keep theirs.",
+    "branding": {
+      "title": "Name and logo",
+      "intro": "Shown in the header, on the sign-in page, in the browser title and on the printed vehicle history. Exports and notifications include the name.",
+      "logo": "Logo",
+      "noLogo": "No logo",
+      "uploadLogo": "Upload logo",
+      "replaceLogo": "Replace logo",
+      "removeLogo": "Remove logo",
+      "logoHint": "PNG, JPEG or SVG, at most {{max_kb}} KB. It replaces the torq logo; anyone who can reach this server sees it on the sign-in page.",
+      "name": "Name",
+      "nameHint": "Shown next to the logo. Leave it empty if your logo already contains the name. Anyone who can reach this server sees it on the sign-in page.",
+      "contact": "Contact details",
+      "contactHint": "Printed at the top of the vehicle history. Only signed-in users see them.",
+      "address": "Address",
+      "phone": "Phone",
+      "email": "Email",
+      "website": "Website"
+    }
   },
   "about": {
     "title": "About torq",

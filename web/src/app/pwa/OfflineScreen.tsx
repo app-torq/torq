@@ -1,6 +1,6 @@
 import { WifiOff } from 'lucide-react'
 import i18n from '../../i18n'
-import { Logo } from '../../components/Logo'
+import { TorqLogo } from '../../components/Logo'
 import { Button } from '../../components/Button'
 
 /**
@@ -13,7 +13,7 @@ export function OfflineScreen({ onRetry }: { onRetry: () => void }) {
   const t = i18n.getFixedT(lang, 'common')
   return (
     <div lang={lang} className="flex min-h-dvh flex-col items-center justify-center gap-6 p-6 text-center">
-      <Logo />
+      <TorqLogo />
       <div className="max-w-sm space-y-2">
         <WifiOff size={28} aria-hidden className="mx-auto text-zinc-500" />
         <h1 className="text-lg font-semibold text-zinc-100">{t('offline.title')}</h1>

@@ -6,6 +6,7 @@ export const queryKeys = {
   users: ['users'] as const,
   sessions: ['sessions'] as const,
   instance: ['instance-settings'] as const,
+  serverInfo: ['server-info'] as const,
   vehicles: ['vehicles'] as const,
   vehicleList: (archived: string) => ['vehicles', 'list', archived] as const,
   vehicle: (id: number) => ['vehicles', 'detail', id] as const,

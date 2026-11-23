@@ -52,6 +52,11 @@ func (s *Service) EnqueueTransitions(ctx context.Context, tx *sql.Tx, transition
 
 // insert renders msg for the endpoint's preset and stores a pending delivery.
 func (s *Service) insert(ctx context.Context, q *store.Queries, wh store.Webhook, event string, reminderID sql.NullInt64, msg presets.Message) (int64, error) {
+	settings, err := q.GetInstanceSettings(ctx)
+	if err != nil {
+		return 0, err
+	}
+	msg.Instance = settings.BrandName
 	rendered, err := presets.Render(wh.Preset, msg)
 	if err != nil {
 		return 0, err

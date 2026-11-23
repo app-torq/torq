@@ -24,3 +24,26 @@ SET default_date_format       = ?,
     default_displacement_unit = ?
 WHERE id = 1
 RETURNING *;
+
+-- name: UpdateInstanceBranding :one
+UPDATE instance_settings
+SET brand_name    = ?,
+    brand_address = ?,
+    brand_phone   = ?,
+    brand_email   = ?,
+    brand_website = ?
+WHERE id = 1
+RETURNING *;
+
+-- name: GetInstanceLogo :one
+SELECT * FROM instance_logo WHERE id = 1;
+
+-- name: GetInstanceLogoUpdatedAt :one
+SELECT updated_at FROM instance_logo WHERE id = 1;
+
+-- name: PutInstanceLogo :exec
+INSERT INTO instance_logo (id, mime_type, data, updated_at) VALUES (1, ?, ?, ?)
+ON CONFLICT (id) DO UPDATE SET mime_type = excluded.mime_type, data = excluded.data, updated_at = excluded.updated_at;
+
+-- name: DeleteInstanceLogo :exec
+DELETE FROM instance_logo WHERE id = 1;

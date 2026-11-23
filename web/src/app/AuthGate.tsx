@@ -10,6 +10,7 @@ import { SessionContext } from './session'
 import { SetupPage } from '../features/auth/SetupPage'
 import { LoginPage } from '../features/auth/LoginPage'
 import { OfflineScreen } from './pwa/OfflineScreen'
+import { documentTitle, useServerInfo } from './branding'
 
 /** Shows first-boot setup or login until a session exists, then renders the app. */
 export function AuthGate({ children }: { children: ReactNode }) {
@@ -51,6 +52,13 @@ export function AuthGate({ children }: { children: ReactNode }) {
     if (locale && i18n.language !== locale) void i18n.changeLanguage(locale)
     document.documentElement.lang = locale ?? i18n.language
   }, [locale, i18n])
+
+  // Signed out, the name comes from the public GET /instance.
+  const info = useServerInfo(me.data === null)
+  const instanceName = me.data ? me.data.instance.branding.name : info.data?.branding.name
+  useEffect(() => {
+    document.title = documentTitle(instanceName)
+  }, [instanceName])
 
   const session = useMemo(() => (me.data ? { user: me.data.user, instance: me.data.instance } : null), [me.data])
 

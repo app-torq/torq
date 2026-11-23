@@ -9,8 +9,44 @@ import (
 	"context"
 )
 
+const deleteInstanceLogo = `-- name: DeleteInstanceLogo :exec
+DELETE FROM instance_logo WHERE id = 1
+`
+
+func (q *Queries) DeleteInstanceLogo(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, deleteInstanceLogo)
+	return err
+}
+
+const getInstanceLogo = `-- name: GetInstanceLogo :one
+SELECT id, mime_type, data, updated_at FROM instance_logo WHERE id = 1
+`
+
+func (q *Queries) GetInstanceLogo(ctx context.Context) (InstanceLogo, error) {
+	row := q.db.QueryRowContext(ctx, getInstanceLogo)
+	var i InstanceLogo
+	err := row.Scan(
+		&i.ID,
+		&i.MimeType,
+		&i.Data,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getInstanceLogoUpdatedAt = `-- name: GetInstanceLogoUpdatedAt :one
+SELECT updated_at FROM instance_logo WHERE id = 1
+`
+
+func (q *Queries) GetInstanceLogoUpdatedAt(ctx context.Context) (string, error) {
+	row := q.db.QueryRowContext(ctx, getInstanceLogoUpdatedAt)
+	var updated_at string
+	err := row.Scan(&updated_at)
+	return updated_at, err
+}
+
 const getInstanceSettings = `-- name: GetInstanceSettings :one
-SELECT id, weekly_digest_weekday, weekly_digest_hour, monthly_digest_day, monthly_digest_hour, default_date_format, default_number_format, default_time_format, default_currency_code, default_power_unit, default_distance_unit, default_volume_unit, default_torque_unit, default_pressure_unit, default_displacement_unit FROM instance_settings WHERE id = 1
+SELECT id, weekly_digest_weekday, weekly_digest_hour, monthly_digest_day, monthly_digest_hour, default_date_format, default_number_format, default_time_format, default_currency_code, default_power_unit, default_distance_unit, default_volume_unit, default_torque_unit, default_pressure_unit, default_displacement_unit, brand_name, brand_address, brand_phone, brand_email, brand_website FROM instance_settings WHERE id = 1
 `
 
 func (q *Queries) GetInstanceSettings(ctx context.Context) (InstanceSetting, error) {
@@ -32,6 +68,80 @@ func (q *Queries) GetInstanceSettings(ctx context.Context) (InstanceSetting, err
 		&i.DefaultTorqueUnit,
 		&i.DefaultPressureUnit,
 		&i.DefaultDisplacementUnit,
+		&i.BrandName,
+		&i.BrandAddress,
+		&i.BrandPhone,
+		&i.BrandEmail,
+		&i.BrandWebsite,
+	)
+	return i, err
+}
+
+const putInstanceLogo = `-- name: PutInstanceLogo :exec
+INSERT INTO instance_logo (id, mime_type, data, updated_at) VALUES (1, ?, ?, ?)
+ON CONFLICT (id) DO UPDATE SET mime_type = excluded.mime_type, data = excluded.data, updated_at = excluded.updated_at
+`
+
+type PutInstanceLogoParams struct {
+	MimeType  string
+	Data      []byte
+	UpdatedAt string
+}
+
+func (q *Queries) PutInstanceLogo(ctx context.Context, arg PutInstanceLogoParams) error {
+	_, err := q.db.ExecContext(ctx, putInstanceLogo, arg.MimeType, arg.Data, arg.UpdatedAt)
+	return err
+}
+
+const updateInstanceBranding = `-- name: UpdateInstanceBranding :one
+UPDATE instance_settings
+SET brand_name    = ?,
+    brand_address = ?,
+    brand_phone   = ?,
+    brand_email   = ?,
+    brand_website = ?
+WHERE id = 1
+RETURNING id, weekly_digest_weekday, weekly_digest_hour, monthly_digest_day, monthly_digest_hour, default_date_format, default_number_format, default_time_format, default_currency_code, default_power_unit, default_distance_unit, default_volume_unit, default_torque_unit, default_pressure_unit, default_displacement_unit, brand_name, brand_address, brand_phone, brand_email, brand_website
+`
+
+type UpdateInstanceBrandingParams struct {
+	BrandName    string
+	BrandAddress string
+	BrandPhone   string
+	BrandEmail   string
+	BrandWebsite string
+}
+
+func (q *Queries) UpdateInstanceBranding(ctx context.Context, arg UpdateInstanceBrandingParams) (InstanceSetting, error) {
+	row := q.db.QueryRowContext(ctx, updateInstanceBranding,
+		arg.BrandName,
+		arg.BrandAddress,
+		arg.BrandPhone,
+		arg.BrandEmail,
+		arg.BrandWebsite,
+	)
+	var i InstanceSetting
+	err := row.Scan(
+		&i.ID,
+		&i.WeeklyDigestWeekday,
+		&i.WeeklyDigestHour,
+		&i.MonthlyDigestDay,
+		&i.MonthlyDigestHour,
+		&i.DefaultDateFormat,
+		&i.DefaultNumberFormat,
+		&i.DefaultTimeFormat,
+		&i.DefaultCurrencyCode,
+		&i.DefaultPowerUnit,
+		&i.DefaultDistanceUnit,
+		&i.DefaultVolumeUnit,
+		&i.DefaultTorqueUnit,
+		&i.DefaultPressureUnit,
+		&i.DefaultDisplacementUnit,
+		&i.BrandName,
+		&i.BrandAddress,
+		&i.BrandPhone,
+		&i.BrandEmail,
+		&i.BrandWebsite,
 	)
 	return i, err
 }
@@ -49,7 +159,7 @@ SET default_date_format       = ?,
     default_pressure_unit     = ?,
     default_displacement_unit = ?
 WHERE id = 1
-RETURNING id, weekly_digest_weekday, weekly_digest_hour, monthly_digest_day, monthly_digest_hour, default_date_format, default_number_format, default_time_format, default_currency_code, default_power_unit, default_distance_unit, default_volume_unit, default_torque_unit, default_pressure_unit, default_displacement_unit
+RETURNING id, weekly_digest_weekday, weekly_digest_hour, monthly_digest_day, monthly_digest_hour, default_date_format, default_number_format, default_time_format, default_currency_code, default_power_unit, default_distance_unit, default_volume_unit, default_torque_unit, default_pressure_unit, default_displacement_unit, brand_name, brand_address, brand_phone, brand_email, brand_website
 `
 
 type UpdateInstanceDefaultsParams struct {
@@ -95,6 +205,11 @@ func (q *Queries) UpdateInstanceDefaults(ctx context.Context, arg UpdateInstance
 		&i.DefaultTorqueUnit,
 		&i.DefaultPressureUnit,
 		&i.DefaultDisplacementUnit,
+		&i.BrandName,
+		&i.BrandAddress,
+		&i.BrandPhone,
+		&i.BrandEmail,
+		&i.BrandWebsite,
 	)
 	return i, err
 }
@@ -106,7 +221,7 @@ SET weekly_digest_weekday = ?,
     monthly_digest_day    = ?,
     monthly_digest_hour   = ?
 WHERE id = 1
-RETURNING id, weekly_digest_weekday, weekly_digest_hour, monthly_digest_day, monthly_digest_hour, default_date_format, default_number_format, default_time_format, default_currency_code, default_power_unit, default_distance_unit, default_volume_unit, default_torque_unit, default_pressure_unit, default_displacement_unit
+RETURNING id, weekly_digest_weekday, weekly_digest_hour, monthly_digest_day, monthly_digest_hour, default_date_format, default_number_format, default_time_format, default_currency_code, default_power_unit, default_distance_unit, default_volume_unit, default_torque_unit, default_pressure_unit, default_displacement_unit, brand_name, brand_address, brand_phone, brand_email, brand_website
 `
 
 type UpdateInstanceSettingsParams struct {
@@ -140,6 +255,11 @@ func (q *Queries) UpdateInstanceSettings(ctx context.Context, arg UpdateInstance
 		&i.DefaultTorqueUnit,
 		&i.DefaultPressureUnit,
 		&i.DefaultDisplacementUnit,
+		&i.BrandName,
+		&i.BrandAddress,
+		&i.BrandPhone,
+		&i.BrandEmail,
+		&i.BrandWebsite,
 	)
 	return i, err
 }
