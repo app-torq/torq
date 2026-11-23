@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/url"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -38,6 +39,56 @@ type Specs struct {
 	// Meta records, per spec field, where its value came from. Entries for
 	// empty fields are dropped on save.
 	Meta map[string]SpecMeta
+	// Motorcycle holds the motorcycle fields; nil keeps the stored ones, so
+	// clients that don't know them never clear them (specs/006-motorcycles).
+	Motorcycle *MotorcycleSpecs
+}
+
+// FinalDrives are the stored final_drive values.
+var FinalDrives = []string{"chain", "belt", "shaft"}
+
+// MotorcycleSpecs are the motorcycle fields of the spec sheet. They are
+// stored for every vehicle, so they survive a change of the vehicle type.
+// Fork oil is per fork leg in mL; valve clearances are ranges in mm (the max
+// is optional). The auto-fill doesn't fill them, so they have no Meta.
+type MotorcycleSpecs struct {
+	FinalDrive                 *string
+	SprocketFrontTeeth         *int64
+	SprocketRearTeeth          *int64
+	ChainSize                  string
+	ChainLinks                 *int64
+	ForkOilSpec                string
+	ForkOilCapacityMl          *int64
+	ValveClearanceIntakeMinMm  *float64
+	ValveClearanceIntakeMaxMm  *float64
+	ValveClearanceExhaustMinMm *float64
+	ValveClearanceExhaustMaxMm *float64
+}
+
+func (m *MotorcycleSpecs) validate(v *apperr.Validation) {
+	const p = "motorcycle."
+	m.FinalDrive = trimOrNil(m.FinalDrive, false)
+	v.Check(m.FinalDrive != nil && !slices.Contains(FinalDrives, *m.FinalDrive), p+"final_drive", "validation.invalid_choice")
+	for field, r := range map[string]struct {
+		n        *int64
+		min, max int64
+	}{
+		"sprocket_front_teeth": {m.SprocketFrontTeeth, 5, 99}, "sprocket_rear_teeth": {m.SprocketRearTeeth, 10, 150},
+		"chain_links": {m.ChainLinks, 20, 300}, "fork_oil_capacity_ml": {m.ForkOilCapacityMl, 1, 5000},
+	} {
+		v.Check(r.n != nil && (*r.n < r.min || *r.n > r.max), p+field, "validation.range")
+	}
+	for field, r := range map[string][2]*float64{
+		"valve_clearance_intake":  {m.ValveClearanceIntakeMinMm, m.ValveClearanceIntakeMaxMm},
+		"valve_clearance_exhaust": {m.ValveClearanceExhaustMinMm, m.ValveClearanceExhaustMaxMm},
+	} {
+		v.Check(r[0] != nil && (*r[0] <= 0 || *r[0] > 2), p+field+"_min_mm", "validation.range")
+		// A maximum needs a lower value and must not be below it.
+		v.Check(r[1] != nil && (*r[1] <= 0 || *r[1] > 2 || r[0] == nil || *r[1] < *r[0]), p+field+"_max_mm", "validation.range")
+	}
+	m.ChainSize, m.ForkOilSpec = strings.TrimSpace(m.ChainSize), strings.TrimSpace(m.ForkOilSpec)
+	v.Check(utf8.RuneCountInString(m.ChainSize) > 40, p+"chain_size", "validation.length")
+	v.Check(utf8.RuneCountInString(m.ForkOilSpec) > 120, p+"fork_oil_spec", "validation.length")
 }
 
 // SpecMeta is the provenance of one spec field. IsAuto is true while the
@@ -170,11 +221,37 @@ func (s *Service) PutSpecs(ctx context.Context, vehicleID int64, in Specs) (stor
 		*p = strings.TrimSpace(*p)
 		v.Check(utf8.RuneCountInString(*p) > 120, field, "validation.length")
 	}
+	if in.Motorcycle != nil {
+		in.Motorcycle.validate(&v)
+	}
 	meta := validateMeta(&v, in.Meta, in.filled())
 	if err := v.Err(); err != nil {
 		return store.VehicleSpec{}, err
 	}
-	out, err := store.New(s.DB.Writer).UpdateVehicleSpecs(ctx, store.UpdateVehicleSpecsParams{
+	var out store.VehicleSpec
+	err := s.DB.WithTx(ctx, func(tx *sql.Tx) error {
+		var err error
+		if out, err = s.putSpecs(ctx, store.New(tx), vehicleID, in, meta); err != nil || in.Motorcycle == nil {
+			return err
+		}
+		m := in.Motorcycle
+		out, err = store.New(tx).UpdateMotorcycleSpecs(ctx, store.UpdateMotorcycleSpecsParams{
+			FinalDrive: nullStringPtr(m.FinalDrive), SprocketFrontTeeth: nullInt(m.SprocketFrontTeeth), SprocketRearTeeth: nullInt(m.SprocketRearTeeth),
+			ChainSize: m.ChainSize, ChainLinks: nullInt(m.ChainLinks), ForkOilSpec: m.ForkOilSpec, ForkOilCapacityMl: nullInt(m.ForkOilCapacityMl),
+			ValveClearanceIntakeMinMm: nullFloat(m.ValveClearanceIntakeMinMm), ValveClearanceIntakeMaxMm: nullFloat(m.ValveClearanceIntakeMaxMm),
+			ValveClearanceExhaustMinMm: nullFloat(m.ValveClearanceExhaustMinMm), ValveClearanceExhaustMaxMm: nullFloat(m.ValveClearanceExhaustMaxMm),
+			VehicleID: vehicleID,
+		})
+		return err
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return store.VehicleSpec{}, apperr.NotFound()
+	}
+	return out, err
+}
+
+func (s *Service) putSpecs(ctx context.Context, q *store.Queries, vehicleID int64, in Specs, meta string) (store.VehicleSpec, error) {
+	return q.UpdateVehicleSpecs(ctx, store.UpdateVehicleSpecsParams{
 		EngineOilViscosity: in.EngineOilViscosity, EngineOilSpec: in.EngineOilSpec, EngineOilCapacityMl: nullInt(in.EngineOilCapacityMl),
 		TransmissionFluidSpec: in.TransmissionFluidSpec, TransmissionFluidCapacityMl: nullInt(in.TransmissionFluidCapacityMl),
 		DifferentialFluidSpec: in.DifferentialFluidSpec, DifferentialFluidCapacityMl: nullInt(in.DifferentialFluidCapacityMl),
@@ -184,10 +261,6 @@ func (s *Service) PutSpecs(ctx context.Context, vehicleID int64, in Specs) (stor
 		TirePressureRearBar: nullFloat(in.TirePressureRearBar), TirePressureFrontMaxBar: nullFloat(in.TirePressureFrontMaxBar),
 		TirePressureRearMaxBar: nullFloat(in.TirePressureRearMaxBar), SpecsMeta: meta, UpdatedAt: clock.Timestamp(s.Clock.Now()), VehicleID: vehicleID,
 	})
-	if errors.Is(err, sql.ErrNoRows) {
-		return store.VehicleSpec{}, apperr.NotFound()
-	}
-	return out, err
 }
 
 func validateEntry(label, value string) error {

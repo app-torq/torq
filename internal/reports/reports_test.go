@@ -171,19 +171,19 @@ func TestHistoryExport(t *testing.T) {
 	if err != nil {
 		t.Fatalf("not RFC 4180: %v", err)
 	}
-	// The hour meter columns are appended (#24), so earlier columns keep their positions.
-	if strings.Join(rows[0], ",") != "record_type,date,odometer_km,record_title,category_or_part,brand,specification,quantity,unit,oem_part_number,aftermarket_part_number,cost,cost_type,status,notes,hsn,tsn,displacement_cc,power_kw,fuel_type,hour_meter,hours" {
+	// The hour meter columns (#24) and the vehicle type (#28) are appended, so earlier columns keep their positions.
+	if strings.Join(rows[0], ",") != "record_type,date,odometer_km,record_title,category_or_part,brand,specification,quantity,unit,oem_part_number,aftermarket_part_number,cost,cost_type,status,notes,hsn,tsn,displacement_cc,power_kw,fuel_type,hour_meter,hours,vehicle_type" {
 		t.Fatalf("header %v", rows[0])
 	}
 	// FR-027: the leading vehicle record carries the extended profile; JSON has the fields too.
-	if v := rows[1]; v[0] != "vehicle" || v[3] != "Mercedes-Benz C 220 CDI" || v[15] != "0710" || v[16] != "ABC" || v[17] != "2148" || v[18] != "110" || v[19] != "diesel" {
+	if v := rows[1]; v[0] != "vehicle" || v[3] != "Mercedes-Benz C 220 CDI" || v[15] != "0710" || v[16] != "ABC" || v[17] != "2148" || v[18] != "110" || v[19] != "diesel" || v[22] != "car" {
 		t.Fatalf("vehicle row %v", v)
 	}
 	if hv := h.Vehicle; hv.HSN == nil || *hv.HSN != "0710" || hv.PowerKW == nil || *hv.PowerKW != 110 || hv.FuelType == nil || *hv.FuelType != "diesel" {
 		t.Fatalf("json vehicle %+v", hv)
 	}
 	for _, r := range rows[2:] {
-		if len(r) != len(CSVHeader) || r[15] != "" || r[19] != "" {
+		if len(r) != len(CSVHeader) || r[15] != "" || r[19] != "" || r[22] != "" {
 			t.Fatalf("line item carries vehicle columns: %v", r)
 		}
 	}
@@ -325,11 +325,11 @@ func TestHoursReports(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	n := len(CSVHeader)
-	if v := rows[1]; v[2] != "" || v[n-2] != "Engine hours" || v[n-1] != "1450" {
+	// hour_meter and hours are columns 20 and 21.
+	if v := rows[1]; v[2] != "" || v[20] != "Engine hours" || v[21] != "1450" {
 		t.Fatalf("vehicle row %v", v)
 	}
-	if s := rows[2]; s[0] != "service" || s[2] != "" || s[n-2] != "Engine hours" || s[n-1] != "1450" {
+	if s := rows[2]; s[0] != "service" || s[2] != "" || s[20] != "Engine hours" || s[21] != "1450" {
 		t.Fatalf("service row %v", s)
 	}
 

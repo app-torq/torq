@@ -32,6 +32,34 @@ type specsJSON struct {
 	// Meta is the per-field provenance (auto-filled from a web source or
 	// adjusted by hand); fields without an entry were entered manually.
 	Meta map[string]vehicles.SpecMeta `json:"meta"`
+	// Motorcycle is always sent; on PUT, omitting it keeps the stored values.
+	Motorcycle *motorcycleSpecsJSON `json:"motorcycle"`
+}
+
+type motorcycleSpecsJSON struct {
+	FinalDrive                 *string  `json:"final_drive"`
+	SprocketFrontTeeth         *int64   `json:"sprocket_front_teeth"`
+	SprocketRearTeeth          *int64   `json:"sprocket_rear_teeth"`
+	ChainSize                  string   `json:"chain_size"`
+	ChainLinks                 *int64   `json:"chain_links"`
+	ForkOilSpec                string   `json:"fork_oil_spec"`
+	ForkOilCapacityMl          *int64   `json:"fork_oil_capacity_ml"`
+	ValveClearanceIntakeMinMm  *float64 `json:"valve_clearance_intake_min_mm"`
+	ValveClearanceIntakeMaxMm  *float64 `json:"valve_clearance_intake_max_mm"`
+	ValveClearanceExhaustMinMm *float64 `json:"valve_clearance_exhaust_min_mm"`
+	ValveClearanceExhaustMaxMm *float64 `json:"valve_clearance_exhaust_max_mm"`
+}
+
+func (m *motorcycleSpecsJSON) domain() *vehicles.MotorcycleSpecs {
+	if m == nil {
+		return nil
+	}
+	return &vehicles.MotorcycleSpecs{
+		FinalDrive: m.FinalDrive, SprocketFrontTeeth: m.SprocketFrontTeeth, SprocketRearTeeth: m.SprocketRearTeeth,
+		ChainSize: m.ChainSize, ChainLinks: m.ChainLinks, ForkOilSpec: m.ForkOilSpec, ForkOilCapacityMl: m.ForkOilCapacityMl,
+		ValveClearanceIntakeMinMm: m.ValveClearanceIntakeMinMm, ValveClearanceIntakeMaxMm: m.ValveClearanceIntakeMaxMm,
+		ValveClearanceExhaustMinMm: m.ValveClearanceExhaustMinMm, ValveClearanceExhaustMaxMm: m.ValveClearanceExhaustMaxMm,
+	}
 }
 
 func toSpecsJSON(s store.VehicleSpec) specsJSON {
@@ -44,6 +72,12 @@ func toSpecsJSON(s store.VehicleSpec) specsJSON {
 		WheelLugTorqueNm: floatPtr(s.WheelLugTorqueNm), TirePressureFrontBar: floatPtr(s.TirePressureFrontBar),
 		TirePressureRearBar: floatPtr(s.TirePressureRearBar), TirePressureFrontMaxBar: floatPtr(s.TirePressureFrontMaxBar),
 		TirePressureRearMaxBar: floatPtr(s.TirePressureRearMaxBar), Meta: vehicles.ParseSpecsMeta(s.SpecsMeta),
+		Motorcycle: &motorcycleSpecsJSON{
+			FinalDrive: strPtr(s.FinalDrive), SprocketFrontTeeth: intPtr(s.SprocketFrontTeeth), SprocketRearTeeth: intPtr(s.SprocketRearTeeth),
+			ChainSize: s.ChainSize, ChainLinks: intPtr(s.ChainLinks), ForkOilSpec: s.ForkOilSpec, ForkOilCapacityMl: intPtr(s.ForkOilCapacityMl),
+			ValveClearanceIntakeMinMm: floatPtr(s.ValveClearanceIntakeMinMm), ValveClearanceIntakeMaxMm: floatPtr(s.ValveClearanceIntakeMaxMm),
+			ValveClearanceExhaustMinMm: floatPtr(s.ValveClearanceExhaustMinMm), ValveClearanceExhaustMaxMm: floatPtr(s.ValveClearanceExhaustMaxMm),
+		},
 	}
 }
 
@@ -101,7 +135,7 @@ func (s *Server) putSpecs(w http.ResponseWriter, r *http.Request) error {
 		CoolantSpec: in.CoolantSpec, CoolantCapacityMl: in.CoolantCapacityMl,
 		WheelLugTorqueNm: in.WheelLugTorqueNm, TirePressureFrontBar: in.TirePressureFrontBar, TirePressureRearBar: in.TirePressureRearBar,
 		TirePressureFrontMaxBar: in.TirePressureFrontMaxBar, TirePressureRearMaxBar: in.TirePressureRearMaxBar,
-		Meta: in.Meta,
+		Meta: in.Meta, Motorcycle: in.Motorcycle.domain(),
 	})
 	if err != nil {
 		return err

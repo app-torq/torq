@@ -119,6 +119,23 @@ Operating hours are sent as numbers in hours with at most one decimal (`1250.4`)
 - Reminders can have an hours interval (`hour_meter_id`, `interval_hours`, `lead_hours`); `state_trigger`
   can then be `hours`. A `PATCH /reminders/{id}` without `hour_meter_id` keeps the hours settings.
 
+### Vehicle types (API level 8)
+
+- `vehicle_type` on vehicles is `car` or `motorcycle`; more types may follow, so treat unknown values like
+  `car`. It defaults to `car` on create, and a `PATCH` without it keeps the stored type.
+- The catalog cascade takes `vehicle_type` (`car` when omitted, so older clients see what they always saw).
+  Motorcycles have no generations: call `GET /catalog/engines?vehicle_type=motorcycle&make=…&model=…`
+  without `generation` to list a model's versions, each with its displacement, power and years of first
+  registration (`year_from`, `year_to`). `GET /catalog/kba` is not filtered.
+- The spec sheet has a nested `motorcycle` object (final drive, sprockets, chain, fork oil per fork leg in
+  mL, valve clearance ranges in mm). It is stored for every vehicle type. **`PUT /vehicles/{id}/specs`
+  without `motorcycle` keeps the stored motorcycle values**; send the object only when you show those
+  fields, and then send all of them.
+- Service categories carry `vehicle_type` (`car`, `motorcycle`, or `null` for all types), and
+  `GET /service-categories?vehicle_type=…` lists those that apply to a type. The list of `builtin_key`
+  values grows with new built-ins (`chain_maintenance`, `chain_sprockets`, `valve_clearance`, `fork_oil`,
+  `final_drive_oil`, `drive_belt`); show an unknown key through your generic fallback.
+
 ## Errors
 
 Errors are JSON with a dotted code and never prose, so each client translates them:

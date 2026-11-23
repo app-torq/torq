@@ -51,6 +51,7 @@ export function VehicleOverview() {
       <Card title={t('details')}>
         <DefinitionList
           items={[
+            { label: t('fields.vehicleType'), value: t(`vehicleType.${v.vehicle_type === 'motorcycle' ? 'motorcycle' : 'car'}`) },
             { label: t('fields.make'), value: v.make },
             { label: t('fields.model'), value: v.model },
             { label: t('fields.chassisCode'), value: v.chassis_code || none },

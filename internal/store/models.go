@@ -73,6 +73,7 @@ type CatalogVehicle struct {
 	ModelDeKey      string
 	GenerationDe    string
 	GenerationDeKey string
+	VehicleType     string
 }
 
 type HourMeter struct {
@@ -250,6 +251,7 @@ type ServiceCategory struct {
 	DefaultIntervalMonths sql.NullInt64
 	SortOrder             int64
 	ArchivedAt            sql.NullString
+	VehicleType           sql.NullString
 }
 
 type ServiceLog struct {
@@ -352,6 +354,7 @@ type Vehicle struct {
 	DisplacementUnit  sql.NullString
 	PowerUnit         sql.NullString
 	HasOdometer       int64
+	VehicleType       string
 }
 
 type VehicleSpec struct {
@@ -374,6 +377,17 @@ type VehicleSpec struct {
 	SpecsMeta                   string
 	TirePressureFrontMaxBar     sql.NullFloat64
 	TirePressureRearMaxBar      sql.NullFloat64
+	FinalDrive                  sql.NullString
+	SprocketFrontTeeth          sql.NullInt64
+	SprocketRearTeeth           sql.NullInt64
+	ChainSize                   string
+	ChainLinks                  sql.NullInt64
+	ForkOilSpec                 string
+	ForkOilCapacityMl           sql.NullInt64
+	ValveClearanceIntakeMinMm   sql.NullFloat64
+	ValveClearanceIntakeMaxMm   sql.NullFloat64
+	ValveClearanceExhaustMinMm  sql.NullFloat64
+	ValveClearanceExhaustMaxMm  sql.NullFloat64
 }
 
 type VehicleSpecEntry struct {

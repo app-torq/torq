@@ -444,3 +444,97 @@ func TestHourMetersMigration(t *testing.T) {
 		t.Fatalf("delivery reminder_id after delete %v (%v)", reminderID, err)
 	}
 }
+
+// TestMotorcyclesMigration covers migration 00019: existing vehicles and
+// catalog rows become cars, spec rows get empty motorcycle fields, the
+// built-in categories gain their vehicle types and the CHECKs apply.
+func TestMotorcyclesMigration(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	d, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	sub, err := fs.Sub(migrationsFS, "migrations")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := goose.NewProvider(goose.DialectSQLite3, d.Writer, sub)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.UpTo(ctx, 17); err != nil {
+		t.Fatal(err)
+	}
+	for _, stmt := range []string{
+		`INSERT INTO vehicles (id, make, model, current_odometer_km, created_at, updated_at) VALUES (1, 'BMW', '330d', 4000, 'x', 'x')`,
+		`INSERT INTO vehicle_specs (vehicle_id, engine_oil_spec, updated_at) VALUES (1, 'LL-04', 'x')`,
+	} {
+		if _, err := d.Writer.ExecContext(ctx, stmt); err != nil {
+			t.Fatalf("%s: %v", stmt, err)
+		}
+	}
+	if err := Migrate(ctx, d, dir); err != nil {
+		t.Fatal(err)
+	}
+
+	var vehicleType, chainSize, oilSpec string
+	var finalDrive sql.NullString
+	var links sql.NullInt64
+	if err := d.Reader.QueryRowContext(ctx, `SELECT vehicle_type, final_drive, chain_size, chain_links, engine_oil_spec
+		FROM vehicles JOIN vehicle_specs ON vehicle_specs.vehicle_id = vehicles.id WHERE vehicles.id = 1`).
+		Scan(&vehicleType, &finalDrive, &chainSize, &links, &oilSpec); err != nil {
+		t.Fatal(err)
+	}
+	if vehicleType != "car" || finalDrive.Valid || chainSize != "" || links.Valid || oilSpec != "LL-04" {
+		t.Fatalf("after migration: %s %v %q %v %s", vehicleType, finalDrive, chainSize, links, oilSpec)
+	}
+
+	types := map[string]string{}
+	rows, err := d.Reader.QueryContext(ctx, `SELECT builtin_key, COALESCE(vehicle_type, '') || '|' || COALESCE(default_interval_km, '') || '|' ||
+		COALESCE(default_interval_months, '') || '|' || is_fluid FROM service_categories WHERE builtin_key IS NOT NULL`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for rows.Next() {
+		var k, v string
+		if err := rows.Scan(&k, &v); err != nil {
+			t.Fatal(err)
+		}
+		types[k] = v
+	}
+	if err := rows.Close(); err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{
+		"cabin_filter": "car|15000|12|0", "differential_fluid": "car|60000||1", "engine_oil": "|15000|12|1", "timing_belt_chain": "|120000|72|0",
+		"chain_maintenance": "motorcycle|1000||0", "chain_sprockets": "motorcycle|||0", "valve_clearance": "motorcycle|24000||0",
+		"fork_oil": "motorcycle||24|1", "final_drive_oil": "motorcycle||24|1", "drive_belt": "motorcycle|||0",
+	}
+	for k, v := range want {
+		if types[k] != v {
+			t.Errorf("%s = %q, want %q", k, types[k], v)
+		}
+	}
+	if len(types) != 17 {
+		t.Errorf("%d built-ins, want 17", len(types))
+	}
+
+	for _, stmt := range []string{
+		"UPDATE vehicles SET vehicle_type = 'truck'",
+		"UPDATE service_categories SET vehicle_type = 'truck'",
+		"INSERT INTO catalog_vehicles (make, make_key, model, model_key, generation, generation_key, engine, engine_key, vehicle_type) VALUES ('a', 'a', 'b', 'b', '', '', 'c', 'c', 'truck')",
+		"UPDATE vehicle_specs SET final_drive = 'cardan'",
+		"UPDATE vehicle_specs SET chain_links = 10",
+		"UPDATE vehicle_specs SET valve_clearance_intake_min_mm = 0",
+	} {
+		if _, err := d.Writer.ExecContext(ctx, stmt); err == nil {
+			t.Errorf("CHECK accepted %s", stmt)
+		}
+	}
+	// The catalog row above fails only because of its type.
+	if _, err := d.Writer.ExecContext(ctx, "INSERT INTO catalog_vehicles (make, make_key, model, model_key, generation, generation_key, engine, engine_key, vehicle_type) VALUES ('a', 'a', 'b', 'b', '', '', 'c', 'c', 'motorcycle')"); err != nil {
+		t.Fatal(err)
+	}
+}

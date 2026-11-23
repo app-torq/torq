@@ -2,11 +2,13 @@ package httpapi
 
 import (
 	"net/http"
+	"slices"
 	"strconv"
 
 	"github.com/app-torq/torq/internal/apperr"
 	"github.com/app-torq/torq/internal/servicelog"
 	"github.com/app-torq/torq/internal/store"
+	"github.com/app-torq/torq/internal/vehicles"
 )
 
 type categoryJSON struct {
@@ -17,17 +19,25 @@ type categoryJSON struct {
 	DefaultIntervalKm     *int64  `json:"default_interval_km"`
 	DefaultIntervalMonths *int64  `json:"default_interval_months"`
 	Archived              bool    `json:"archived"`
+	VehicleType           *string `json:"vehicle_type"`
 }
 
 func toCategoryJSON(c store.ServiceCategory) categoryJSON {
 	return categoryJSON{
 		ID: c.ID, BuiltinKey: strPtr(c.BuiltinKey), CustomName: strPtr(c.CustomName), IsFluid: c.IsFluid == 1,
 		DefaultIntervalKm: intPtr(c.DefaultIntervalKm), DefaultIntervalMonths: intPtr(c.DefaultIntervalMonths), Archived: c.ArchivedAt.Valid,
+		VehicleType: strPtr(c.VehicleType),
 	}
 }
 
 func (s *Server) listCategories(w http.ResponseWriter, r *http.Request) error {
-	rows, err := s.servicelog.ListCategories(r.Context(), r.URL.Query().Get("include_archived") == "true")
+	vt := r.URL.Query().Get("vehicle_type")
+	if vt != "" && !slices.Contains(vehicles.Types, vt) {
+		var v apperr.Validation
+		v.Add("vehicle_type", "validation.invalid_choice")
+		return v.Err()
+	}
+	rows, err := s.servicelog.ListCategories(r.Context(), r.URL.Query().Get("include_archived") == "true", vt)
 	if err != nil {
 		return err
 	}

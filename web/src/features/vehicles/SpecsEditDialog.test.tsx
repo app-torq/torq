@@ -15,6 +15,11 @@ const specs: VehicleSpecs = {
   wheel_lug_torque_nm: null, tire_pressure_front_bar: null, tire_pressure_rear_bar: null,
   tire_pressure_front_max_bar: null, tire_pressure_rear_max_bar: null,
   meta: {},
+  motorcycle: {
+    final_drive: null, sprocket_front_teeth: null, sprocket_rear_teeth: null, chain_size: '', chain_links: null,
+    fork_oil_spec: '', fork_oil_capacity_ml: null, valve_clearance_intake_min_mm: null, valve_clearance_intake_max_mm: null,
+    valve_clearance_exhaust_min_mm: null, valve_clearance_exhaust_max_mm: null,
+  },
 }
 
 const withAutofill = { ...testSession, instance: { ...testSession.instance, spec_autofill: true } }
@@ -73,5 +78,34 @@ describe('SpecsEditDialog auto-fill', () => {
     renderWithApp(<SpecsEditDialog vehicleId={7} specs={specs} onClose={() => undefined} />)
     expect(screen.getByRole('button', { name: 'Look up data automatically' })).toBeDisabled()
     expect(screen.getByText(/needs to set GEMINI_API_KEY and TAVILY_API_KEY/)).toBeInTheDocument()
+  })
+})
+
+describe('SpecsEditDialog for motorcycles', () => {
+  it('shows chain data for chain drive and final drive oil for shaft drive, never the lug nut torque', async () => {
+    const user = userEvent.setup()
+    const put = vi.spyOn(api, 'put').mockResolvedValue({})
+    renderWithApp(<SpecsEditDialog vehicleId={7} specs={specs} motorcycle onClose={() => undefined} />)
+
+    expect(screen.queryByRole('textbox', { name: 'Wheel lug torque' })).toBeNull()
+    expect(screen.queryByText('Differential fluid')).toBeNull()
+    // No drive set yet: chain fields are offered.
+    expect(screen.getByRole('textbox', { name: 'Chain links' })).toBeInTheDocument()
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Final drive' }), 'shaft')
+    expect(screen.queryByRole('textbox', { name: 'Chain links' })).toBeNull()
+    expect(screen.getByText('Final drive oil')).toBeInTheDocument()
+
+    await user.type(screen.getByRole('textbox', { name: 'Intake' }), '0.1')
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Save' }))
+    await waitFor(() => { expect(put).toHaveBeenCalledTimes(1) })
+    const [, body] = put.mock.calls[0] as [string, Record<string, unknown>]
+    expect(body.motorcycle).toMatchObject({ final_drive: 'shaft', valve_clearance_intake_min_mm: 0.1 })
+  })
+
+  it('leaves the car dialog as it was', () => {
+    renderWithApp(<SpecsEditDialog vehicleId={7} specs={specs} onClose={() => undefined} />)
+    expect(screen.getByText('Differential fluid')).toBeInTheDocument()
+    expect(screen.queryByRole('combobox', { name: 'Final drive' })).toBeNull()
   })
 })

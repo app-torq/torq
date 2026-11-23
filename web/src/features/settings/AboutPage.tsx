@@ -90,7 +90,7 @@ export function AboutPage() {
         ))}
         {meta.data && meta.data.datasets.length > 0 && (
           <p className="text-xs text-zinc-400">
-            {t('about.counts', { kba: fmt.number(meta.data.counts.kba), vehicles: fmt.number(meta.data.counts.vehicles) })}{' '}
+            {t('about.counts', { kba: fmt.number(meta.data.counts.kba), vehicles: fmt.number(meta.data.counts.vehicles), motorcycles: fmt.number(meta.data.counts.motorcycles) })}{' '}
             {t('about.derived')}
           </p>
         )}

@@ -6,6 +6,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -43,6 +44,7 @@ type HistoryInstance struct {
 
 type HistoryVehicle struct {
 	ID                int64   `json:"id"`
+	VehicleType       string  `json:"vehicle_type"`
 	Make              string  `json:"make"`
 	Model             string  `json:"model"`
 	ChassisCode       string  `json:"chassis_code"`
@@ -213,7 +215,7 @@ func (s *Service) History(ctx context.Context, vehicleID int64, opt ExportOption
 	h := History{
 		Schema:   "torq.vehicle-history/v1",
 		Instance: HistoryInstance{Name: settings.BrandName},
-		Vehicle: HistoryVehicle{ID: v.ID, Make: v.Make, Model: v.Model, ChassisCode: v.ChassisCode, ModelYear: ptrI(v.ModelYear),
+		Vehicle: HistoryVehicle{ID: v.ID, VehicleType: v.VehicleType, Make: v.Make, Model: v.Model, ChassisCode: v.ChassisCode, ModelYear: ptrI(v.ModelYear),
 			EngineCode: v.EngineCode, VIN: ptrS(v.Vin), LicensePlate: ptrS(v.LicensePlate), CurrentOdometerKm: v.CurrentOdometerKm,
 			HSN: ptrS(v.Hsn), TSN: ptrS(v.Tsn), DisplacementCC: ptrI(v.DisplacementCc), PowerKW: ptrI(v.PowerKw), PowerW: ptrI(v.PowerW), FuelType: ptrS(v.FuelType),
 			OdometerUnit: v.OdometerUnit, DisplacementUnit: ptrS(v.DisplacementUnit), PowerUnit: ptrS(v.PowerUnit),
@@ -227,6 +229,12 @@ func (s *Service) History(ctx context.Context, vehicleID int64, opt ExportOption
 			"wheel_lug_torque_nm": ptrF(spec.WheelLugTorqueNm), "tire_pressure_front_bar": ptrF(spec.TirePressureFrontBar),
 			"tire_pressure_rear_bar": ptrF(spec.TirePressureRearBar), "tire_pressure_front_max_bar": ptrF(spec.TirePressureFrontMaxBar),
 			"tire_pressure_rear_max_bar": ptrF(spec.TirePressureRearMaxBar),
+			// Motorcycle fields (#28), stored for every vehicle type.
+			"final_drive": ptrS(spec.FinalDrive), "sprocket_front_teeth": ptrI(spec.SprocketFrontTeeth),
+			"sprocket_rear_teeth": ptrI(spec.SprocketRearTeeth), "chain_size": spec.ChainSize, "chain_links": ptrI(spec.ChainLinks),
+			"fork_oil_spec": spec.ForkOilSpec, "fork_oil_capacity_ml": ptrI(spec.ForkOilCapacityMl),
+			"valve_clearance_intake_min_mm": ptrF(spec.ValveClearanceIntakeMinMm), "valve_clearance_intake_max_mm": ptrF(spec.ValveClearanceIntakeMaxMm),
+			"valve_clearance_exhaust_min_mm": ptrF(spec.ValveClearanceExhaustMinMm), "valve_clearance_exhaust_max_mm": ptrF(spec.ValveClearanceExhaustMaxMm),
 		},
 		Entries: []HistoryEntry{}, Services: []HistoryService{}, Repairs: []HistoryRepair{},
 	}
@@ -319,7 +327,7 @@ func (s *Service) History(ctx context.Context, vehicleID int64, opt ExportOption
 }
 
 func (s *Service) categoryNames(ctx context.Context, q *store.Queries, loc i18n.Locale) (map[int64]string, error) {
-	rows, err := q.ListCategories(ctx, 1)
+	rows, err := q.ListCategories(ctx, store.ListCategoriesParams{IncludeArchived: 1})
 	if err != nil {
 		return nil, err
 	}
@@ -336,11 +344,12 @@ func (s *Service) categoryNames(ctx context.Context, q *store.Queries, loc i18n.
 
 // CSVHeader is the fixed column order of the CSV export. The vehicle columns
 // were appended later (specs/002, FR-027) and are filled only on the leading
-// "vehicle" record; the hour meter columns came last (#24). Appending keeps
-// existing columns in their positions.
+// "vehicle" record; the hour meter columns came next (#24), then the vehicle
+// type (#28, vehicle record only). Appending keeps existing columns in their
+// positions.
 var CSVHeader = []string{"record_type", "date", "odometer_km", "record_title", "category_or_part", "brand", "specification",
 	"quantity", "unit", "oem_part_number", "aftermarket_part_number", "cost", "cost_type", "status", "notes",
-	"hsn", "tsn", "displacement_cc", "power_kw", "fuel_type", "hour_meter", "hours"}
+	"hsn", "tsn", "displacement_cc", "power_kw", "fuel_type", "hour_meter", "hours", "vehicle_type"}
 
 // vehicleCols is the number of vehicle columns before the hour meter columns.
 const vehicleCols = 5
@@ -440,8 +449,9 @@ func WriteCSV(w io.Writer, h History) error {
 	for _, m := range v.HourMeters {
 		meters[m.ID] = m.Name
 	}
-	base := len(CSVHeader) - vehicleCols - 2
+	base := slices.Index(CSVHeader, "hsn")
 	vehicleRow := make([]string, len(CSVHeader))
+	vehicleRow[len(vehicleRow)-1] = v.VehicleType
 	vehicleRow[0], vehicleRow[2], vehicleRow[3], vehicleRow[4], vehicleRow[6] =
 		"vehicle", kmCol(v.CurrentOdometerKm, v.HasOdometer), strings.TrimSpace(v.Make+" "+v.Model), v.ChassisCode, v.EngineCode
 	copy(vehicleRow[base:], []string{strOr(v.HSN), strOr(v.TSN), intOr(v.DisplacementCC), intOr(v.PowerKW), strOr(v.FuelType)})
@@ -452,10 +462,11 @@ func WriteCSV(w io.Writer, h History) error {
 	if err := cw.Write(neutralize(vehicleRow)); err != nil {
 		return err
 	}
-	// Line-item rows leave the vehicle columns empty and end with their hours.
+	// Line-item rows leave the vehicle columns empty, carry their hours and
+	// leave the vehicle type empty.
 	write := func(rec []string, readings []HistoryReading) error {
 		rec = append(rec, make([]string, vehicleCols)...)
-		return cw.Write(neutralize(append(rec, hoursCols(meters, readings)...)))
+		return cw.Write(neutralize(append(append(rec, hoursCols(meters, readings)...), "")))
 	}
 	for _, s := range h.Services {
 		km := kmCol(s.OdometerKm, s.OdometerRecorded)

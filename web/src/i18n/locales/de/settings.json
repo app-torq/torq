@@ -191,7 +191,7 @@
     "retrieved": "Abgerufen",
     "commit": "Quell-Commit",
     "modified": "torq hat diese Daten verändert (Namen vereinheitlicht, Quellen zusammengeführt). Details in NOTICE.md im Repository.",
-    "counts": "{{kba}} HSN/TSN-Einträge und {{vehicles}} Einträge zu Marke/Modell/Motor.",
+    "counts": "{{kba}} HSN/TSN-Einträge und {{vehicles}} Einträge zu Marke/Modell/Motor, davon {{motorcycles}} für Motorräder.",
     "derived": "Die zusammengeführte Katalogdatenbank wird unter der Open Database License (ODbL) 1.0 verbreitet.",
     "empty": "Es ist kein Fahrzeugkatalog geladen. Fahrzeuge können weiterhin manuell erfasst werden.",
     "catalogSource": "Katalog",

@@ -21,8 +21,9 @@ import (
 )
 
 // SeedSchema identifies the seed document format (data-model §5). v2 added
-// German names, chassis-code generations and body tokens.
-const SeedSchema = "torq.catalog-seed/v2"
+// German names, chassis-code generations and body tokens; v3 added
+// motorcycles (vehicle_type) from the RDW open data.
+const SeedSchema = "torq.catalog-seed/v3"
 
 // Catalog sources recorded in catalog_meta.source.
 const (
@@ -63,6 +64,8 @@ type Dataset struct {
 type Counts struct {
 	KBA      int `json:"kba"`
 	Vehicles int `json:"vehicles"`
+	// Motorcycles counts the motorcycle rows among Vehicles.
+	Motorcycles int `json:"motorcycles"`
 }
 
 // Header is the seed metadata stored in catalog_meta.header_json.
@@ -110,6 +113,10 @@ type VehicleRow struct {
 	DisplacementCC *int64  `json:"displacement_cc,omitempty"`
 	PowerKW        *int64  `json:"power_kw,omitempty"`
 	FuelType       *string `json:"fuel_type,omitempty"`
+	// VehicleType is TypeMotorcycle for motorcycles and empty for cars.
+	// Motorcycles have no generations: their engines are versions
+	// (displacement, power, years of first registration).
+	VehicleType string `json:"vehicle_type,omitempty"`
 }
 
 // SeedDoc is the complete seed document.
@@ -220,13 +227,24 @@ func DecodeSeed(seed []byte) (SeedDoc, error) {
 	return doc, nil
 }
 
+// count returns the row counts of doc.
+func (doc SeedDoc) count() Counts {
+	c := Counts{KBA: len(doc.KBA), Vehicles: len(doc.Vehicles)}
+	for _, r := range doc.Vehicles {
+		if r.VehicleType == TypeMotorcycle {
+			c.Motorcycles++
+		}
+	}
+	return c
+}
+
 // Validate checks every row against the catalog table constraints so a bad
 // seed fails before touching the database.
 func (doc SeedDoc) Validate() error {
 	if doc.Schema != SeedSchema {
 		return fmt.Errorf("catalog seed: unsupported schema %q", doc.Schema)
 	}
-	if doc.Counts.KBA != len(doc.KBA) || doc.Counts.Vehicles != len(doc.Vehicles) {
+	if doc.Counts != doc.count() {
 		return errors.New("catalog seed: counts do not match rows")
 	}
 	for i, r := range doc.KBA {
@@ -268,6 +286,9 @@ func (r VehicleRow) validate() error {
 	}
 	if r.Body != "" && !slices.Contains(Bodies, r.Body) {
 		return fmt.Errorf("body %q", r.Body)
+	}
+	if r.VehicleType != "" && r.VehicleType != TypeMotorcycle {
+		return fmt.Errorf("vehicle_type %q", r.VehicleType)
 	}
 	return validateTech(r.DisplacementCC, r.PowerKW, r.FuelType)
 }
@@ -324,6 +345,7 @@ func insertVehicles(ctx context.Context, tx *sql.Tx, rows []VehicleRow) error {
 			YearFrom: nInt(r.YearFrom), YearTo: nInt(r.YearTo),
 			Body: r.Body, Engine: r.Engine, EngineKey: Key(r.Engine), EngineCode: r.EngineCode,
 			DisplacementCc: nInt(r.DisplacementCC), PowerKw: nInt(r.PowerKW), FuelType: nStr(r.FuelType),
+			VehicleType: VehicleType(r.VehicleType),
 		}); err != nil {
 			return err
 		}
@@ -336,7 +358,7 @@ func insertVehicles(ctx context.Context, tx *sql.Tx, rows []VehicleRow) error {
 // seed only changes its hash when the data changes.
 func EncodeSeed(doc SeedDoc) ([]byte, error) {
 	doc.Schema = SeedSchema
-	doc.Counts = Counts{KBA: len(doc.KBA), Vehicles: len(doc.Vehicles)}
+	doc.Counts = doc.count()
 	if doc.KBA == nil {
 		doc.KBA = []KBARow{}
 	}

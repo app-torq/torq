@@ -15,7 +15,7 @@ import { FieldPair, SelectField, TextAreaField, TextField } from '../../componen
 import { NumberField } from '../../components/NumberField'
 import { Card, ErrorBanner, Loading, PageHeader } from '../../components/ui'
 import { invalidateOdometerDependents, useOdometerUnit, useVehicles } from '../vehicles/hooks'
-import { categoryLabel, useCategories } from './hooks'
+import { appliesTo, categoryLabel, useCategories } from './hooks'
 import { SpecHint } from './SpecHint'
 
 interface ItemDraft {
@@ -168,7 +168,8 @@ function ServiceLogForm({ log }: { log?: ServiceLog }) {
   const categoryOptions = (current: string) => [
     { value: '', label: '—' },
     ...(categories.data?.items ?? [])
-      .filter((c) => (!c.archived || String(c.id) === current) && (String(c.id) === current || !usedCategories.has(String(c.id))))
+      // The category already chosen stays, even when it no longer applies.
+      .filter((c) => String(c.id) === current || (!c.archived && !usedCategories.has(String(c.id)) && appliesTo(c, vehicle?.vehicle_type)))
       .map((c) => ({ value: String(c.id), label: categoryLabel(c, t) })),
   ]
   const costTypeDefault = (c: ServiceCategory | undefined): CostType => (c?.is_fluid ? 'fluids' : 'parts')

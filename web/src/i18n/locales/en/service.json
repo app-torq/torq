@@ -16,7 +16,13 @@
     "fuel_filter": "Fuel Filter",
     "spark_glow_plugs": "Spark/Glow Plugs",
     "brake_pads_rotors": "Brake Pads/Rotors",
-    "timing_belt_chain": "Timing Belt/Chain"
+    "timing_belt_chain": "Timing Belt/Chain",
+    "chain_maintenance": "Chain: Clean, Lube, Adjust",
+    "chain_sprockets": "Chain and Sprockets",
+    "valve_clearance": "Valve Clearance Check",
+    "fork_oil": "Fork Oil",
+    "final_drive_oil": "Final Drive Oil",
+    "drive_belt": "Drive Belt"
   },
   "fields": {
     "vehicle": "Vehicle",

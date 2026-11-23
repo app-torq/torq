@@ -16,7 +16,13 @@
     "fuel_filter": "Kraftstofffilter",
     "spark_glow_plugs": "Zünd-/Glühkerzen",
     "brake_pads_rotors": "Bremsbeläge/-scheiben",
-    "timing_belt_chain": "Zahnriemen/Steuerkette"
+    "timing_belt_chain": "Zahnriemen/Steuerkette",
+    "chain_maintenance": "Kette: reinigen, schmieren, spannen",
+    "chain_sprockets": "Kettensatz",
+    "valve_clearance": "Ventilspiel prüfen",
+    "fork_oil": "Gabelöl",
+    "final_drive_oil": "Kardanöl",
+    "drive_belt": "Zahnriemen (Antrieb)"
   },
   "fields": {
     "vehicle": "Fahrzeug",

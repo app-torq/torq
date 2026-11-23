@@ -11,7 +11,11 @@
     "coolant": "Kühlmittel",
     "wheels": "Räder & Reifen",
     "custom": "Eigene Einträge",
-    "powertrain": "Motor & Typ"
+    "powertrain": "Motor & Typ",
+    "drivetrain": "Antrieb",
+    "forkOil": "Gabelöl",
+    "valveClearance": "Ventilspiel",
+    "finalDriveOil": "Kardanöl"
   },
   "fields": {
     "viscosity": "Viskosität",
@@ -24,7 +28,21 @@
     "value": "Wert",
     "pressureUpTo": "{{field}}, bis",
     "pressureMax": "max.",
-    "pressureRangeHint": "Ein Wert oder ein Bereich von normaler bis voller Beladung."
+    "pressureRangeHint": "Ein Wert oder ein Bereich von normaler bis voller Beladung.",
+    "finalDrive": "Sekundärantrieb",
+    "sprockets": "Ritzel / Kettenrad",
+    "sprocketFront": "Zähne Ritzel",
+    "sprocketRear": "Zähne Kettenrad",
+    "chain": "Kette",
+    "chainSize": "Kettengröße",
+    "chainLinks": "Kettenglieder",
+    "chainLinksValue_one": "{{count}} Glied",
+    "chainLinksValue_other": "{{count}} Glieder",
+    "perLeg": "{{volume}} pro Gabelholm",
+    "perLegHint": "Pro Gabelholm",
+    "intake": "Einlass",
+    "exhaust": "Auslass",
+    "clearanceUpTo": "{{field}}, bis"
   },
   "entries": {
     "add": "Eintrag hinzufügen",
@@ -48,5 +66,10 @@
     "manual": "Manuell angepasst",
     "openSource": "Quelle in neuem Tab öffnen: {{url}}",
     "sourceLabel": "Automatisch ermittelt, Quelle: {{name}} (öffnet in neuem Tab)"
+  },
+  "finalDrive": {
+    "chain": "Kette",
+    "belt": "Zahnriemen",
+    "shaft": "Kardan"
   }
 }

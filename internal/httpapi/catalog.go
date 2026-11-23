@@ -58,6 +58,8 @@ type catalogEngineJSON struct {
 	DisplacementCC *int64  `json:"displacement_cc"`
 	PowerKW        *int64  `json:"power_kw"`
 	FuelType       *string `json:"fuel_type"`
+	YearFrom       *int64  `json:"year_from"`
+	YearTo         *int64  `json:"year_to"`
 }
 
 type catalogMetaJSON struct {
@@ -109,6 +111,18 @@ func requireParams(r *http.Request, names ...string) error {
 
 func (s *Server) catalogQueries() *store.Queries { return store.New(s.DB.Reader) }
 
+// catalogType reads the optional vehicle_type parameter; omitted means car,
+// so older clients get the answers they always got.
+func catalogType(r *http.Request) (string, error) {
+	t := catalog.VehicleType(r.URL.Query().Get("vehicle_type"))
+	if t != catalog.TypeCar && t != catalog.TypeMotorcycle {
+		var v apperr.Validation
+		v.Add("vehicle_type", "validation.invalid_choice")
+		return "", v.Err()
+	}
+	return t, nil
+}
+
 // catalogLang is the language of catalog names: the lang parameter, or the
 // caller's locale.
 func catalogLang(r *http.Request) string {
@@ -145,7 +159,11 @@ func (s *Server) getCatalogKBA(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) getCatalogMakes(w http.ResponseWriter, r *http.Request) error {
-	names, err := catalog.Makes(r.Context(), s.catalogQueries(), r.URL.Query().Get("q"))
+	vt, err := catalogType(r)
+	if err != nil {
+		return err
+	}
+	names, err := catalog.Makes(r.Context(), s.catalogQueries(), vt, r.URL.Query().Get("q"))
 	if err != nil {
 		return catalogFailed[catalogNameJSON](s, w, r, err)
 	}
@@ -158,11 +176,15 @@ func (s *Server) getCatalogMakes(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) getCatalogModels(w http.ResponseWriter, r *http.Request) error {
+	vt, err := catalogType(r)
+	if err != nil {
+		return err
+	}
 	if err := requireParams(r, "make"); err != nil {
 		return err
 	}
 	q := r.URL.Query()
-	rows, err := catalog.Models(r.Context(), s.catalogQueries(), q.Get("make"), q.Get("q"), catalogLang(r))
+	rows, err := catalog.Models(r.Context(), s.catalogQueries(), vt, q.Get("make"), q.Get("q"), catalogLang(r))
 	if err != nil {
 		return catalogFailed[catalogModelJSON](s, w, r, err)
 	}
@@ -175,11 +197,15 @@ func (s *Server) getCatalogModels(w http.ResponseWriter, r *http.Request) error 
 }
 
 func (s *Server) getCatalogGenerations(w http.ResponseWriter, r *http.Request) error {
+	vt, err := catalogType(r)
+	if err != nil {
+		return err
+	}
 	if err := requireParams(r, "make", "model"); err != nil {
 		return err
 	}
 	q := r.URL.Query()
-	rows, err := catalog.Generations(r.Context(), s.catalogQueries(), q.Get("make"), q.Get("model"), q.Get("q"), catalogLang(r))
+	rows, err := catalog.Generations(r.Context(), s.catalogQueries(), vt, q.Get("make"), q.Get("model"), q.Get("q"), catalogLang(r))
 	if err != nil {
 		return catalogFailed[catalogGenerationJSON](s, w, r, err)
 	}
@@ -192,11 +218,20 @@ func (s *Server) getCatalogGenerations(w http.ResponseWriter, r *http.Request) e
 }
 
 func (s *Server) getCatalogEngines(w http.ResponseWriter, r *http.Request) error {
-	if err := requireParams(r, "make", "model", "generation"); err != nil {
+	vt, err := catalogType(r)
+	if err != nil {
+		return err
+	}
+	// Motorcycles have no generations; their versions hang off the empty one.
+	required := []string{"make", "model", "generation"}
+	if vt == catalog.TypeMotorcycle {
+		required = required[:2]
+	}
+	if err := requireParams(r, required...); err != nil {
 		return err
 	}
 	q := r.URL.Query()
-	rows, err := catalog.Engines(r.Context(), s.catalogQueries(), q.Get("make"), q.Get("model"), q.Get("generation"), q.Get("q"))
+	rows, err := catalog.Engines(r.Context(), s.catalogQueries(), vt, q.Get("make"), q.Get("model"), q.Get("generation"), q.Get("q"))
 	if err != nil {
 		return catalogFailed[catalogEngineJSON](s, w, r, err)
 	}
@@ -204,7 +239,7 @@ func (s *Server) getCatalogEngines(w http.ResponseWriter, r *http.Request) error
 	for _, e := range rows {
 		items = append(items, catalogEngineJSON{
 			Name: e.Name, EngineCode: e.EngineCode, DisplacementCC: intPtr(e.DisplacementCc),
-			PowerKW: intPtr(e.PowerKw), FuelType: strPtr(e.FuelType),
+			PowerKW: intPtr(e.PowerKw), FuelType: strPtr(e.FuelType), YearFrom: yearPtr(e.YearFrom), YearTo: yearPtr(e.YearTo),
 		})
 	}
 	writeCatalog(w, items)

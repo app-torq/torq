@@ -58,46 +58,46 @@ func TestCascade(t *testing.T) {
 	ctx := context.Background()
 	_, q := fixtureDB(t)
 
-	makes, err := catalog.Makes(ctx, q, "merc")
+	makes, err := catalog.Makes(ctx, q, "", "merc")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !slices.Equal(makes, []string{"Mercedes-AMG", "Mercedes-Benz"}) {
 		t.Fatalf("makes %v", makes)
 	}
-	if m, _ := catalog.Makes(ctx, q, "CITROEN"); !slices.Equal(m, []string{"Citroën"}) {
+	if m, _ := catalog.Makes(ctx, q, "", "CITROEN"); !slices.Equal(m, []string{"Citroën"}) {
 		t.Fatalf("accent-insensitive %v", m)
 	}
 	// Substring matches anywhere; prefix matches sort first.
-	if m, _ := catalog.Makes(ctx, q, "es"); len(m) != 3 || m[0] != "Mercedes-AMG" {
+	if m, _ := catalog.Makes(ctx, q, "", "es"); len(m) != 3 || m[0] != "Mercedes-AMG" {
 		t.Fatalf("substring %v", m)
 	}
-	if m, _ := catalog.Makes(ctx, q, "t"); len(m) == 0 || m[0] != "Tesla" {
+	if m, _ := catalog.Makes(ctx, q, "", "t"); len(m) == 0 || m[0] != "Tesla" {
 		t.Fatalf("prefix first %v", m)
 	}
-	if m, _ := catalog.Makes(ctx, q, ""); len(m) != 4 {
+	if m, _ := catalog.Makes(ctx, q, "", ""); len(m) != 4 {
 		t.Fatalf("all makes %v", m)
 	}
 
 	// Models come back in the requested language; queries and parents match
 	// both languages.
-	models, err := catalog.Models(ctx, q, "mercedes benz", "", "en")
+	models, err := catalog.Models(ctx, q, "", "mercedes benz", "", "en")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(models) != 1 || models[0].Name != "C-Class" || models[0].YearFrom != 1990 || models[0].YearTo != 2007 {
 		t.Fatalf("models %+v", models)
 	}
-	if m, _ := catalog.Models(ctx, q, "Mercedes-Benz", "klasse", "de"); len(m) != 1 || m[0].Name != "C-Klasse" {
+	if m, _ := catalog.Models(ctx, q, "", "Mercedes-Benz", "klasse", "de"); len(m) != 1 || m[0].Name != "C-Klasse" {
 		t.Fatalf("German model %+v", m)
 	}
-	if m, _ := catalog.Models(ctx, q, "Mercedes-Benz", "c klasse", "en"); len(m) != 1 || m[0].Name != "C-Class" {
+	if m, _ := catalog.Models(ctx, q, "", "Mercedes-Benz", "c klasse", "en"); len(m) != 1 || m[0].Name != "C-Class" {
 		t.Fatalf("German query, English names %+v", m)
 	}
 
 	// Facelifts with the same chassis code merge into one generation; the
 	// body is reported when all its rows agree.
-	gens, err := catalog.Generations(ctx, q, "Mercedes-Benz", "c-klasse", "", "en")
+	gens, err := catalog.Generations(ctx, q, "", "Mercedes-Benz", "c-klasse", "", "en")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,14 +106,14 @@ func TestCascade(t *testing.T) {
 		gens[2].Name != "Coupe (1990–1993)" {
 		t.Fatalf("generations (newest first) %+v", gens)
 	}
-	if g, _ := catalog.Generations(ctx, q, "Mercedes-Benz", "C-Class", "coupé", "de"); len(g) != 1 || g[0].Name != "Coupé (1990–1993)" {
+	if g, _ := catalog.Generations(ctx, q, "", "Mercedes-Benz", "C-Class", "coupé", "de"); len(g) != 1 || g[0].Name != "Coupé (1990–1993)" {
 		t.Fatalf("German generation %+v", g)
 	}
-	if g, _ := catalog.Generations(ctx, q, "Citroën", "C5", "", "en"); len(g) != 1 || g[0].YearTo != 0 {
+	if g, _ := catalog.Generations(ctx, q, "", "Citroën", "C5", "", "en"); len(g) != 1 || g[0].YearTo != 0 {
 		t.Fatalf("open-ended generation %+v", g)
 	}
 
-	engines, err := catalog.Engines(ctx, q, "Mercedes-Benz", "C-Klasse", "w203", "")
+	engines, err := catalog.Engines(ctx, q, "", "Mercedes-Benz", "C-Klasse", "w203", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,21 +121,61 @@ func TestCascade(t *testing.T) {
 		engines[0].DisplacementCc.Int64 != 2148 || engines[0].FuelType.String != "diesel" {
 		t.Fatalf("engines %+v", engines)
 	}
-	if e, _ := catalog.Engines(ctx, q, "Mercedes-Benz", "C-Class", "Coupé (1990–1993)", ""); len(e) != 1 {
+	if e, _ := catalog.Engines(ctx, q, "", "Mercedes-Benz", "C-Class", "Coupé (1990–1993)", ""); len(e) != 1 {
 		t.Fatalf("engines under a German generation name %+v", e)
 	}
-	if e, _ := catalog.Engines(ctx, q, "Tesla", "Model 3", "2017–2023", "awd"); len(e) != 1 || e[0].DisplacementCc.Valid {
+	if e, _ := catalog.Engines(ctx, q, "", "Tesla", "Model 3", "2017–2023", "awd"); len(e) != 1 || e[0].DisplacementCc.Valid {
 		t.Fatalf("electric engine %+v", e)
 	}
 
 	for name, rows := range map[string]int{
-		"models":      lenOf(catalog.Models(ctx, q, "Trabbi Custom", "", "en")),
-		"generations": lenOf(catalog.Generations(ctx, q, "Mercedes-Benz", "Unknown", "", "en")),
-		"engines":     lenOf(catalog.Engines(ctx, q, "Mercedes-Benz", "C-Klasse", "1950", "")),
+		"models":      lenOf(catalog.Models(ctx, q, "", "Trabbi Custom", "", "en")),
+		"generations": lenOf(catalog.Generations(ctx, q, "", "Mercedes-Benz", "Unknown", "", "en")),
+		"engines":     lenOf(catalog.Engines(ctx, q, "", "Mercedes-Benz", "C-Klasse", "1950", "")),
 	} {
 		if rows != 0 {
 			t.Errorf("%s for unknown parent: %d rows", name, rows)
 		}
+	}
+}
+
+func TestCascadeByVehicleType(t *testing.T) {
+	ctx := context.Background()
+	_, q := fixtureDB(t)
+
+	// Each type only sees its own makes; "" means car.
+	if m, _ := catalog.Makes(ctx, q, catalog.TypeMotorcycle, ""); !slices.Equal(m, []string{"BMW", "Ducati"}) {
+		t.Fatalf("motorcycle makes %v", m)
+	}
+	for _, vt := range []string{"", catalog.TypeCar} {
+		if m, _ := catalog.Makes(ctx, q, vt, "duc"); len(m) != 0 {
+			t.Fatalf("%q makes include motorcycles: %v", vt, m)
+		}
+	}
+	if m, _ := catalog.Makes(ctx, q, catalog.TypeMotorcycle, "merc"); len(m) != 0 {
+		t.Fatalf("motorcycle makes include cars: %v", m)
+	}
+	models, err := catalog.Models(ctx, q, catalog.TypeMotorcycle, "bmw", "", "en")
+	if err != nil || len(models) != 1 || models[0].Name != "R 1200 GS" || models[0].YearFrom != 2004 || models[0].YearTo != 2018 {
+		t.Fatalf("models %+v %v", models, err)
+	}
+	if m, _ := catalog.Models(ctx, q, catalog.TypeCar, "bmw", "", "en"); len(m) != 0 {
+		t.Fatalf("car models of a motorcycle make: %+v", m)
+	}
+
+	// Versions hang off the empty generation and carry their years.
+	versions, err := catalog.Engines(ctx, q, catalog.TypeMotorcycle, "BMW", "R 1200 GS", "", "")
+	if err != nil || len(versions) != 2 {
+		t.Fatalf("versions %+v %v", versions, err)
+	}
+	if v := versions[0]; v.PowerKw.Int64 != 81 || v.DisplacementCc.Int64 != 1170 || v.YearFrom != 2004 || v.YearTo != 2012 {
+		t.Errorf("first version %+v", v)
+	}
+	if v, _ := catalog.Engines(ctx, q, catalog.TypeMotorcycle, "Ducati", "Monster 821", "", ""); len(v) != 1 || v[0].YearTo != 0 {
+		t.Errorf("open-ended version %+v", v)
+	}
+	if v, _ := catalog.Engines(ctx, q, catalog.TypeCar, "BMW", "R 1200 GS", "", ""); len(v) != 0 {
+		t.Errorf("car engines of a motorcycle %+v", v)
 	}
 }
 
@@ -168,6 +208,10 @@ func TestQueriesUseIndexes(t *testing.T) {
 		"SELECT generation FROM catalog_vehicles WHERE make_key = ? AND model_key = ?":                     {"volkswagen", "golf"},
 		"SELECT engine FROM catalog_vehicles WHERE make_key = ? AND model_key = ? AND generation_key = ?":  {"bmw", "3series", "x"},
 		"SELECT make FROM catalog_vehicles WHERE instr(make_key, ?) > 0":                                   {"bm"},
+		// The cascade filtered by vehicle type (specs/006-motorcycles).
+		"SELECT make FROM catalog_vehicles WHERE vehicle_type = ? AND instr(make_key, ?) > 0":                                  {"motorcycle", "du"},
+		"SELECT model FROM catalog_vehicles WHERE vehicle_type = ? AND make_key = ? AND instr(model_key, ?) > 0":               {"motorcycle", "ducati", "m"},
+		"SELECT engine FROM catalog_vehicles WHERE vehicle_type = ? AND make_key = ? AND model_key = ? AND generation_key = ?": {"motorcycle", "bmw", "r1200gs", ""},
 	}
 	for query, args := range plans {
 		rows, err := d.Reader.Query("EXPLAIN QUERY PLAN "+query, args...)
@@ -252,7 +296,7 @@ func BenchmarkModels(b *testing.B) {
 	q := store.New(d.Reader)
 	ctx := context.Background()
 	for b.Loop() {
-		if _, err := catalog.Models(ctx, q, "Volkswagen", "go", "de"); err != nil {
+		if _, err := catalog.Models(ctx, q, "", "Volkswagen", "go", "de"); err != nil {
 			b.Fatal(err)
 		}
 	}

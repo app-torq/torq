@@ -46,12 +46,15 @@ func mapUnique(err error) error {
 }
 
 // ListCategories returns categories, optionally including archived ones.
-func (s *Service) ListCategories(ctx context.Context, includeArchived bool) ([]store.ServiceCategory, error) {
+// ListCategories lists the categories; a non-empty vehicleType limits the
+// built-ins to those for all types and for that type (custom categories
+// apply to every type).
+func (s *Service) ListCategories(ctx context.Context, includeArchived bool, vehicleType string) ([]store.ServiceCategory, error) {
 	var inc int64
 	if includeArchived {
 		inc = 1
 	}
-	return store.New(s.DB.Reader).ListCategories(ctx, inc)
+	return store.New(s.DB.Reader).ListCategories(ctx, store.ListCategoriesParams{IncludeArchived: inc, VehicleType: vehicleType})
 }
 
 func getCategory(ctx context.Context, q *store.Queries, id int64) (store.ServiceCategory, error) {

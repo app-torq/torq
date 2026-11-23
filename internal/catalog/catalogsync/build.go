@@ -25,14 +25,19 @@ type Inputs struct {
 	Gor3aCommit string    // commit the gor3a file was taken from
 	SV42        io.Reader // optional `pdftotext -layout` text of SV 4.2; needs SV42Consent
 	SV42Consent bool      // written KBA consent to redistribute SV 4.2 data exists
-	Retrieved   string    // retrieval date of the sources, YYYY-MM-DD
-	GeneratedAt string    // RFC 3339; defaults to Retrieved at midnight UTC
+	// RDWAggregate is the RDW motorcycle aggregate CSV and RDWFuel the fuel
+	// CSV of its sample registrations (research M2; see FetchRDW).
+	RDWAggregate io.Reader
+	RDWFuel      io.Reader
+	Retrieved    string // retrieval date of the sources, YYYY-MM-DD
+	GeneratedAt  string // RFC 3339; defaults to Retrieved at midnight UTC
 }
 
 // Build turns the sources into a validated seed document.
 func Build(in Inputs) (catalog.SeedDoc, *Report, error) {
-	if in.FZ6 == nil || in.Gor3a == nil || in.Gor3aCommit == "" || in.Retrieved == "" || in.FZ6Stand == "" {
-		return catalog.SeedDoc{}, nil, errors.New("FZ 6, gor3a data and commit, FZ 6 stand and retrieval date are required")
+	if in.FZ6 == nil || in.Gor3a == nil || in.Gor3aCommit == "" || in.Retrieved == "" || in.FZ6Stand == "" ||
+		in.RDWAggregate == nil || in.RDWFuel == nil {
+		return catalog.SeedDoc{}, nil, errors.New("FZ 6, gor3a data and commit, RDW aggregate and fuel data, FZ 6 stand and retrieval date are required")
 	}
 	if in.SV42 != nil && !in.SV42Consent {
 		return catalog.SeedDoc{}, nil, errors.New(`SV 4.2 is "all rights reserved"; it needs written KBA consent`)
@@ -42,6 +47,18 @@ func Build(in Inputs) (catalog.SeedDoc, *Report, error) {
 	if err != nil {
 		return catalog.SeedDoc{}, nil, err
 	}
+	groups, err := readRDWAggregate(in.RDWAggregate)
+	if err != nil {
+		return catalog.SeedDoc{}, nil, err
+	}
+	fuel, err := readRDWFuel(in.RDWFuel)
+	if err != nil {
+		return catalog.SeedDoc{}, nil, err
+	}
+	motorcycles := buildMotorcycles(prepareMotorcycles(groups, motorcycleRules, rep), fuel)
+	vehicles = append(vehicles, motorcycles...)
+	// Cars come first, so car spellings win; motorcycles let FZ 6 keys of
+	// motorcycles find their model names.
 	idx := newModelIndex(vehicles)
 	fz6, err := readFZ6(in.FZ6)
 	if err != nil {
@@ -73,7 +90,7 @@ func Build(in Inputs) (catalog.SeedDoc, *Report, error) {
 		Vehicles: vehicles,
 	}
 	doc.Schema = catalog.SeedSchema
-	doc.Counts = catalog.Counts{KBA: len(kba), Vehicles: len(vehicles)}
+	doc.Counts = catalog.Counts{KBA: len(kba), Vehicles: len(vehicles), Motorcycles: len(motorcycles)}
 	if err := doc.Validate(); err != nil {
 		return doc, nil, err
 	}
@@ -212,5 +229,14 @@ func datasets(in Inputs) []catalog.Dataset {
 			Modified:    true,
 		})
 	}
+	ds = append(ds, catalog.Dataset{
+		ID: "rdw-open-data", Name: "Open Data RDW: Gekentekende_voertuigen, Gekentekende_voertuigen_brandstof",
+		Publisher: "RDW (Rijksdienst voor het Wegverkeer)",
+		URI:       RDWBase + "/Voertuigen/Open-Data-RDW-Gekentekende_voertuigen/" + RDWVehiclesDataset,
+		Retrieved: in.Retrieved, License: "Public Domain", LicenseID: "public-domain",
+		LicenseURL:  "https://opendata.rdw.nl/",
+		Attribution: "Bron: RDW Open Data (Gekentekende_voertuigen, Gekentekende_voertuigen_brandstof), " + in.Retrieved + "; motorcycles only, names cleaned up",
+		Modified:    true,
+	})
 	return ds
 }

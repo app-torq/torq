@@ -11,7 +11,11 @@
     "coolant": "Coolant",
     "wheels": "Wheels & tires",
     "custom": "Custom entries",
-    "powertrain": "Engine & type"
+    "powertrain": "Engine & type",
+    "drivetrain": "Drivetrain",
+    "forkOil": "Fork oil",
+    "valveClearance": "Valve clearance",
+    "finalDriveOil": "Final drive oil"
   },
   "fields": {
     "viscosity": "Viscosity",
@@ -24,7 +28,21 @@
     "value": "Value",
     "pressureUpTo": "{{field}}, up to",
     "pressureMax": "max",
-    "pressureRangeHint": "A single value, or a range from normal to full load."
+    "pressureRangeHint": "A single value, or a range from normal to full load.",
+    "finalDrive": "Final drive",
+    "sprockets": "Sprockets (front / rear)",
+    "sprocketFront": "Front sprocket teeth",
+    "sprocketRear": "Rear sprocket teeth",
+    "chain": "Chain",
+    "chainSize": "Chain size",
+    "chainLinks": "Chain links",
+    "chainLinksValue_one": "{{count}} link",
+    "chainLinksValue_other": "{{count}} links",
+    "perLeg": "{{volume}} per fork leg",
+    "perLegHint": "Per fork leg",
+    "intake": "Intake",
+    "exhaust": "Exhaust",
+    "clearanceUpTo": "{{field}}, up to"
   },
   "entries": {
     "add": "Add entry",
@@ -48,5 +66,10 @@
     "manual": "Adjusted manually",
     "openSource": "Open source in a new tab: {{url}}",
     "sourceLabel": "Filled automatically, source: {{name}} (opens in a new tab)"
+  },
+  "finalDrive": {
+    "chain": "Chain",
+    "belt": "Belt",
+    "shaft": "Shaft"
   }
 }

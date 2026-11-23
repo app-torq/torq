@@ -195,5 +195,5 @@ func seedShowcase(ctx context.Context, clk *clock.Fixed, veh *vehicles.Service, 
 		}
 	}
 	fmt.Printf("seeded showcase: vehicles %d (JDM, cm³/PS), %d (mi, ci/hp) and %d (hours only), %d projects with priorities and tags\n", supra.ID, mustang.ID, tractor.ID, len(projects))
-	return nil
+	return seedMotorcycle(ctx, clk, veh, svc, rem)
 }

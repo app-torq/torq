@@ -191,7 +191,7 @@
     "retrieved": "Retrieved",
     "commit": "Source commit",
     "modified": "torq modified this data (normalized names, merged sources). See NOTICE.md in the repository for details.",
-    "counts": "{{kba}} HSN/TSN entries and {{vehicles}} make/model/engine entries.",
+    "counts": "{{kba}} HSN/TSN entries and {{vehicles}} make/model/engine entries, {{motorcycles}} of them for motorcycles.",
     "derived": "The combined catalog database is distributed under the Open Database License (ODbL) 1.0.",
     "empty": "No vehicle catalog is loaded. Vehicles can still be entered manually.",
     "catalogSource": "Catalog",

@@ -38,7 +38,11 @@
     "vehicleUnitHint": "Wird für alle in diesen Einheiten angezeigt und eingegeben. Auf „Meine Einstellung“ lassen, damit die Einstellungen jeder Person gelten.",
     "trackBy": "Erfassen nach",
     "trackByHint": "Traktoren und Maschinen ohne Kilometerzähler nutzen nur Betriebsstunden. Ein Wohnmobil mit Stromaggregat kann beides erfassen.",
-    "trackByEditHint": "Bei „Nur Betriebsstunden“ wird der Kilometerstand ausgeblendet; seine Historie bleibt erhalten."
+    "trackByEditHint": "Bei „Nur Betriebsstunden“ wird der Kilometerstand ausgeblendet; seine Historie bleibt erhalten.",
+    "vehicleType": "Fahrzeugart",
+    "version": "Version",
+    "versionHint": "Wähle eine Version, um Hubraum und Leistung einzutragen.",
+    "frameCodeHint": "Rahmencode, z. B. RC46"
   },
   "tabs": {
     "overview": "Übersicht",
@@ -171,5 +175,9 @@
     "removeTitle": "{{name}} entfernen?",
     "removeBody": "Seine Ablesungen werden gelöscht. Erinnerungen, die auch Strecke oder Zeit nutzen, funktionieren ohne Stunden weiter.",
     "inUse": "Serviceeinträge, Reparaturen oder Erinnerungen nutzen diesen Zähler, daher kann er nicht entfernt werden. Du kannst ihn stattdessen umbenennen."
+  },
+  "vehicleType": {
+    "car": "Auto",
+    "motorcycle": "Motorrad"
   }
 }

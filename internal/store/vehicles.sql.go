@@ -50,9 +50,9 @@ func (q *Queries) CreateSpecEntry(ctx context.Context, arg CreateSpecEntryParams
 const createVehicle = `-- name: CreateVehicle :one
 INSERT INTO vehicles (make, model, chassis_code, model_year, engine_code, vin, license_plate,
                       hsn, tsn, displacement_cc, power_kw, power_w, fuel_type, odometer_unit,
-                      displacement_unit, power_unit, has_odometer, current_odometer_km, created_by, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-RETURNING id, make, model, chassis_code, model_year, engine_code, vin, license_plate, current_odometer_km, archived_at, created_by, created_at, updated_at, hsn, tsn, displacement_cc, power_kw, fuel_type, odometer_unit, power_w, displacement_unit, power_unit, has_odometer
+                      displacement_unit, power_unit, has_odometer, current_odometer_km, vehicle_type, created_by, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+RETURNING id, make, model, chassis_code, model_year, engine_code, vin, license_plate, current_odometer_km, archived_at, created_by, created_at, updated_at, hsn, tsn, displacement_cc, power_kw, fuel_type, odometer_unit, power_w, displacement_unit, power_unit, has_odometer, vehicle_type
 `
 
 type CreateVehicleParams struct {
@@ -74,6 +74,7 @@ type CreateVehicleParams struct {
 	PowerUnit         sql.NullString
 	HasOdometer       int64
 	CurrentOdometerKm int64
+	VehicleType       string
 	CreatedBy         sql.NullInt64
 	CreatedAt         string
 	UpdatedAt         string
@@ -99,6 +100,7 @@ func (q *Queries) CreateVehicle(ctx context.Context, arg CreateVehicleParams) (V
 		arg.PowerUnit,
 		arg.HasOdometer,
 		arg.CurrentOdometerKm,
+		arg.VehicleType,
 		arg.CreatedBy,
 		arg.CreatedAt,
 		arg.UpdatedAt,
@@ -128,6 +130,7 @@ func (q *Queries) CreateVehicle(ctx context.Context, arg CreateVehicleParams) (V
 		&i.DisplacementUnit,
 		&i.PowerUnit,
 		&i.HasOdometer,
+		&i.VehicleType,
 	)
 	return i, err
 }
@@ -184,7 +187,7 @@ func (q *Queries) GetSpecEntry(ctx context.Context, id int64) (VehicleSpecEntry,
 }
 
 const getVehicle = `-- name: GetVehicle :one
-SELECT id, make, model, chassis_code, model_year, engine_code, vin, license_plate, current_odometer_km, archived_at, created_by, created_at, updated_at, hsn, tsn, displacement_cc, power_kw, fuel_type, odometer_unit, power_w, displacement_unit, power_unit, has_odometer FROM vehicles WHERE id = ?
+SELECT id, make, model, chassis_code, model_year, engine_code, vin, license_plate, current_odometer_km, archived_at, created_by, created_at, updated_at, hsn, tsn, displacement_cc, power_kw, fuel_type, odometer_unit, power_w, displacement_unit, power_unit, has_odometer, vehicle_type FROM vehicles WHERE id = ?
 `
 
 func (q *Queries) GetVehicle(ctx context.Context, id int64) (Vehicle, error) {
@@ -214,12 +217,13 @@ func (q *Queries) GetVehicle(ctx context.Context, id int64) (Vehicle, error) {
 		&i.DisplacementUnit,
 		&i.PowerUnit,
 		&i.HasOdometer,
+		&i.VehicleType,
 	)
 	return i, err
 }
 
 const getVehicleSpecs = `-- name: GetVehicleSpecs :one
-SELECT vehicle_id, engine_oil_viscosity, engine_oil_spec, engine_oil_capacity_ml, transmission_fluid_spec, transmission_fluid_capacity_ml, differential_fluid_spec, differential_fluid_capacity_ml, brake_fluid_spec, brake_fluid_capacity_ml, coolant_spec, coolant_capacity_ml, wheel_lug_torque_nm, tire_pressure_front_bar, tire_pressure_rear_bar, updated_at, specs_meta, tire_pressure_front_max_bar, tire_pressure_rear_max_bar FROM vehicle_specs WHERE vehicle_id = ?
+SELECT vehicle_id, engine_oil_viscosity, engine_oil_spec, engine_oil_capacity_ml, transmission_fluid_spec, transmission_fluid_capacity_ml, differential_fluid_spec, differential_fluid_capacity_ml, brake_fluid_spec, brake_fluid_capacity_ml, coolant_spec, coolant_capacity_ml, wheel_lug_torque_nm, tire_pressure_front_bar, tire_pressure_rear_bar, updated_at, specs_meta, tire_pressure_front_max_bar, tire_pressure_rear_max_bar, final_drive, sprocket_front_teeth, sprocket_rear_teeth, chain_size, chain_links, fork_oil_spec, fork_oil_capacity_ml, valve_clearance_intake_min_mm, valve_clearance_intake_max_mm, valve_clearance_exhaust_min_mm, valve_clearance_exhaust_max_mm FROM vehicle_specs WHERE vehicle_id = ?
 `
 
 func (q *Queries) GetVehicleSpecs(ctx context.Context, vehicleID int64) (VehicleSpec, error) {
@@ -245,6 +249,17 @@ func (q *Queries) GetVehicleSpecs(ctx context.Context, vehicleID int64) (Vehicle
 		&i.SpecsMeta,
 		&i.TirePressureFrontMaxBar,
 		&i.TirePressureRearMaxBar,
+		&i.FinalDrive,
+		&i.SprocketFrontTeeth,
+		&i.SprocketRearTeeth,
+		&i.ChainSize,
+		&i.ChainLinks,
+		&i.ForkOilSpec,
+		&i.ForkOilCapacityMl,
+		&i.ValveClearanceIntakeMinMm,
+		&i.ValveClearanceIntakeMaxMm,
+		&i.ValveClearanceExhaustMinMm,
+		&i.ValveClearanceExhaustMaxMm,
 	)
 	return i, err
 }
@@ -366,7 +381,7 @@ func (q *Queries) ListSpecEntries(ctx context.Context, vehicleID int64) ([]Vehic
 }
 
 const listVehicles = `-- name: ListVehicles :many
-SELECT id, make, model, chassis_code, model_year, engine_code, vin, license_plate, current_odometer_km, archived_at, created_by, created_at, updated_at, hsn, tsn, displacement_cc, power_kw, fuel_type, odometer_unit, power_w, displacement_unit, power_unit, has_odometer FROM vehicles
+SELECT id, make, model, chassis_code, model_year, engine_code, vin, license_plate, current_odometer_km, archived_at, created_by, created_at, updated_at, hsn, tsn, displacement_cc, power_kw, fuel_type, odometer_unit, power_w, displacement_unit, power_unit, has_odometer, vehicle_type FROM vehicles
 WHERE CASE CAST(?1 AS INTEGER)
           WHEN 0 THEN archived_at IS NULL
           WHEN 1 THEN archived_at IS NOT NULL
@@ -408,6 +423,7 @@ func (q *Queries) ListVehicles(ctx context.Context, mode int64) ([]Vehicle, erro
 			&i.DisplacementUnit,
 			&i.PowerUnit,
 			&i.HasOdometer,
+			&i.VehicleType,
 		); err != nil {
 			return nil, err
 		}
@@ -464,7 +480,7 @@ func (q *Queries) SetSpecEntryOrder(ctx context.Context, arg SetSpecEntryOrderPa
 }
 
 const setVehicleArchived = `-- name: SetVehicleArchived :one
-UPDATE vehicles SET archived_at = ?, updated_at = ? WHERE id = ? RETURNING id, make, model, chassis_code, model_year, engine_code, vin, license_plate, current_odometer_km, archived_at, created_by, created_at, updated_at, hsn, tsn, displacement_cc, power_kw, fuel_type, odometer_unit, power_w, displacement_unit, power_unit, has_odometer
+UPDATE vehicles SET archived_at = ?, updated_at = ? WHERE id = ? RETURNING id, make, model, chassis_code, model_year, engine_code, vin, license_plate, current_odometer_km, archived_at, created_by, created_at, updated_at, hsn, tsn, displacement_cc, power_kw, fuel_type, odometer_unit, power_w, displacement_unit, power_unit, has_odometer, vehicle_type
 `
 
 type SetVehicleArchivedParams struct {
@@ -500,6 +516,85 @@ func (q *Queries) SetVehicleArchived(ctx context.Context, arg SetVehicleArchived
 		&i.DisplacementUnit,
 		&i.PowerUnit,
 		&i.HasOdometer,
+		&i.VehicleType,
+	)
+	return i, err
+}
+
+const updateMotorcycleSpecs = `-- name: UpdateMotorcycleSpecs :one
+UPDATE vehicle_specs
+SET final_drive = ?, sprocket_front_teeth = ?, sprocket_rear_teeth = ?, chain_size = ?, chain_links = ?,
+    fork_oil_spec = ?, fork_oil_capacity_ml = ?,
+    valve_clearance_intake_min_mm = ?, valve_clearance_intake_max_mm = ?,
+    valve_clearance_exhaust_min_mm = ?, valve_clearance_exhaust_max_mm = ?
+WHERE vehicle_id = ?
+RETURNING vehicle_id, engine_oil_viscosity, engine_oil_spec, engine_oil_capacity_ml, transmission_fluid_spec, transmission_fluid_capacity_ml, differential_fluid_spec, differential_fluid_capacity_ml, brake_fluid_spec, brake_fluid_capacity_ml, coolant_spec, coolant_capacity_ml, wheel_lug_torque_nm, tire_pressure_front_bar, tire_pressure_rear_bar, updated_at, specs_meta, tire_pressure_front_max_bar, tire_pressure_rear_max_bar, final_drive, sprocket_front_teeth, sprocket_rear_teeth, chain_size, chain_links, fork_oil_spec, fork_oil_capacity_ml, valve_clearance_intake_min_mm, valve_clearance_intake_max_mm, valve_clearance_exhaust_min_mm, valve_clearance_exhaust_max_mm
+`
+
+type UpdateMotorcycleSpecsParams struct {
+	FinalDrive                 sql.NullString
+	SprocketFrontTeeth         sql.NullInt64
+	SprocketRearTeeth          sql.NullInt64
+	ChainSize                  string
+	ChainLinks                 sql.NullInt64
+	ForkOilSpec                string
+	ForkOilCapacityMl          sql.NullInt64
+	ValveClearanceIntakeMinMm  sql.NullFloat64
+	ValveClearanceIntakeMaxMm  sql.NullFloat64
+	ValveClearanceExhaustMinMm sql.NullFloat64
+	ValveClearanceExhaustMaxMm sql.NullFloat64
+	VehicleID                  int64
+}
+
+// Only run when a request carries the motorcycle fields, so clients that
+// don't know them never clear them.
+func (q *Queries) UpdateMotorcycleSpecs(ctx context.Context, arg UpdateMotorcycleSpecsParams) (VehicleSpec, error) {
+	row := q.db.QueryRowContext(ctx, updateMotorcycleSpecs,
+		arg.FinalDrive,
+		arg.SprocketFrontTeeth,
+		arg.SprocketRearTeeth,
+		arg.ChainSize,
+		arg.ChainLinks,
+		arg.ForkOilSpec,
+		arg.ForkOilCapacityMl,
+		arg.ValveClearanceIntakeMinMm,
+		arg.ValveClearanceIntakeMaxMm,
+		arg.ValveClearanceExhaustMinMm,
+		arg.ValveClearanceExhaustMaxMm,
+		arg.VehicleID,
+	)
+	var i VehicleSpec
+	err := row.Scan(
+		&i.VehicleID,
+		&i.EngineOilViscosity,
+		&i.EngineOilSpec,
+		&i.EngineOilCapacityMl,
+		&i.TransmissionFluidSpec,
+		&i.TransmissionFluidCapacityMl,
+		&i.DifferentialFluidSpec,
+		&i.DifferentialFluidCapacityMl,
+		&i.BrakeFluidSpec,
+		&i.BrakeFluidCapacityMl,
+		&i.CoolantSpec,
+		&i.CoolantCapacityMl,
+		&i.WheelLugTorqueNm,
+		&i.TirePressureFrontBar,
+		&i.TirePressureRearBar,
+		&i.UpdatedAt,
+		&i.SpecsMeta,
+		&i.TirePressureFrontMaxBar,
+		&i.TirePressureRearMaxBar,
+		&i.FinalDrive,
+		&i.SprocketFrontTeeth,
+		&i.SprocketRearTeeth,
+		&i.ChainSize,
+		&i.ChainLinks,
+		&i.ForkOilSpec,
+		&i.ForkOilCapacityMl,
+		&i.ValveClearanceIntakeMinMm,
+		&i.ValveClearanceIntakeMaxMm,
+		&i.ValveClearanceExhaustMinMm,
+		&i.ValveClearanceExhaustMaxMm,
 	)
 	return i, err
 }
@@ -539,9 +634,9 @@ const updateVehicleProfile = `-- name: UpdateVehicleProfile :one
 UPDATE vehicles
 SET make = ?, model = ?, chassis_code = ?, model_year = ?, engine_code = ?, vin = ?, license_plate = ?,
     hsn = ?, tsn = ?, displacement_cc = ?, power_kw = ?, power_w = ?, fuel_type = ?, odometer_unit = ?,
-    displacement_unit = ?, power_unit = ?, has_odometer = ?, updated_at = ?
+    displacement_unit = ?, power_unit = ?, has_odometer = ?, vehicle_type = ?, updated_at = ?
 WHERE id = ?
-RETURNING id, make, model, chassis_code, model_year, engine_code, vin, license_plate, current_odometer_km, archived_at, created_by, created_at, updated_at, hsn, tsn, displacement_cc, power_kw, fuel_type, odometer_unit, power_w, displacement_unit, power_unit, has_odometer
+RETURNING id, make, model, chassis_code, model_year, engine_code, vin, license_plate, current_odometer_km, archived_at, created_by, created_at, updated_at, hsn, tsn, displacement_cc, power_kw, fuel_type, odometer_unit, power_w, displacement_unit, power_unit, has_odometer, vehicle_type
 `
 
 type UpdateVehicleProfileParams struct {
@@ -562,6 +657,7 @@ type UpdateVehicleProfileParams struct {
 	DisplacementUnit sql.NullString
 	PowerUnit        sql.NullString
 	HasOdometer      int64
+	VehicleType      string
 	UpdatedAt        string
 	ID               int64
 }
@@ -585,6 +681,7 @@ func (q *Queries) UpdateVehicleProfile(ctx context.Context, arg UpdateVehiclePro
 		arg.DisplacementUnit,
 		arg.PowerUnit,
 		arg.HasOdometer,
+		arg.VehicleType,
 		arg.UpdatedAt,
 		arg.ID,
 	)
@@ -613,6 +710,7 @@ func (q *Queries) UpdateVehicleProfile(ctx context.Context, arg UpdateVehiclePro
 		&i.DisplacementUnit,
 		&i.PowerUnit,
 		&i.HasOdometer,
+		&i.VehicleType,
 	)
 	return i, err
 }
@@ -628,7 +726,7 @@ SET engine_oil_viscosity = ?, engine_oil_spec = ?, engine_oil_capacity_ml = ?,
     tire_pressure_front_max_bar = ?, tire_pressure_rear_max_bar = ?, specs_meta = ?,
     updated_at = ?
 WHERE vehicle_id = ?
-RETURNING vehicle_id, engine_oil_viscosity, engine_oil_spec, engine_oil_capacity_ml, transmission_fluid_spec, transmission_fluid_capacity_ml, differential_fluid_spec, differential_fluid_capacity_ml, brake_fluid_spec, brake_fluid_capacity_ml, coolant_spec, coolant_capacity_ml, wheel_lug_torque_nm, tire_pressure_front_bar, tire_pressure_rear_bar, updated_at, specs_meta, tire_pressure_front_max_bar, tire_pressure_rear_max_bar
+RETURNING vehicle_id, engine_oil_viscosity, engine_oil_spec, engine_oil_capacity_ml, transmission_fluid_spec, transmission_fluid_capacity_ml, differential_fluid_spec, differential_fluid_capacity_ml, brake_fluid_spec, brake_fluid_capacity_ml, coolant_spec, coolant_capacity_ml, wheel_lug_torque_nm, tire_pressure_front_bar, tire_pressure_rear_bar, updated_at, specs_meta, tire_pressure_front_max_bar, tire_pressure_rear_max_bar, final_drive, sprocket_front_teeth, sprocket_rear_teeth, chain_size, chain_links, fork_oil_spec, fork_oil_capacity_ml, valve_clearance_intake_min_mm, valve_clearance_intake_max_mm, valve_clearance_exhaust_min_mm, valve_clearance_exhaust_max_mm
 `
 
 type UpdateVehicleSpecsParams struct {
@@ -696,6 +794,17 @@ func (q *Queries) UpdateVehicleSpecs(ctx context.Context, arg UpdateVehicleSpecs
 		&i.SpecsMeta,
 		&i.TirePressureFrontMaxBar,
 		&i.TirePressureRearMaxBar,
+		&i.FinalDrive,
+		&i.SprocketFrontTeeth,
+		&i.SprocketRearTeeth,
+		&i.ChainSize,
+		&i.ChainLinks,
+		&i.ForkOilSpec,
+		&i.ForkOilCapacityMl,
+		&i.ValveClearanceIntakeMinMm,
+		&i.ValveClearanceIntakeMaxMm,
+		&i.ValveClearanceExhaustMinMm,
+		&i.ValveClearanceExhaustMaxMm,
 	)
 	return i, err
 }

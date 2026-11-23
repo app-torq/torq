@@ -37,5 +37,11 @@
   "categories.timing_belt_chain": "Zahnriemen/Steuerkette",
   "sample.reminder": "Motoröl & Filter",
   "sample.vehicle": "Beispielfahrzeug",
-  "unit.mi": "mi"
+  "unit.mi": "mi",
+  "categories.chain_maintenance": "Kette: reinigen, schmieren, spannen",
+  "categories.chain_sprockets": "Kettensatz",
+  "categories.valve_clearance": "Ventilspiel prüfen",
+  "categories.fork_oil": "Gabelöl",
+  "categories.final_drive_oil": "Kardanöl",
+  "categories.drive_belt": "Zahnriemen (Antrieb)"
 }

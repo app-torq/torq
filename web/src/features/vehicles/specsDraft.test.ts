@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AutofillValue, VehicleSpecs } from '../../lib/types'
-import { applyAutofill, editField, initialDraft, rangeMeta, toRequestBody } from './specsDraft'
+import { applyAutofill, editField, editMoto, initialDraft, rangeMeta, toRequestBody } from './specsDraft'
 
 const empty: VehicleSpecs = {
   engine_oil_viscosity: '', engine_oil_spec: '', engine_oil_capacity_ml: null,
@@ -11,6 +11,11 @@ const empty: VehicleSpecs = {
   wheel_lug_torque_nm: null, tire_pressure_front_bar: null, tire_pressure_rear_bar: null,
   tire_pressure_front_max_bar: null, tire_pressure_rear_max_bar: null,
   meta: {},
+  motorcycle: {
+    final_drive: null, sprocket_front_teeth: null, sprocket_rear_teeth: null, chain_size: '', chain_links: null,
+    fork_oil_spec: '', fork_oil_capacity_ml: null, valve_clearance_intake_min_mm: null, valve_clearance_intake_max_mm: null,
+    valve_clearance_exhaust_min_mm: null, valve_clearance_exhaust_max_mm: null,
+  },
 }
 
 const found = (value: string | number, name = 'carwiki.de'): AutofillValue => ({ value, source_url: `https://${name}/page`, source_name: name })
@@ -137,5 +142,43 @@ describe('specs draft in US units', () => {
   it('converts auto-filled litres', () => {
     const { draft } = applyAutofill(initialDraft(empty, 'point', us), { engine_oil_capacity_l: found(6.5) }, true, 'point', us)
     expect(draft.values.engine_oil_capacity_ml).toBe('6.87')
+  })
+})
+
+describe('motorcycle fields', () => {
+  const bike: VehicleSpecs = {
+    ...empty,
+    motorcycle: {
+      ...empty.motorcycle, final_drive: 'chain', sprocket_front_teeth: 15, chain_size: '525', fork_oil_capacity_ml: 491,
+      valve_clearance_intake_min_mm: 0.1, valve_clearance_intake_max_mm: 0.15,
+    },
+  }
+
+  it('shows decimals in the number format and fork oil in the volume unit', () => {
+    const d = initialDraft(bike, 'comma', { volume: 'qt', torque: 'nm', pressure: 'bar' })
+    expect(d.moto.valve_clearance_intake_min_mm).toBe('0,1')
+    expect(d.moto.sprocket_front_teeth).toBe('15')
+    expect(d.moto.fork_oil_capacity_ml).not.toBe('491')
+    // Untouched, the stored mL go back unchanged; nothing is lost by the round trip.
+    const { body, errors } = toRequestBody(d, 'comma', { volume: 'qt', torque: 'nm', pressure: 'bar' })
+    expect(errors).toEqual({})
+    expect(body.motorcycle).toMatchObject({
+      final_drive: 'chain', sprocket_front_teeth: 15, chain_size: '525', fork_oil_capacity_ml: 491,
+      valve_clearance_intake_min_mm: 0.1, valve_clearance_intake_max_mm: 0.15, chain_links: null,
+    })
+  })
+
+  it('parses edits and reports errors with the server keys', () => {
+    let d = initialDraft(bike, 'comma')
+    d = editMoto(d, 'valve_clearance_exhaust_min_mm', '0,2')
+    d = editMoto(d, 'fork_oil_capacity_ml', '0,5')
+    d = editMoto(d, 'final_drive', '')
+    expect(toRequestBody(d, 'comma').body.motorcycle).toMatchObject({ valve_clearance_exhaust_min_mm: 0.2, fork_oil_capacity_ml: 500, final_drive: null })
+
+    d = editMoto(d, 'chain_links', '112,5')
+    d = editMoto(d, 'valve_clearance_exhaust_max_mm', 'abc')
+    expect(toRequestBody(d, 'comma').errors).toEqual({
+      'motorcycle.chain_links': 'validation.number', 'motorcycle.valve_clearance_exhaust_max_mm': 'validation.number',
+    })
   })
 })

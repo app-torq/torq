@@ -38,7 +38,11 @@
     "vehicleUnitHint": "Shown and entered in these units for everyone. Leave on your preference to follow each person's settings.",
     "trackBy": "Track by",
     "trackByHint": "Tractors and machinery without an odometer use hours only. A motorhome with a generator can track both.",
-    "trackByEditHint": "With hours only, the odometer is hidden; its history is kept."
+    "trackByEditHint": "With hours only, the odometer is hidden; its history is kept.",
+    "vehicleType": "Vehicle type",
+    "version": "Version",
+    "versionHint": "Pick a version to fill in displacement and power.",
+    "frameCodeHint": "Frame code, e.g. RC46"
   },
   "tabs": {
     "overview": "Overview",
@@ -171,5 +175,9 @@
     "removeTitle": "Remove {{name}}?",
     "removeBody": "Its reading history is deleted. Reminders that also use distance or time keep working without hours.",
     "inUse": "Service entries, repairs or reminders use this hour meter, so it can't be removed. You can rename it instead."
+  },
+  "vehicleType": {
+    "car": "Car",
+    "motorcycle": "Motorcycle"
   }
 }

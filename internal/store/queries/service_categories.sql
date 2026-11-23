@@ -1,6 +1,9 @@
 -- name: ListCategories :many
+-- vehicle_type '' lists every category; otherwise the ones for all types
+-- and those for that type.
 SELECT * FROM service_categories
-WHERE CAST(sqlc.arg(include_archived) AS INTEGER) = 1 OR archived_at IS NULL
+WHERE (CAST(sqlc.arg(include_archived) AS INTEGER) = 1 OR archived_at IS NULL)
+  AND (CAST(sqlc.arg(vehicle_type) AS TEXT) = '' OR vehicle_type IS NULL OR vehicle_type = sqlc.arg(vehicle_type))
 ORDER BY builtin_key IS NULL, sort_order, custom_name COLLATE NOCASE;
 
 -- name: GetCategory :one
