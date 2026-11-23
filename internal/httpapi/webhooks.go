@@ -229,16 +229,23 @@ type instanceSettingsJSON struct {
 	MaxUploadMB         int    `json:"max_upload_mb"`
 	Version             string `json:"version"`
 	// Defaults are the formats and units new users start with.
-	Defaults formatsJSON `json:"defaults"`
+	Defaults formatsJSON  `json:"defaults"`
+	Branding brandingJSON `json:"branding"`
 }
 
-func (s *Server) instanceSettingsOut(c store.InstanceSetting) instanceSettingsJSON {
-	return instanceSettingsJSON{
+func (s *Server) writeInstanceSettings(w http.ResponseWriter, r *http.Request, c store.InstanceSetting) error {
+	logo, err := s.logoURL(r.Context())
+	if err != nil {
+		return err
+	}
+	writeJSON(w, http.StatusOK, instanceSettingsJSON{
 		WeeklyDigestWeekday: c.WeeklyDigestWeekday, WeeklyDigestHour: c.WeeklyDigestHour,
 		MonthlyDigestDay: c.MonthlyDigestDay, MonthlyDigestHour: c.MonthlyDigestHour,
 		BaseURLConfigured: s.Config.BaseURL != "", TimeZone: s.Clock.Now().Location().String(),
 		MaxUploadMB: s.Config.MaxUploadMB, Version: s.Version, Defaults: toFormatsJSON(auth.DefaultsFromStore(c)),
-	}
+		Branding: brandingJSON{Name: c.BrandName, LogoURL: logo, Contact: contactOf(c)},
+	})
+	return nil
 }
 
 func (s *Server) getInstanceSettings(w http.ResponseWriter, r *http.Request) error {
@@ -246,8 +253,7 @@ func (s *Server) getInstanceSettings(w http.ResponseWriter, r *http.Request) err
 	if err != nil {
 		return err
 	}
-	writeJSON(w, http.StatusOK, s.instanceSettingsOut(c))
-	return nil
+	return s.writeInstanceSettings(w, r, c)
 }
 
 func (s *Server) patchInstanceSettings(w http.ResponseWriter, r *http.Request) error {
@@ -261,11 +267,19 @@ func (s *Server) patchInstanceSettings(w http.ResponseWriter, r *http.Request) e
 		MonthlyDigestDay    int64        `json:"monthly_digest_day"`
 		MonthlyDigestHour   int64        `json:"monthly_digest_hour"`
 		Defaults            *formatsJSON `json:"defaults"`
-	}{cur.WeeklyDigestWeekday, cur.WeeklyDigestHour, cur.MonthlyDigestDay, cur.MonthlyDigestHour, nil}
+		Branding            *brandingIn  `json:"branding"`
+	}{cur.WeeklyDigestWeekday, cur.WeeklyDigestHour, cur.MonthlyDigestDay, cur.MonthlyDigestHour, nil, nil}
 	if err := decodeJSON(w, r, &in); err != nil {
 		return err
 	}
+	// Everyone sees the name on the shared demo's sign-in page.
+	if in.Branding != nil && s.Config.DemoMode {
+		return apperr.Forbidden(brandingLocked)
+	}
 	var v apperr.Validation
+	if in.Branding != nil {
+		in.Branding.validate(&v)
+	}
 	v.Check(in.WeeklyDigestWeekday < 1 || in.WeeklyDigestWeekday > 7, "weekly_digest_weekday", "validation.range")
 	v.Check(in.WeeklyDigestHour < 0 || in.WeeklyDigestHour > 23, "weekly_digest_hour", "validation.range")
 	v.Check(in.MonthlyDigestDay < 1 || in.MonthlyDigestDay > 28, "monthly_digest_day", "validation.range")
@@ -289,11 +303,17 @@ func (s *Server) patchInstanceSettings(w http.ResponseWriter, r *http.Request) e
 			WeeklyDigestWeekday: in.WeeklyDigestWeekday, WeeklyDigestHour: in.WeeklyDigestHour,
 			MonthlyDigestDay: in.MonthlyDigestDay, MonthlyDigestHour: in.MonthlyDigestHour,
 		})
+		if err != nil || in.Branding == nil {
+			return err
+		}
+		b := in.Branding
+		c, err = q.UpdateInstanceBranding(r.Context(), store.UpdateInstanceBrandingParams{
+			BrandName: b.Name, BrandAddress: b.Address, BrandPhone: b.Phone, BrandEmail: b.Email, BrandWebsite: b.Website,
+		})
 		return err
 	})
 	if err != nil {
 		return err
 	}
-	writeJSON(w, http.StatusOK, s.instanceSettingsOut(c))
-	return nil
+	return s.writeInstanceSettings(w, r, c)
 }

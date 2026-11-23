@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"errors"
 	"math"
 	"net/http"
@@ -93,14 +94,20 @@ type instanceInfo struct {
 	TokenAuth   bool   `json:"token_auth"`
 	// SpecAutofill tells the UI whether the web spec lookup is configured
 	// (GEMINI_API_KEY and TAVILY_API_KEY).
-	SpecAutofill bool `json:"spec_autofill"`
+	SpecAutofill bool         `json:"spec_autofill"`
+	Branding     brandingJSON `json:"branding"`
 }
 
-func (s *Server) instanceInfo() instanceInfo {
+// instanceInfo includes the contact details only for signed-in users.
+func (s *Server) instanceInfo(ctx context.Context, signedIn bool) (instanceInfo, error) {
+	b, err := s.branding(ctx, signedIn)
+	if err != nil {
+		return instanceInfo{}, err
+	}
 	return instanceInfo{
 		APIVersion: APIVersion, MaxUploadMB: s.Config.MaxUploadMB, Version: s.Version,
-		DemoMode: s.Config.DemoMode, TokenAuth: true, SpecAutofill: s.specfill != nil,
-	}
+		DemoMode: s.Config.DemoMode, TokenAuth: true, SpecAutofill: s.specfill != nil, Branding: b,
+	}, nil
 }
 
 // instance lets a client check a server before signing in (research M6).
@@ -109,10 +116,14 @@ func (s *Server) instance(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	info, err := s.instanceInfo(r.Context(), false)
+	if err != nil {
+		return err
+	}
 	writeJSON(w, http.StatusOK, struct {
 		instanceInfo
 		SetupRequired bool `json:"setup_required"`
-	}{s.instanceInfo(), required})
+	}{info, required})
 	return nil
 }
 
@@ -147,7 +158,11 @@ func (s *Server) setup(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	writeJSON(w, http.StatusCreated, meResponse{User: toUserJSON(user), Instance: s.instanceInfo(), Token: token})
+	info, err := s.instanceInfo(r.Context(), true)
+	if err != nil {
+		return err
+	}
+	writeJSON(w, http.StatusCreated, meResponse{User: toUserJSON(user), Instance: info, Token: token})
 	return nil
 }
 
@@ -212,7 +227,11 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	writeJSON(w, http.StatusOK, meResponse{User: toUserJSON(user), Instance: s.instanceInfo(), Token: token})
+	info, err := s.instanceInfo(r.Context(), true)
+	if err != nil {
+		return err
+	}
+	writeJSON(w, http.StatusOK, meResponse{User: toUserJSON(user), Instance: info, Token: token})
 	return nil
 }
 
@@ -230,7 +249,11 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) me(w http.ResponseWriter, r *http.Request) error {
-	writeJSON(w, http.StatusOK, meResponse{User: toUserJSON(currentUser(r)), Instance: s.instanceInfo()})
+	info, err := s.instanceInfo(r.Context(), true)
+	if err != nil {
+		return err
+	}
+	writeJSON(w, http.StatusOK, meResponse{User: toUserJSON(currentUser(r)), Instance: info})
 	return nil
 }
 

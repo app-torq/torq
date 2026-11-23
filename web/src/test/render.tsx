@@ -11,7 +11,10 @@ export const testSession: Session = {
     number_format: 'point', time_format: '24h', currency_code: 'EUR', currency_symbol: null, power_unit: 'kw', distance_unit: 'km',
     volume_unit: 'l', torque_unit: 'nm', pressure_unit: 'bar', displacement_unit: 'cc', priority_display: 'both', card_tag_limit: 3, disabled: false,
   },
-  instance: { api_version: 1, max_upload_mb: 25, version: 'test', demo_mode: false, token_auth: true, spec_autofill: false },
+  instance: {
+    api_version: 1, max_upload_mb: 25, version: 'test', demo_mode: false, token_auth: true, spec_autofill: false,
+    branding: { name: '', logo_url: null, contact: { address: '', phone: '', email: '', website: '' } },
+  },
 }
 
 /** Renders ui with a fresh query client, i18n (English) and a signed-in session. */

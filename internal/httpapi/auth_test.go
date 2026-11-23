@@ -358,7 +358,11 @@ func TestInstance(t *testing.T) {
 			t.Errorf("%s = %v, want %v", k, info[k], v)
 		}
 	}
-	if len(info) != len(want) {
+	// Without a name or logo; branding_test.go covers the rest.
+	if b, ok := info["branding"].(map[string]any); !ok || b["name"] != "" || b["logo_url"] != nil || b["contact"] != nil {
+		t.Errorf("branding = %v", info["branding"])
+	}
+	if len(info) != len(want)+1 {
 		t.Errorf("unexpected fields: %v", info)
 	}
 
@@ -373,7 +377,7 @@ func TestInstance(t *testing.T) {
 	}
 	adm.call(http.MethodGet, "/auth/me", nil, http.StatusOK, &me)
 	for k, v := range info {
-		if k != "setup_required" && me.Instance[k] != v {
+		if k != "setup_required" && k != "branding" && me.Instance[k] != v {
 			t.Errorf("me.instance.%s = %v, /instance has %v", k, me.Instance[k], v)
 		}
 	}

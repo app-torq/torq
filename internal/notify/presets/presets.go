@@ -72,14 +72,32 @@ type genericPayload struct {
 	Reminder *Reminder `json:"reminder,omitempty"`
 	Vehicle  *Vehicle  `json:"vehicle,omitempty"`
 	Digest   *Digest   `json:"digest,omitempty"`
+	Instance *instance `json:"instance,omitempty"`
+}
+
+type instance struct {
+	Name string `json:"name"`
 }
 
 func generic(m Message) (Rendered, error) {
-	return jsonRendered(genericPayload{
+	p := genericPayload{
 		Schema: "torq.notification/v1", Event: m.Event, Severity: m.Severity,
 		SentAt: m.SentAt.UTC().Format(time.RFC3339), Title: m.Title, Message: m.Body, URL: m.URL,
 		Reminder: m.Reminder, Vehicle: m.Vehicle, Digest: m.Digest,
-	})
+	}
+	if m.Instance != "" {
+		p.Instance = &instance{Name: m.Instance}
+	}
+	return jsonRendered(p)
+}
+
+// titled prefixes the title with the instance name, so notifications from
+// several instances in one app can be told apart.
+func titled(m Message) string {
+	if m.Instance == "" {
+		return m.Title
+	}
+	return m.Instance + " · " + m.Title
 }
 
 // --- Discord ---------------------------------------------------------------
@@ -127,7 +145,12 @@ func discord(m Message) (Rendered, error) {
 		e.Fields = e.Fields[:25]
 	}
 	e.Description = truncate(desc, 4096)
-	return jsonRendered(map[string]any{"username": "torq", "embeds": []discordEmbed{e}})
+	// Discord refuses usernames that contain "discord" or "clyde".
+	username := "torq"
+	if lower := strings.ToLower(m.Instance); lower != "" && !strings.Contains(lower, "discord") && !strings.Contains(lower, "clyde") {
+		username = truncate(m.Instance, 80)
+	}
+	return jsonRendered(map[string]any{"username": username, "embeds": []discordEmbed{e}})
 }
 
 // --- ntfy --------------------------------------------------------------------
@@ -158,7 +181,7 @@ func ntfy(m Message) Rendered {
 	}
 	h := map[string]string{
 		"Content-Type": "text/plain; charset=utf-8",
-		"Title":        headerText(m.Title),
+		"Title":        headerText(titled(m)),
 		"Priority":     ntfyPriority[m.Severity],
 		"Tags":         ntfyTags[m.Severity],
 	}
@@ -183,5 +206,5 @@ func gotify(m Message) (Rendered, error) {
 	if m.URL != "" {
 		extras["client::notification"] = map[string]any{"click": map[string]string{"url": m.URL}}
 	}
-	return jsonRendered(map[string]any{"title": m.Title, "message": body, "priority": gotifyPriority[m.Severity], "extras": extras})
+	return jsonRendered(map[string]any{"title": titled(m), "message": body, "priority": gotifyPriority[m.Severity], "extras": extras})
 }

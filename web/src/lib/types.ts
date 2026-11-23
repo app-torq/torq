@@ -49,6 +49,30 @@ export interface InstanceInfo {
   token_auth: boolean
   /** The web spec lookup is configured (GEMINI_API_KEY). */
   spec_autofill: boolean
+  branding: Branding
+}
+
+/** Contact details for the printed history; empty strings when not set. */
+export interface Contact {
+  address: string
+  phone: string
+  email: string
+  website: string
+}
+
+/** Instance name and logo set by an admin. */
+export interface Branding {
+  /** Empty when not set. */
+  name: string
+  /** Versioned logo URL, null without a logo. */
+  logo_url: string | null
+  /** Only for signed-in users. */
+  contact?: Contact
+}
+
+/** GET /instance, which needs no sign-in. */
+export interface ServerInfo extends InstanceInfo {
+  setup_required: boolean
 }
 
 /** One of the signed-in user's sessions in the Devices list. */
@@ -500,6 +524,7 @@ export interface InstanceSettings {
   version: string
   /** Formats and units new users start with. */
   defaults: Formats
+  branding: Branding & { contact: Contact }
 }
 
 export interface Costs {
@@ -533,6 +558,7 @@ export interface TimelineItem {
 
 export interface VehicleHistory {
   schema: string
+  instance: { name: string }
   vehicle: {
     id: number; make: string; model: string; chassis_code: string; model_year: number | null; engine_code: string; vin: string | null
     license_plate: string | null; current_odometer_km: number; hsn: string | null; tsn: string | null

@@ -95,6 +95,13 @@ type HourMeterReading struct {
 	CreatedAt    string
 }
 
+type InstanceLogo struct {
+	ID        int64
+	MimeType  string
+	Data      []byte
+	UpdatedAt string
+}
+
 type InstanceSetting struct {
 	ID                      int64
 	WeeklyDigestWeekday     int64
@@ -111,6 +118,11 @@ type InstanceSetting struct {
 	DefaultTorqueUnit       string
 	DefaultPressureUnit     string
 	DefaultDisplacementUnit string
+	BrandName               string
+	BrandAddress            string
+	BrandPhone              string
+	BrandEmail              string
+	BrandWebsite            string
 }
 
 type OdometerReading struct {

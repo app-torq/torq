@@ -66,6 +66,11 @@ bearer exemption unsafe.
 - Servers older than torq 1.1.0 have no `/instance` and answer `404`. Treat that as level 0: those servers
   have no token sign-in, so an app can't use them.
 - `demo_mode` and `max_upload_mb: 0` tell a client to hide account changes and uploads.
+- `branding` (API level 7) holds the instance name an admin set (`name`, empty when unset) and `logo_url`
+  (`null` without a logo). Show them next to or instead of the torq logo. `logo_url` is versioned, so a
+  cached logo can be kept until the URL changes. The logo can be PNG, JPEG or SVG; display it as an image
+  only. In `GET /auth/me`, `branding` also has `contact` (address, phone, email, website) for printed or
+  shared documents.
 
 ## Compatibility
 
