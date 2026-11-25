@@ -10,7 +10,8 @@ import { vehicleName, type RepairStatus, type RepairSummary, type Vehicle } from
 import { Button } from '../../components/Button'
 import { inputClass } from '../../components/Field'
 import { Badge, EmptyState, ErrorBanner, Loading, PageHeader, Table } from '../../components/ui'
-import { useVehicles } from '../vehicles/hooks'
+import { useAnyVehicleCan, useVehicles } from '../vehicles/hooks'
+import { canOn } from '../../lib/permissions'
 import { invalidateRepairs, repairSorts, repairStatuses, statusTone, useRepairs, type RepairSort } from './hooks'
 import { ProjectPriority } from './priorities'
 import { PriorityFilter } from './PriorityFilter'
@@ -79,6 +80,8 @@ export function RepairBoardPage({ vehicleId }: { vehicleId?: number }) {
     q: search,
   })
   const vehicleById = new Map(vehicles.data?.items.map((v) => [v.id, v]))
+  const anyCan = useAnyVehicleCan('repairs.write')
+  const canAdd = vehicleId === undefined ? anyCan : canOn(vehicleById.get(vehicleId), 'repairs.write')
 
   const changeSort = (s: RepairSort) => {
     setSort(s)
@@ -105,14 +108,14 @@ export function RepairBoardPage({ vehicleId }: { vehicleId?: number }) {
         <PageHeader
           title={t('title')}
           subtitle={t('subtitle')}
-          actions={
+          actions={canAdd && (
             <Button variant="primary" onClick={() => { setCreating(true) }}>
               <Plus size={16} />
               {t('add')}
             </Button>
-          }
+          )}
         />
-      ) : (
+      ) : canAdd && (
         <div className="mb-4 flex justify-end">
           <Button variant="primary" onClick={() => { setCreating(true) }}>
             <Plus size={16} />
@@ -163,7 +166,7 @@ export function RepairBoardPage({ vehicleId }: { vehicleId?: number }) {
       {repairs.isSuccess && items.length === 0 && <EmptyState title={t('empty')} />}
       {items.length > 0 && view === 'board' && <Board items={items} vehicleById={vehicleById} showVehicle={vehicleId === undefined} />}
       {items.length > 0 && view === 'list' && <RepairTable items={items} vehicleById={vehicleById} showVehicle={vehicleId === undefined} />}
-      {creating && <NewRepairDialog vehicleId={vehicleId ?? (Number(vehicleFilter) || undefined)} onClose={() => {
+      {creating && canAdd && <NewRepairDialog vehicleId={vehicleId ?? (Number(vehicleFilter) || undefined)} onClose={() => {
             setCreating(false)
             if (params.has('new')) {
               const next = new URLSearchParams(params)
@@ -223,7 +226,7 @@ function RepairCard({ repair: r, vehicle }: { repair: RepairSummary; vehicle: Ve
         <span>{r.part_status_counts.needed + r.part_status_counts.ordered > 0 ? t('parts.countSummary', r.part_status_counts) : ''}</span>
         <span className="tabular-nums">{r.parts_total_cents > 0 ? fmt.money(r.parts_total_cents) : ''}</span>
       </div>
-      <StatusMenu repair={r} onComplete={() => { setCompleting(true) }} />
+      {canOn(vehicle, 'repairs.write') && <StatusMenu repair={r} onComplete={() => { setCompleting(true) }} />}
       {completing && <CompleteRepairDialog repair={r} onClose={() => { setCompleting(false) }} />}
     </div>
   )

@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -48,11 +49,39 @@ func newEnvWithConfig(t *testing.T, cfg config.Config) *env {
 		Config:  cfg,
 		DB:      d,
 		Clock:   clk,
-		Log:     slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Log:     slog.New(guardCheck{t: t, Handler: slog.NewTextHandler(io.Discard, nil)}),
 		Version: "test",
 		Dist:    fstest.MapFS{"index.html": {Data: []byte("<html>torq</html>")}, "assets/app.js": {Data: []byte("x")}},
 	})
 	return &env{t: t, h: srv.Handler(), srv: srv, db: d, clock: clk, cfg: cfg}
+}
+
+// guardCheck fails the test when a per-vehicle handler skipped vehicleGuard.
+type guardCheck struct {
+	slog.Handler
+	t *testing.T
+}
+
+func (g guardCheck) Handle(ctx context.Context, r slog.Record) error {
+	if r.Message == skippedGuard {
+		var route string
+		r.Attrs(func(a slog.Attr) bool {
+			if a.Key == "route" {
+				route = a.Value.String()
+			}
+			return true
+		})
+		g.t.Errorf("%s: %s", route, skippedGuard)
+	}
+	return g.Handler.Handle(ctx, r)
+}
+
+func (g guardCheck) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return guardCheck{t: g.t, Handler: g.Handler.WithAttrs(attrs)}
+}
+
+func (g guardCheck) WithGroup(name string) slog.Handler {
+	return guardCheck{t: g.t, Handler: g.Handler.WithGroup(name)}
 }
 
 func newTestRouter(t *testing.T) http.Handler { return newEnv(t).h }

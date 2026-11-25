@@ -27,7 +27,7 @@ func (s *Service) SendTest(ctx context.Context, webhookID int64) (Result, error)
 		Body: loc.T("notify.test.body", nil), URL: s.link("/"), SentAt: s.Clock.Now(),
 	}
 	// Use the first vehicle and reminder as realistic sample data when available.
-	vehicles, err := q.ListVehicles(ctx, 0)
+	vehicles, err := q.ListVehicles(ctx, store.ListVehiclesParams{})
 	if err != nil {
 		return Result{}, err
 	}

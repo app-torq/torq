@@ -163,7 +163,7 @@ func seedShowcase(ctx context.Context, clk *clock.Fixed, veh *vehicles.Service, 
 		{in: repairs.Input{VehicleID: c220, Title: "Interior trim squeak", Status: repairs.StatusPlanned,
 			Symptom: "Squeak from the passenger-side dashboard over bumps.", Tags: []string{"interior", "cosmetic"}}},
 	}
-	prios, err := rep.ListPriorities(ctx)
+	prios, err := rep.ListPriorities(ctx, nil)
 	if err != nil {
 		return err
 	}

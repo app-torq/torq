@@ -9,7 +9,56 @@ export type NumberFormat = 'point' | 'comma'
 export type TimeFormat = '24h' | '12h'
 /** How project priorities are shown. */
 export type PriorityDisplay = 'both' | 'color' | 'name'
-export type Role = 'admin' | 'member'
+/** admin for the Administrator role, member for every other (older clients). */
+export type LegacyRole = 'admin' | 'member'
+
+/**
+ * A permission key. Per-vehicle keys apply to vehicles the user may edit,
+ * garage keys everywhere; the list can grow, so unknown keys are possible.
+ */
+export type Permission =
+  | 'vehicles.edit' | 'vehicles.delete' | 'specs.edit' | 'service_logs.write' | 'service_logs.delete'
+  | 'reminders.write' | 'repairs.write' | 'repairs.delete' | 'shares.manage' | 'history.export'
+  | 'vehicles.create' | 'categories.manage' | 'repair_lists.manage' | 'catalog.update'
+
+export type RoleBuiltinKey = 'admin' | 'member' | 'viewer'
+
+/** A role: a named set of permissions and the vehicles its users see. */
+export interface Role {
+  id: number
+  /** custom_name, or the built-in name in the caller's language. */
+  name: string
+  custom_name: string | null
+  builtin_key: RoleBuiltinKey | null
+  description: string
+  /** True: every vehicle; false: only vehicles assigned to the user. */
+  all_vehicles: boolean
+  permissions: Permission[]
+  user_count: number
+}
+
+export interface PermissionInfo {
+  key: Permission
+  scope: 'vehicle' | 'garage'
+}
+
+export type AccessLevel = 'view' | 'edit'
+
+export interface VehicleAssignment {
+  vehicle_id: number
+  level: AccessLevel
+}
+
+/** A user who can see a vehicle, and how (admin overview). */
+export interface VehicleUser {
+  user_id: number
+  username: string
+  display_name: string
+  role_id: number
+  role_name: string
+  via: 'role' | 'assignment'
+  level: AccessLevel
+}
 
 /** Format and unit preferences; also the instance defaults for new users. */
 export interface Formats {
@@ -30,7 +79,16 @@ export interface User extends Formats {
   id: number
   username: string
   display_name: string
-  role: Role
+  role: LegacyRole
+  role_id: number
+  role_name: string
+  role_builtin_key: RoleBuiltinKey | null
+  /** Assigned vehicles (admin user list only). */
+  vehicle_count?: number
+  /** The signed-in user's granted permissions (me, login, setup only). */
+  permissions?: Permission[]
+  /** Whether the signed-in user sees every vehicle (me, login, setup only). */
+  all_vehicles?: boolean
   locale: Locale
   currency_symbol: string | null
   priority_display: PriorityDisplay
@@ -225,6 +283,8 @@ export interface Vehicle {
   reminder_counts: ReminderCounts
   created_at: string
   updated_at: string
+  /** The signed-in user's per-vehicle permissions on it; empty when read only. */
+  permissions: Permission[]
 }
 
 export interface KbaVariant {

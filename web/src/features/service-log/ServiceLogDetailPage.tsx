@@ -7,6 +7,7 @@ import { api } from '../../lib/api'
 import { queryKeys } from '../../lib/queryKeys'
 import { useFormat } from '../../lib/useFormat'
 import { useErrorText } from '../../lib/errors'
+import { canOn } from '../../lib/permissions'
 import { vehicleName, type ServiceLog } from '../../lib/types'
 import { Button } from '../../components/Button'
 import { ConfirmDialog } from '../../components/Dialog'
@@ -59,14 +60,18 @@ export function ServiceLogDetailPage() {
         subtitle={vehicle.data ? <Link className="text-sky-300 hover:underline" to={`/vehicles/${vehicle.data.id}`}>{vehicleName(vehicle.data)}</Link> : undefined}
         actions={
           <>
-            <Link to={`/service/${l.id}/edit`} className="focus-ring inline-flex h-10 items-center gap-2 rounded-md border border-zinc-700 bg-zinc-900 px-4 text-sm hover:bg-zinc-800">
-              <Pencil size={15} />
-              {t('common:actions.edit')}
-            </Link>
-            <Button variant="danger" onClick={() => { setDeleting(true) }}>
-              <Trash2 size={15} />
-              {t('common:actions.delete')}
-            </Button>
+            {canOn(vehicle.data, 'service_logs.write') && (
+              <Link to={`/service/${l.id}/edit`} className="focus-ring inline-flex h-10 items-center gap-2 rounded-md border border-zinc-700 bg-zinc-900 px-4 text-sm hover:bg-zinc-800">
+                <Pencil size={15} />
+                {t('common:actions.edit')}
+              </Link>
+            )}
+            {canOn(vehicle.data, 'service_logs.delete') && (
+              <Button variant="danger" onClick={() => { setDeleting(true) }}>
+                <Trash2 size={15} />
+                {t('common:actions.delete')}
+              </Button>
+            )}
           </>
         }
       />
@@ -112,7 +117,7 @@ export function ServiceLogDetailPage() {
           </tbody>
         </Table>
       </Card>
-      <ServiceLogAttachments log={l} />
+      <ServiceLogAttachments log={l} canEdit={canOn(vehicle.data, 'service_logs.write')} />
       <ConfirmDialog
         open={deleting}
         title={t('deleteTitle')}

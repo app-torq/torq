@@ -125,6 +125,7 @@ func (s *Server) listReminders(w http.ResponseWriter, r *http.Request) error {
 	}
 	views, err := s.reminders.List(r.Context(), reminders.Filter{
 		VehicleID: vehicleID, State: state, IncludePaused: q.Get("include_paused") == "true", IncludeArchived: vehicleID != 0,
+		VehicleIDs: visibleVehicles(r),
 	})
 	if err != nil {
 		return err
@@ -190,6 +191,11 @@ func (s *Server) createReminder(w http.ResponseWriter, r *http.Request) error {
 	if err := decodeJSON(w, r, &in); err != nil {
 		return err
 	}
+	if in.VehicleID != 0 { // 0 fails validation below
+		if err := s.guard(r, in.VehicleID); err != nil {
+			return err
+		}
+	}
 	d, err := in.domain()
 	if err != nil {
 		return err
@@ -202,7 +208,7 @@ func (s *Server) createReminder(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) getReminder(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, _, err := s.pathReminder(r)
 	if err != nil {
 		return err
 	}
@@ -210,13 +216,19 @@ func (s *Server) getReminder(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) updateReminder(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, vehicleID, err := s.pathReminder(r)
 	if err != nil {
 		return err
 	}
 	var in reminderInput
 	if err := decodeJSON(w, r, &in); err != nil {
 		return err
+	}
+	if in.VehicleID != 0 && in.VehicleID != vehicleID {
+		// Moving the reminder needs the permission on both vehicles.
+		if err := s.guard(r, in.VehicleID); err != nil {
+			return err
+		}
 	}
 	if !in.HourMeterID.Set {
 		cur, err := s.reminders.Get(r.Context(), id)
@@ -237,7 +249,7 @@ func (s *Server) updateReminder(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) deleteReminder(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, _, err := s.pathReminder(r)
 	if err != nil {
 		return err
 	}
@@ -250,7 +262,7 @@ func (s *Server) deleteReminder(w http.ResponseWriter, r *http.Request) error {
 
 func (s *Server) setReminderPaused(paused bool) handlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) error {
-		id, err := pathID(r, "id")
+		id, _, err := s.pathReminder(r)
 		if err != nil {
 			return err
 		}
@@ -262,7 +274,7 @@ func (s *Server) setReminderPaused(paused bool) handlerFunc {
 }
 
 func (s *Server) markReminderDone(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, _, err := s.pathReminder(r)
 	if err != nil {
 		return err
 	}
@@ -297,4 +309,17 @@ func (s *Server) markReminderDone(w http.ResponseWriter, r *http.Request) error 
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"reminder": toReminderJSON(view), "vehicle": vj})
 	return nil
+}
+
+// pathReminder parses the {id} wildcard as a reminder and checks its vehicle
+// for the route's permission.
+func (s *Server) pathReminder(r *http.Request) (id, vehicleID int64, err error) {
+	if id, err = pathID(r, "id"); err != nil {
+		return 0, 0, err
+	}
+	rem, err := s.reminders.Get(r.Context(), id)
+	if err != nil {
+		return 0, 0, err
+	}
+	return id, rem.VehicleID, s.guard(r, rem.VehicleID)
 }

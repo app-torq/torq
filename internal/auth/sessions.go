@@ -113,7 +113,11 @@ func (s *Sessions) Lookup(ctx context.Context, raw, ip string) (User, int64, err
 			return User{}, 0, err
 		}
 	}
-	return FromStore(row.User), row.Session.ID, nil
+	u := FromStore(row.User)
+	if u.Access, err = LoadAccess(ctx, store.New(s.DB.Reader), u); err != nil {
+		return User{}, 0, err
+	}
+	return u, row.Session.ID, nil
 }
 
 // SessionInfo is one of a user's sign-ins as shown in the Devices list.

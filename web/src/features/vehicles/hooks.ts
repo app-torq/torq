@@ -1,7 +1,8 @@
 import { useQuery, type QueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { odometerDependentKeys, queryKeys } from '../../lib/queryKeys'
-import type { DistanceUnit, ListResponse, Vehicle } from '../../lib/types'
+import type { DistanceUnit, ListResponse, Permission, Vehicle } from '../../lib/types'
+import { canOn } from '../../lib/permissions'
 import { useSession } from '../../app/session'
 
 export type ArchiveFilter = 'false' | 'true' | 'all'
@@ -11,6 +12,12 @@ export function useVehicles(archived: ArchiveFilter = 'false') {
     queryKey: queryKeys.vehicleList(archived),
     queryFn: () => api.get<ListResponse<Vehicle>>('/vehicles', { archived }),
   })
+}
+
+/** Whether some active vehicle allows p, e.g. to offer "new service entry" at all. */
+export function useAnyVehicleCan(p: Permission): boolean {
+  const vehicles = useVehicles('false')
+  return (vehicles.data?.items ?? []).some((v) => canOn(v, p))
 }
 
 export function useVehicle(id: number) {

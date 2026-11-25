@@ -141,7 +141,8 @@ Operating hours are sent as numbers in hours with at most one decimal (`1250.4`)
 ### Share links (API level 9)
 
 A vehicle can have one public, read-only link that opens without an account, e.g. for a workshop or a
-buyer. Any member can manage it; the controls belong next to the vehicle's QR code.
+buyer. Users with the `shares.manage` permission on the vehicle manage it; the controls belong next to the
+vehicle's QR code.
 
 - `GET /vehicles/{id}/share` returns `{"share": null}` or the link. `PUT /vehicles/{id}/share` turns it on
   (`201`) or changes its options (`200`): `include_costs`, `include_license_plate` and `include_vin`, all
@@ -163,6 +164,37 @@ buyer. Any member can manage it; the controls belong next to the vehicle's QR co
 - `PUT` and `renew` return `409 share.disabled` while public links are off, and `demo.shares_locked` in the
   demo. Admins list all links with `GET /shares` (no tokens) and switch the feature with
   `public_links_enabled` in `PATCH /settings/instance`.
+
+### Roles and permissions (API level 10)
+
+Every user has one role: a set of permissions plus whether its users see every vehicle or only the ones
+assigned to them. The built-in roles are `admin` (Administrator, everything), `member` (every permission
+but `catalog.update`, all vehicles; what every member could do before level 10) and `viewer` (read only,
+all vehicles); administrators add their own.
+
+- **What the signed-in user may do:** `GET /auth/me` (and the login and setup responses) include
+  `user.permissions` and `user.all_vehicles`. Every vehicle in a response carries `permissions`: the
+  per-vehicle permissions the user holds on that vehicle, empty when they may only read it. Hide the actions
+  a user can't use; the server checks every request anyway.
+- **Permissions:** per vehicle `vehicles.edit`, `vehicles.delete`, `specs.edit`, `service_logs.write`,
+  `service_logs.delete`, `reminders.write`, `repairs.write`, `repairs.delete`, `shares.manage`,
+  `history.export`; garage-wide `vehicles.create`, `categories.manage`, `repair_lists.manage`,
+  `catalog.update`. The list can grow: treat unknown keys as "not granted" and look up new ones in
+  `GET /roles`. Each operation in `openapi.yaml` names the permission it needs in `x-torq-permission`;
+  operations about a vehicle's data without one only need the vehicle to be visible. Attachments follow the
+  record they belong to.
+- **Hidden vehicles:** a vehicle the user can't see, and every record belonging to it, answers
+  `404 not_found` exactly like a record that doesn't exist. Lists, the dashboard, the cost report, tag lists
+  and priority counts only cover visible vehicles; a `vehicle_id` filter for a hidden vehicle returns an
+  empty list.
+- **Missing permission:** a visible vehicle answers `403 auth.forbidden` for a change the role doesn't allow.
+- **Older clients:** `role` stays `admin` (Administrator role) or `member` (every other role), and creating or
+  changing a user with `role: "admin"` or `"member"` still works. New clients send `role_id`.
+- **Administration** (Administrator only): `GET/POST /roles`, `PATCH/DELETE /roles/{id}` (`move_to` when the
+  role has users; the Administrator role can't be changed, built-in roles can't be deleted:
+  `role.builtin_locked`), `GET/PUT /users/{id}/vehicle-access` (assignments with `level` `view` or `edit`;
+  they only apply while the user's role uses assigned vehicles) and `GET /vehicles/{id}/access` (who sees a
+  vehicle, and how). Changes apply on each affected user's next request.
 
 ## Errors
 

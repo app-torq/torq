@@ -10,6 +10,7 @@ import (
 
 	"github.com/app-torq/torq/internal/apperr"
 	"github.com/app-torq/torq/internal/clock"
+	"github.com/app-torq/torq/internal/db"
 	"github.com/app-torq/torq/internal/store"
 )
 
@@ -154,9 +155,11 @@ func resolveTags(ctx context.Context, q *store.Queries, names []string) (tagFilt
 	return tagFilter{joined: strings.Join(ids, ","), count: int64(len(ids))}, true, nil
 }
 
-// ListTags returns all tags by name.
-func (s *Service) ListTags(ctx context.Context) ([]Tag, error) {
-	rows, err := store.New(s.DB.Reader).ListRepairTags(ctx)
+// ListTags returns tags by name. With visible vehicles (nil = all), only
+// tags on their projects are listed and counted, so tag names used only on
+// other vehicles stay hidden.
+func (s *Service) ListTags(ctx context.Context, visible []int64) ([]Tag, error) {
+	rows, err := store.New(s.DB.Reader).ListRepairTags(ctx, db.Scope(visible))
 	if err != nil {
 		return nil, err
 	}

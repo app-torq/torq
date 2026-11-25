@@ -4,7 +4,9 @@ import { useTranslation } from 'react-i18next'
 import { Plus } from 'lucide-react'
 import { api } from '../../lib/api'
 import { queryKeys } from '../../lib/queryKeys'
-import type { Role, User } from '../../lib/types'
+import type { User } from '../../lib/types'
+import { useRoles } from './RolesPage'
+import { VehicleAccessDialog } from './VehicleAccessDialog'
 import { fieldErrors, useErrorText } from '../../lib/errors'
 import { useSession } from '../../app/session'
 import { Button } from '../../components/Button'
@@ -18,7 +20,10 @@ export function UsersPage() {
   const qc = useQueryClient()
   const errorText = useErrorText()
   const users = useQuery({ queryKey: queryKeys.users, queryFn: () => api.get<{ items: User[] }>('/users') })
+  const roles = useRoles()
+  const allVehicles = new Map((roles.data?.items ?? []).map((r) => [r.id, r.all_vehicles || r.builtin_key === 'admin']))
   const [creating, setCreating] = useState(false)
+  const [assigning, setAssigning] = useState<User | null>(null)
   const [resetting, setResetting] = useState<User | null>(null)
   const [deleting, setDeleting] = useState<User | null>(null)
   const [actionError, setActionError] = useState<unknown>(null)
@@ -26,7 +31,11 @@ export function UsersPage() {
   const invalidate = () => qc.invalidateQueries({ queryKey: queryKeys.users })
   const update = useMutation({
     mutationFn: ({ id, body }: { id: number; body: Record<string, unknown> }) => api.patch(`/users/${id}`, body),
-    onSuccess: () => { setActionError(null); void invalidate() },
+    onSuccess: () => {
+      setActionError(null)
+      void invalidate()
+      void qc.invalidateQueries({ queryKey: queryKeys.roles })
+    },
     onError: setActionError,
   })
   const remove = useMutation({
@@ -56,6 +65,7 @@ export function UsersPage() {
               <th>{t('auth:fields.displayName')}</th>
               <th>{t('auth:fields.username')}</th>
               <th>{t('users.role')}</th>
+              <th>{t('users.vehicles')}</th>
               <th>{t('users.status')}</th>
               <th />
             </tr>
@@ -70,14 +80,24 @@ export function UsersPage() {
                 <td className="text-zinc-400">{u.username}</td>
                 <td>
                   <select
-                    aria-label={t('users.role')}
+                    aria-label={t('users.roleOf', { name: u.display_name })}
                     className="focus-ring rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-sm"
-                    value={u.role}
-                    onChange={(e) => { update.mutate({ id: u.id, body: { role: e.target.value } }) }}
+                    value={u.role_id}
+                    onChange={(e) => { update.mutate({ id: u.id, body: { role_id: Number(e.target.value) } }) }}
                   >
-                    <option value="admin">{t('users.roles.admin')}</option>
-                    <option value="member">{t('users.roles.member')}</option>
+                    {(roles.data?.items ?? [{ id: u.role_id, name: u.role_name }]).map((r) => (
+                      <option key={r.id} value={r.id}>{r.name}</option>
+                    ))}
                   </select>
+                </td>
+                <td className="text-sm">
+                  {allVehicles.get(u.role_id) ?? true ? (
+                    <span className="text-zinc-400">{t('users.allVehicles')}</span>
+                  ) : (
+                    <button type="button" className="focus-ring text-sky-300 hover:underline" onClick={() => { setAssigning(u) }}>
+                      {t('users.vehicleCount', { count: u.vehicle_count ?? 0 })}
+                    </button>
+                  )}
                 </td>
                 <td>{u.disabled ? <Badge tone="red">{t('users.disabled')}</Badge> : <Badge tone="emerald">{t('users.active')}</Badge>}</td>
                 <td>
@@ -105,6 +125,7 @@ export function UsersPage() {
 
       <CreateUserDialog open={creating} onClose={() => { setCreating(false) }} onCreated={() => { setCreating(false); void invalidate() }} />
       <ResetPasswordDialog user={resetting} onClose={() => { setResetting(null) }} />
+      {assigning && <VehicleAccessDialog user={assigning} onClose={() => { setAssigning(null) }} />}
       <ConfirmDialog
         open={deleting !== null}
         title={t('users.deleteTitle')}
@@ -126,11 +147,14 @@ function CreateUserDialog({ open, onClose, onCreated }: { open: boolean; onClose
   const [username, setUsername] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [password, setPassword] = useState('')
-  const [role, setRole] = useState<Role>('member')
+  const roles = useRoles()
+  const member = roles.data?.items.find((r) => r.builtin_key === 'member')
+  const [roleId, setRoleId] = useState('')
+  const role = roleId || String(member?.id ?? '')
   const create = useMutation({
-    mutationFn: () => api.post('/users', { username, display_name: displayName, password, role }),
+    mutationFn: () => api.post('/users', { username, display_name: displayName, password, ...(role ? { role_id: Number(role) } : {}) }),
     onSuccess: () => {
-      setUsername(''); setDisplayName(''); setPassword(''); setRole('member')
+      setUsername(''); setDisplayName(''); setPassword(''); setRoleId('')
       onCreated()
     },
   })
@@ -157,11 +181,9 @@ function CreateUserDialog({ open, onClose, onCreated }: { open: boolean; onClose
         <SelectField
           label={t('users.role')}
           value={role}
-          onChange={(v) => { setRole(v as Role) }}
-          options={[
-            { value: 'member', label: t('users.roles.member') },
-            { value: 'admin', label: t('users.roles.admin') },
-          ]}
+          onChange={setRoleId}
+          error={fe.role_id}
+          options={(roles.data?.items ?? []).map((r) => ({ value: String(r.id), label: r.name }))}
         />
       </div>
     </Dialog>

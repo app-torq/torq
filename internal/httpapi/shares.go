@@ -38,7 +38,7 @@ func toShareJSON(sh store.VehicleShare) shareJSON {
 }
 
 func (s *Server) getShare(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, err := s.pathVehicle(r)
 	if err != nil {
 		return err
 	}
@@ -59,7 +59,7 @@ func (s *Server) getShare(w http.ResponseWriter, r *http.Request) error {
 
 // putShare turns the link on, or changes its options; the token stays.
 func (s *Server) putShare(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, err := s.pathVehicle(r)
 	if err != nil {
 		return err
 	}
@@ -97,7 +97,7 @@ func (s *Server) putShare(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) renewShare(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, err := s.pathVehicle(r)
 	if err != nil {
 		return err
 	}
@@ -110,7 +110,7 @@ func (s *Server) renewShare(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) deleteShare(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, err := s.pathVehicle(r)
 	if err != nil {
 		return err
 	}

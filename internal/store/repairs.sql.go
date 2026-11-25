@@ -14,24 +14,26 @@ import (
 const countRepairs = `-- name: CountRepairs :one
 SELECT COUNT(*) FROM repair_logs r
 WHERE (CAST(?1 AS INTEGER) = 0 OR r.vehicle_id = ?1)
-  AND instr(',' || CAST(?2 AS TEXT) || ',', ',' || r.status || ',') > 0
-  AND (CAST(?3 AS TEXT) = ''
-       OR instr(',' || CAST(?3 AS TEXT) || ',', ',' || COALESCE(CAST(r.priority_id AS TEXT), 'none') || ',') > 0)
-  AND (CAST(?4 AS INTEGER) = 0
+  AND (CAST(?2 AS TEXT) IS NULL OR r.vehicle_id IN (SELECT value FROM json_each(CAST(?2 AS TEXT))))
+  AND instr(',' || CAST(?3 AS TEXT) || ',', ',' || r.status || ',') > 0
+  AND (CAST(?4 AS TEXT) = ''
+       OR instr(',' || CAST(?4 AS TEXT) || ',', ',' || COALESCE(CAST(r.priority_id AS TEXT), 'none') || ',') > 0)
+  AND (CAST(?5 AS INTEGER) = 0
        OR (SELECT COUNT(*) FROM repair_log_tags rt WHERE rt.repair_log_id = r.id
-           AND instr(',' || CAST(?5 AS TEXT) || ',', ',' || rt.tag_id || ',') > 0) = ?4)
-  AND (CAST(?6 AS TEXT) = ''
-       OR r.title LIKE '%' || ?6 || '%'
-       OR r.symptom LIKE '%' || ?6 || '%'
-       OR r.root_cause LIKE '%' || ?6 || '%'
-       OR EXISTS (SELECT 1 FROM repair_fault_codes f WHERE f.repair_log_id = r.id AND f.code LIKE '%' || ?6 || '%')
+           AND instr(',' || CAST(?6 AS TEXT) || ',', ',' || rt.tag_id || ',') > 0) = ?5)
+  AND (CAST(?7 AS TEXT) = ''
+       OR r.title LIKE '%' || ?7 || '%'
+       OR r.symptom LIKE '%' || ?7 || '%'
+       OR r.root_cause LIKE '%' || ?7 || '%'
+       OR EXISTS (SELECT 1 FROM repair_fault_codes f WHERE f.repair_log_id = r.id AND f.code LIKE '%' || ?7 || '%')
        OR EXISTS (SELECT 1 FROM repair_parts p WHERE p.repair_log_id = r.id
-                  AND (p.name LIKE '%' || ?6 || '%' OR p.oem_part_number LIKE '%' || ?6 || '%'
-                       OR p.aftermarket_part_number LIKE '%' || ?6 || '%')))
+                  AND (p.name LIKE '%' || ?7 || '%' OR p.oem_part_number LIKE '%' || ?7 || '%'
+                       OR p.aftermarket_part_number LIKE '%' || ?7 || '%')))
 `
 
 type CountRepairsParams struct {
 	VehicleID  int64
+	Scope      sql.NullString
 	Statuses   string
 	Priorities string
 	TagCount   int64
@@ -42,6 +44,7 @@ type CountRepairsParams struct {
 func (q *Queries) CountRepairs(ctx context.Context, arg CountRepairsParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, countRepairs,
 		arg.VehicleID,
+		arg.Scope,
 		arg.Statuses,
 		arg.Priorities,
 		arg.TagCount,
@@ -395,31 +398,33 @@ SELECT r.id, r.vehicle_id, r.title, r.status, r.symptom, r.root_cause, r.procedu
 LEFT JOIN repair_priorities pr ON pr.id = r.priority_id
 JOIN (SELECT CAST(?1 AS TEXT) AS mode) o
 WHERE (CAST(?2 AS INTEGER) = 0 OR r.vehicle_id = ?2)
-  AND instr(',' || CAST(?3 AS TEXT) || ',', ',' || r.status || ',') > 0
-  AND (CAST(?4 AS TEXT) = ''
-       OR instr(',' || CAST(?4 AS TEXT) || ',', ',' || COALESCE(CAST(r.priority_id AS TEXT), 'none') || ',') > 0)
-  AND (CAST(?5 AS INTEGER) = 0
+  AND (CAST(?3 AS TEXT) IS NULL OR r.vehicle_id IN (SELECT value FROM json_each(CAST(?3 AS TEXT))))
+  AND instr(',' || CAST(?4 AS TEXT) || ',', ',' || r.status || ',') > 0
+  AND (CAST(?5 AS TEXT) = ''
+       OR instr(',' || CAST(?5 AS TEXT) || ',', ',' || COALESCE(CAST(r.priority_id AS TEXT), 'none') || ',') > 0)
+  AND (CAST(?6 AS INTEGER) = 0
        OR (SELECT COUNT(*) FROM repair_log_tags rt WHERE rt.repair_log_id = r.id
-           AND instr(',' || CAST(?6 AS TEXT) || ',', ',' || rt.tag_id || ',') > 0) = ?5)
-  AND (CAST(?7 AS TEXT) = ''
-       OR r.title LIKE '%' || ?7 || '%'
-       OR r.symptom LIKE '%' || ?7 || '%'
-       OR r.root_cause LIKE '%' || ?7 || '%'
-       OR EXISTS (SELECT 1 FROM repair_fault_codes f WHERE f.repair_log_id = r.id AND f.code LIKE '%' || ?7 || '%')
+           AND instr(',' || CAST(?7 AS TEXT) || ',', ',' || rt.tag_id || ',') > 0) = ?6)
+  AND (CAST(?8 AS TEXT) = ''
+       OR r.title LIKE '%' || ?8 || '%'
+       OR r.symptom LIKE '%' || ?8 || '%'
+       OR r.root_cause LIKE '%' || ?8 || '%'
+       OR EXISTS (SELECT 1 FROM repair_fault_codes f WHERE f.repair_log_id = r.id AND f.code LIKE '%' || ?8 || '%')
        OR EXISTS (SELECT 1 FROM repair_parts p WHERE p.repair_log_id = r.id
-                  AND (p.name LIKE '%' || ?7 || '%' OR p.oem_part_number LIKE '%' || ?7 || '%'
-                       OR p.aftermarket_part_number LIKE '%' || ?7 || '%')))
+                  AND (p.name LIKE '%' || ?8 || '%' OR p.oem_part_number LIKE '%' || ?8 || '%'
+                       OR p.aftermarket_part_number LIKE '%' || ?8 || '%')))
 ORDER BY CASE o.mode WHEN 'priority' THEN COALESCE(pr.sort_order, 1000000000) ELSE 0 END,
          CASE o.mode WHEN 'updated' THEN 0
               ELSE CASE r.status WHEN 'in_progress' THEN 0 WHEN 'waiting_on_parts' THEN 1 WHEN 'planned' THEN 2 ELSE 3 END END,
          CASE o.mode WHEN 'status_priority' THEN COALESCE(pr.sort_order, 1000000000) ELSE 0 END,
          COALESCE(r.completed_on, r.updated_at) DESC, r.id DESC
-LIMIT ?9 OFFSET ?8
+LIMIT ?10 OFFSET ?9
 `
 
 type ListRepairsParams struct {
 	Sort       string
 	VehicleID  int64
+	Scope      sql.NullString
 	Statuses   string
 	Priorities string
 	TagCount   int64
@@ -435,6 +440,7 @@ func (q *Queries) ListRepairs(ctx context.Context, arg ListRepairsParams) ([]Rep
 	rows, err := q.db.QueryContext(ctx, listRepairs,
 		arg.Sort,
 		arg.VehicleID,
+		arg.Scope,
 		arg.Statuses,
 		arg.Priorities,
 		arg.TagCount,

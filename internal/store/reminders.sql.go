@@ -232,6 +232,7 @@ WHERE (CAST(?1 AS INTEGER) = 0 OR r.vehicle_id = ?1)
   AND (CAST(?2 AS TEXT) = '' OR r.state = ?2)
   AND (CAST(?3 AS INTEGER) = 1 OR r.paused_at IS NULL)
   AND (CAST(?4 AS INTEGER) = 1 OR v.archived_at IS NULL)
+  AND (CAST(?5 AS TEXT) IS NULL OR r.vehicle_id IN (SELECT value FROM json_each(CAST(?5 AS TEXT))))
 ORDER BY r.id
 `
 
@@ -240,6 +241,7 @@ type ListRemindersParams struct {
 	State           string
 	IncludePaused   int64
 	IncludeArchived int64
+	Scope           sql.NullString
 }
 
 func (q *Queries) ListReminders(ctx context.Context, arg ListRemindersParams) ([]Reminder, error) {
@@ -248,6 +250,7 @@ func (q *Queries) ListReminders(ctx context.Context, arg ListRemindersParams) ([
 		arg.State,
 		arg.IncludePaused,
 		arg.IncludeArchived,
+		arg.Scope,
 	)
 	if err != nil {
 		return nil, err

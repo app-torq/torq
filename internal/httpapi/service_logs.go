@@ -256,6 +256,7 @@ func (s *Server) listServiceLogs(w http.ResponseWriter, r *http.Request) error {
 	q := r.URL.Query()
 	logs, total, err := s.servicelog.List(r.Context(), servicelog.Filter{
 		VehicleID: vehicleID, CategoryID: categoryID, From: q.Get("from"), To: q.Get("to"), Q: q.Get("q"), Limit: limit, Offset: offset,
+		VehicleIDs: visibleVehicles(r),
 	})
 	if err != nil {
 		return err
@@ -292,6 +293,11 @@ func (s *Server) createServiceLog(w http.ResponseWriter, r *http.Request) error 
 	if err := decodeJSON(w, r, &in); err != nil {
 		return err
 	}
+	if in.VehicleID != 0 { // 0 fails validation below
+		if err := s.guard(r, in.VehicleID); err != nil {
+			return err
+		}
+	}
 	d, err := in.domain()
 	if err != nil {
 		return err
@@ -304,7 +310,7 @@ func (s *Server) createServiceLog(w http.ResponseWriter, r *http.Request) error 
 }
 
 func (s *Server) getServiceLog(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, _, err := s.pathServiceLog(r)
 	if err != nil {
 		return err
 	}
@@ -321,13 +327,19 @@ func (s *Server) getServiceLog(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) replaceServiceLog(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, vehicleID, err := s.pathServiceLog(r)
 	if err != nil {
 		return err
 	}
 	var in serviceLogInput
 	if err := decodeJSON(w, r, &in); err != nil {
 		return err
+	}
+	if in.VehicleID != 0 && in.VehicleID != vehicleID {
+		// Moving the entry needs the permission on both vehicles.
+		if err := s.guard(r, in.VehicleID); err != nil {
+			return err
+		}
 	}
 	d, err := in.domain()
 	if err != nil {
@@ -341,7 +353,7 @@ func (s *Server) replaceServiceLog(w http.ResponseWriter, r *http.Request) error
 }
 
 func (s *Server) deleteServiceLog(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, _, err := s.pathServiceLog(r)
 	if err != nil {
 		return err
 	}
@@ -355,4 +367,17 @@ func (s *Server) deleteServiceLog(w http.ResponseWriter, r *http.Request) error 
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"reminders": rems})
 	return nil
+}
+
+// pathServiceLog parses the {id} wildcard as a service entry and checks its
+// vehicle for the route's permission.
+func (s *Server) pathServiceLog(r *http.Request) (id, vehicleID int64, err error) {
+	if id, err = pathID(r, "id"); err != nil {
+		return 0, 0, err
+	}
+	l, err := s.servicelog.Get(r.Context(), id)
+	if err != nil {
+		return 0, 0, err
+	}
+	return id, l.VehicleID, s.guard(r, l.VehicleID)
 }

@@ -398,7 +398,9 @@ func (s *Service) Get(ctx context.Context, id int64) (Log, error) {
 
 // Filter narrows the logbook list.
 type Filter struct {
-	VehicleID  int64
+	VehicleID int64
+	// VehicleIDs limits the result to these vehicles; nil means all.
+	VehicleIDs []int64
 	CategoryID int64
 	From, To   string
 	Q          string
@@ -411,12 +413,14 @@ func (s *Service) List(ctx context.Context, f Filter) ([]Log, int64, error) {
 	q := store.New(s.DB.Reader)
 	rows, err := q.ListServiceLogs(ctx, store.ListServiceLogsParams{
 		VehicleID: f.VehicleID, CategoryID: f.CategoryID, FromDate: f.From, ToDate: f.To, Q: f.Q, Lim: f.Limit, Off: f.Offset,
+		Scope: db.Scope(f.VehicleIDs),
 	})
 	if err != nil {
 		return nil, 0, err
 	}
 	total, err := q.CountServiceLogs(ctx, store.CountServiceLogsParams{
 		VehicleID: f.VehicleID, CategoryID: f.CategoryID, FromDate: f.From, ToDate: f.To, Q: f.Q,
+		Scope: db.Scope(f.VehicleIDs),
 	})
 	if err != nil {
 		return nil, 0, err

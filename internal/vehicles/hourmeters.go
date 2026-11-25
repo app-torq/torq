@@ -78,6 +78,11 @@ func getMeter(ctx context.Context, q *store.Queries, id int64) (store.HourMeter,
 	return m, err
 }
 
+// GetMeter returns one hour meter.
+func (s *Service) GetMeter(ctx context.Context, id int64) (store.HourMeter, error) {
+	return getMeter(ctx, store.New(s.DB.Reader), id)
+}
+
 // createMeter inserts a meter and its initial reading inside q's transaction.
 // A vehicle has at most one meter for now (data-model §1).
 func (s *Service) createMeter(ctx context.Context, q *store.Queries, vehicleID int64, in MeterInput) (store.HourMeter, error) {

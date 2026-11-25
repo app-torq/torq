@@ -49,12 +49,18 @@ type User struct {
 	ID          int64
 	Username    string
 	DisplayName string
-	Role        Role
-	Disabled    bool
-	Prefs       Preferences
+	// Role is admin for the Administrator role and member for every other,
+	// as older clients know it; RoleID is the actual role.
+	Role     Role
+	RoleID   int64
+	Disabled bool
+	Prefs    Preferences
+	// Access is loaded with the session; it is empty for users read
+	// elsewhere.
+	Access Access
 }
 
-// IsAdmin reports whether the user may manage users, webhooks and settings.
+// IsAdmin reports whether the user has the Administrator role.
 func (u User) IsAdmin() bool { return u.Role == RoleAdmin }
 
 // Provider is implemented by every authentication mechanism.
@@ -99,6 +105,7 @@ func FromStore(u store.User) User {
 		Username:    u.Username,
 		DisplayName: u.DisplayName,
 		Role:        Role(u.Role),
+		RoleID:      u.RoleID.Int64,
 		Disabled:    u.DisabledAt.Valid,
 		Prefs: Preferences{
 			Locale:          u.Locale,

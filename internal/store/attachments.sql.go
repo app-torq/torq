@@ -100,6 +100,38 @@ func (q *Queries) GetAttachment(ctx context.Context, id int64) (Attachment, erro
 	return i, err
 }
 
+const getAttachmentVehicle = `-- name: GetAttachmentVehicle :one
+SELECT a.vehicle_id AS avatar_vehicle_id, a.service_log_id, a.repair_log_id, a.spec_entry_id,
+       CAST(COALESCE(a.vehicle_id, sl.vehicle_id, rl.vehicle_id, se.vehicle_id, 0) AS INTEGER) AS owner_vehicle_id
+FROM attachments a
+LEFT JOIN service_logs sl ON sl.id = a.service_log_id
+LEFT JOIN repair_logs rl ON rl.id = a.repair_log_id
+LEFT JOIN vehicle_spec_entries se ON se.id = a.spec_entry_id
+WHERE a.id = ?
+`
+
+type GetAttachmentVehicleRow struct {
+	AvatarVehicleID sql.NullInt64
+	ServiceLogID    sql.NullInt64
+	RepairLogID     sql.NullInt64
+	SpecEntryID     sql.NullInt64
+	OwnerVehicleID  int64
+}
+
+// The vehicle an attachment belongs to, through whatever owns it (0 if none).
+func (q *Queries) GetAttachmentVehicle(ctx context.Context, id int64) (GetAttachmentVehicleRow, error) {
+	row := q.db.QueryRowContext(ctx, getAttachmentVehicle, id)
+	var i GetAttachmentVehicleRow
+	err := row.Scan(
+		&i.AvatarVehicleID,
+		&i.ServiceLogID,
+		&i.RepairLogID,
+		&i.SpecEntryID,
+		&i.OwnerVehicleID,
+	)
+	return i, err
+}
+
 const getVehicleAvatar = `-- name: GetVehicleAvatar :one
 SELECT id, storage_key, original_name, mime_type, size_bytes, purpose, vehicle_id, service_log_id, repair_log_id, spec_entry_id, caption, uploaded_by, created_at FROM attachments WHERE vehicle_id = ? AND purpose = 'avatar'
 `

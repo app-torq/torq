@@ -10,7 +10,7 @@ import (
 
 func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
-	rows, err := s.vehicles.List(ctx, vehicles.ActiveOnly)
+	rows, err := s.vehicles.List(ctx, vehicles.ActiveOnly, visibleVehicles(r))
 	if err != nil {
 		return err
 	}
@@ -22,7 +22,7 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) error {
 	for _, v := range rows {
 		vs = append(vs, s.toVehicleJSON(v, x))
 	}
-	views, err := s.reminders.List(ctx, reminders.Filter{})
+	views, err := s.reminders.List(ctx, reminders.Filter{VehicleIDs: visibleVehicles(r)})
 	if err != nil {
 		return err
 	}
@@ -32,7 +32,7 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) error {
 			attention = append(attention, toReminderJSON(v))
 		}
 	}
-	open, err := s.openRepairs(ctx)
+	open, err := s.openRepairs(ctx, visibleVehicles(r))
 	if err != nil {
 		return err
 	}

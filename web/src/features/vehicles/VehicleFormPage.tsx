@@ -10,6 +10,8 @@ import { vinWarning } from '../../lib/vin'
 import { fieldErrors, useErrorText } from '../../lib/errors'
 import { FUEL_TYPES, VEHICLE_TYPES, type CatalogEngine, type CatalogGeneration, type CatalogModel, type KbaVariant, type NumberFormat, type User, type Vehicle, type VehicleType } from '../../lib/types'
 import { useSession } from '../../app/session'
+import { Forbidden } from '../../app/RequireAdmin'
+import { canOn, useCan } from '../../lib/permissions'
 import { Button } from '../../components/Button'
 import { SelectField, TextField } from '../../components/Field'
 import { NumberField } from '../../components/NumberField'
@@ -25,7 +27,9 @@ import { useFormat } from '../../lib/useFormat'
 
 export function VehicleFormPage() {
   const { id } = useParams()
+  const canCreate = useCan('vehicles.create')
   if (id) return <EditVehicle id={Number(id)} />
+  if (!canCreate) return <Forbidden />
   return <VehicleForm />
 }
 
@@ -34,6 +38,7 @@ function EditVehicle({ id }: { id: number }) {
   const errorText = useErrorText()
   if (vehicle.isPending) return <Loading />
   if (vehicle.isError) return <ErrorBanner message={errorText(vehicle.error)} />
+  if (!canOn(vehicle.data, 'vehicles.edit')) return <Forbidden />
   return <VehicleForm vehicle={vehicle.data} />
 }
 

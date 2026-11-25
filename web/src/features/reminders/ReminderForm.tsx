@@ -6,6 +6,7 @@ import { queryKeys } from '../../lib/queryKeys'
 import { distanceField, hoursToInput, parseHours, parseNumber, readDistance, type MetricField } from '../../lib/format'
 import { kmIn, type DistanceUnit } from '../../lib/units'
 import { fieldErrors, useErrorText } from '../../lib/errors'
+import { canOn } from '../../lib/permissions'
 import { vehicleName, type Reminder } from '../../lib/types'
 import { useSession } from '../../app/session'
 import { Button } from '../../components/Button'
@@ -162,7 +163,7 @@ export function ReminderForm({ reminder, vehicleId, onClose }: Props) {
             onChange={setVehicle}
             disabled={reminder !== null || vehicleId !== undefined}
             error={fe.vehicle_id}
-            options={[{ value: '', label: '—' }, ...(vehicles.data?.items ?? []).map((v) => ({ value: String(v.id), label: vehicleName(v) }))]}
+            options={[{ value: '', label: '—' }, ...(vehicles.data?.items ?? []).filter((v) => canOn(v, 'reminders.write') || String(v.id) === vehicle).map((v) => ({ value: String(v.id), label: vehicleName(v) }))]}
           />
           <SelectField
             label={t('fields.kind')}

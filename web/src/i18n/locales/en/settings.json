@@ -93,7 +93,7 @@
   },
   "users": {
     "title": "Users",
-    "intro": "Everyone in the household shares one garage. Administrators also manage users, webhooks and instance settings.",
+    "intro": "Everyone shares one garage. Each user's role decides what they may change and which vehicles they see; administrators also manage users, roles, webhooks and instance settings.",
     "add": "Add user",
     "role": "Role",
     "roles": {
@@ -110,7 +110,20 @@
     "passwordReset": "Password reset.",
     "deleteTitle": "Delete user",
     "deleteBody": "Delete {{name}}? Records they created stay in the garage.",
-    "you": "you"
+    "you": "you",
+    "vehicles": "Vehicles",
+    "roleOf": "Role of {{name}}",
+    "allVehicles": "All vehicles",
+    "vehicleCount_one": "{{count}} vehicle",
+    "vehicleCount_other": "{{count}} vehicles",
+    "vehicleAccessTitle": "Vehicles for {{name}}",
+    "accessIntro": "View: sees the vehicle and everything about it. Edit: may also make the changes the role allows.",
+    "allVehiclesNote": "The role {{role}} sees all vehicles, so these assignments have no effect until the role is limited to assigned vehicles.",
+    "access": {
+      "none": "None",
+      "view": "View",
+      "edit": "Edit"
+    }
   },
   "devices": {
     "title": "Devices",
@@ -229,5 +242,53 @@
     "installIOS": "iPhone and iPad",
     "installAndroid": "Android",
     "installDesktop": "Desktop"
+  },
+  "roles": {
+    "title": "Roles",
+    "intro": "A role decides what its users may change and which vehicles they see. Viewing is always allowed for the vehicles a user sees.",
+    "add": "Add role",
+    "name": "Name",
+    "description": "Description",
+    "vehicles": "Vehicles",
+    "users": "Users",
+    "builtin": "Built-in",
+    "editNamed": "Edit {{name}}",
+    "deleteNamed": "Delete {{name}}",
+    "resetName": "Reset name",
+    "allVehicles": "All vehicles",
+    "assignedVehicles": "Assigned vehicles",
+    "allVehiclesHint": "Users with this role see every vehicle in the garage.",
+    "assignedVehiclesHint": "Users with this role see only the vehicles assigned to them under Users; vehicles they add are assigned to them.",
+    "losingVehicles_one": "{{count}} user has this role and will see only the vehicles assigned to them.",
+    "losingVehicles_other": "{{count}} users have this role and will see only the vehicles assigned to them.",
+    "adminOnly": "Users, roles, vehicle access, webhooks and instance settings are always reserved to administrators.",
+    "deleteBody": "Delete this role?",
+    "deleteMove_one": "{{count}} user has this role. Choose the role they move to.",
+    "deleteMove_other": "{{count}} users have this role. Choose the role they move to.",
+    "moveTo": "Move users to",
+    "scope": {
+      "vehicle": "Per vehicle",
+      "garage": "Garage-wide"
+    },
+    "scopeHint": {
+      "vehicle": "On vehicles the user may edit.",
+      "garage": "Settings shared by the whole garage."
+    },
+    "permission": {
+      "vehicles.edit": "Edit vehicles (profile, readings, hour meters, photo, archive)",
+      "vehicles.delete": "Delete vehicles",
+      "specs.edit": "Edit the spec sheet",
+      "service_logs.write": "Add and edit service entries",
+      "service_logs.delete": "Delete service entries",
+      "reminders.write": "Manage reminders",
+      "repairs.write": "Add and edit projects",
+      "repairs.delete": "Delete projects",
+      "shares.manage": "Manage public links",
+      "history.export": "Export and print the history",
+      "vehicles.create": "Add vehicles",
+      "categories.manage": "Manage service categories",
+      "repair_lists.manage": "Manage project priorities and tags",
+      "catalog.update": "Update the vehicle catalog online"
+    }
   }
 }

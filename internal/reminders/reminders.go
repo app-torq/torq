@@ -10,6 +10,7 @@ import (
 
 	"github.com/app-torq/torq/internal/apperr"
 	"github.com/app-torq/torq/internal/clock"
+	"github.com/app-torq/torq/internal/db"
 	"github.com/app-torq/torq/internal/reminders/engine"
 	"github.com/app-torq/torq/internal/store"
 	"github.com/app-torq/torq/internal/vehicles"
@@ -431,7 +432,9 @@ func (s *Service) MarkDoneWithReadings(ctx context.Context, id int64, doneOn str
 
 // Filter selects reminders for listing.
 type Filter struct {
-	VehicleID       int64
+	VehicleID int64
+	// VehicleIDs limits the result to these vehicles; nil means all.
+	VehicleIDs      []int64
 	State           string
 	IncludePaused   bool
 	IncludeArchived bool
@@ -450,7 +453,7 @@ func (s *Service) List(ctx context.Context, f Filter) ([]View, error) {
 	q := store.New(s.DB.Reader)
 	rows, err := q.ListReminders(ctx, store.ListRemindersParams{
 		VehicleID: f.VehicleID, State: f.State,
-		IncludePaused: boolInt(f.IncludePaused), IncludeArchived: boolInt(f.IncludeArchived),
+		IncludePaused: boolInt(f.IncludePaused), IncludeArchived: boolInt(f.IncludeArchived), Scope: db.Scope(f.VehicleIDs),
 	})
 	if err != nil {
 		return nil, err

@@ -6,15 +6,15 @@ import { AttachmentGallery } from '../../components/AttachmentGallery'
 import { FileDrop } from '../../components/FileDrop'
 import { Card } from '../../components/ui'
 
-export function ServiceLogAttachments({ log }: { log: ServiceLog }) {
+export function ServiceLogAttachments({ log, canEdit }: { log: ServiceLog; canEdit: boolean }) {
   const { t } = useTranslation('repairs')
   const qc = useQueryClient()
   const refresh = () => void qc.invalidateQueries({ queryKey: queryKeys.serviceLog(log.id) })
   return (
     <Card title={t('sections.attachments')}>
       <div className="space-y-4">
-        <AttachmentGallery items={log.attachments ?? []} onChanged={refresh} />
-        <FileDrop path={`/service-logs/${log.id}/attachments`} onUploaded={refresh} />
+        <AttachmentGallery items={log.attachments ?? []} onChanged={refresh} readOnly={!canEdit} />
+        {canEdit && <FileDrop path={`/service-logs/${log.id}/attachments`} onUploaded={refresh} />}
       </div>
     </Card>
   )

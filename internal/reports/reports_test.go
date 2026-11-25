@@ -82,7 +82,7 @@ func (f *fx) seed2026(t testing.TB) {
 func TestCostReportExact(t *testing.T) {
 	f := setup(t)
 	f.seed2026(t)
-	rep, err := f.r.CostReport(f.ctx, f.vid, "2026-01-01", "2026-12-31")
+	rep, err := f.r.CostReport(f.ctx, f.vid, "2026-01-01", "2026-12-31", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +97,7 @@ func TestCostReportExact(t *testing.T) {
 	}
 
 	// A range with a single reading has no cost per km.
-	one, err := f.r.CostReport(f.ctx, f.vid, "2026-06-01", "2026-06-30")
+	one, err := f.r.CostReport(f.ctx, f.vid, "2026-06-01", "2026-06-30", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func TestCostReportExact(t *testing.T) {
 	}
 
 	// Garage-wide equals the sum of vehicles.
-	g, err := f.r.CostReport(f.ctx, 0, "2026-01-01", "2026-12-31")
+	g, err := f.r.CostReport(f.ctx, 0, "2026-01-01", "2026-12-31", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,16 +114,25 @@ func TestCostReportExact(t *testing.T) {
 		t.Fatalf("garage %+v", g)
 	}
 
+	// A user who doesn't see the vehicle gets an empty garage total.
+	hidden, err := f.r.CostReport(f.ctx, 0, "2026-01-01", "2026-12-31", []int64{f.vid + 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hidden.TotalCents != 0 || len(hidden.ByVehicle) != 0 {
+		t.Fatalf("hidden vehicle counted: %+v", hidden)
+	}
+
 	// Reopening a repair removes it from the report.
 	reps, _, _ := f.rep.List(f.ctx, repairs.Filter{Statuses: []string{repairs.StatusCompleted}, Limit: 10})
 	if _, err := f.rep.SetStatus(f.ctx, reps[0].ID, repairs.StatusInProgress, "", nil); err != nil {
 		t.Fatal(err)
 	}
-	rep, _ = f.r.CostReport(f.ctx, f.vid, "2026-01-01", "2026-12-31")
+	rep, _ = f.r.CostReport(f.ctx, f.vid, "2026-01-01", "2026-12-31", nil)
 	if rep.SelfRepairCents != 0 {
 		t.Fatalf("reopened repair counted: %d", rep.SelfRepairCents)
 	}
-	if _, err := f.r.CostReport(f.ctx, f.vid, "2026-12-31", "2026-01-01"); err == nil {
+	if _, err := f.r.CostReport(f.ctx, f.vid, "2026-12-31", "2026-01-01", nil); err == nil {
 		t.Fatal("inverted range accepted")
 	}
 }
@@ -283,7 +292,7 @@ func TestHoursReports(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	rep, err := f.r.CostReport(f.ctx, tractor.ID, "2026-01-01", "2026-12-31")
+	rep, err := f.r.CostReport(f.ctx, tractor.ID, "2026-01-01", "2026-12-31", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -291,7 +300,7 @@ func TestHoursReports(t *testing.T) {
 		t.Fatalf("tractor report %+v", rep)
 	}
 	// The garage's distance and cost per km ignore the tractor.
-	all, err := f.r.CostReport(f.ctx, 0, "2026-01-01", "2026-12-31")
+	all, err := f.r.CostReport(f.ctx, 0, "2026-01-01", "2026-12-31", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -299,7 +308,7 @@ func TestHoursReports(t *testing.T) {
 		t.Fatalf("garage report %+v", all)
 	}
 	// One reading in the period: not enough data.
-	single, err := f.r.CostReport(f.ctx, tractor.ID, "2026-05-01", "2026-12-31")
+	single, err := f.r.CostReport(f.ctx, tractor.ID, "2026-05-01", "2026-12-31", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

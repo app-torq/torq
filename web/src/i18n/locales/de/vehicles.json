@@ -221,5 +221,15 @@
     "offBody": "Der Link funktioniert sofort nicht mehr. Wird er wieder eingeschaltet, entsteht eine neue Adresse.",
     "loadFailed": "Der öffentliche Link konnte nicht geladen werden.",
     "noLink": "Dieses Fahrzeug hat keinen öffentlichen Link. Schalte ihn zuerst auf der Fahrzeugseite ein."
+  },
+  "access": {
+    "title": "Zugriff",
+    "intro": "Wer dieses Fahrzeug sieht und ob er es ändern darf.",
+    "viaRole": "Alle Fahrzeuge (Rolle)",
+    "level": {
+      "view": "Ansehen",
+      "edit": "Bearbeiten"
+    },
+    "manage": "Benutzer und Zugriff verwalten"
   }
 }

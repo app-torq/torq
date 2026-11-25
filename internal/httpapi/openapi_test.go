@@ -248,18 +248,22 @@ func TestOpenAPICoversRoutes(t *testing.T) {
 		registered[key(method, strings.TrimPrefix(path, "/api/v1"))] = s.routeAccess[p]
 	}
 	documented := map[string]string{}
+	permissions := map[string]string{}
 	for _, o := range cd.ops {
 		level, _ := o.op["x-torq-access"].(string)
 		documented[key(o.method, o.path)] = level
+		permissions[key(o.method, o.path)], _ = o.op["x-torq-permission"].(string)
 	}
-	names := map[access]string{public: "public", member: "member", admin: "admin"}
-	for k, level := range registered {
+	names := map[level]string{levelPublic: "public", levelMember: "member", levelAdmin: "admin"}
+	for k, a := range registered {
 		doc, ok := documented[k]
 		switch {
 		case !ok:
 			t.Errorf("%s is registered but missing from openapi.yaml", k)
-		case doc != names[level]:
-			t.Errorf("%s: openapi.yaml says x-torq-access %q, the route is %q", k, doc, names[level])
+		case doc != names[a.level]:
+			t.Errorf("%s: openapi.yaml says x-torq-access %q, the route is %q", k, doc, names[a.level])
+		case permissions[k] != string(a.perm):
+			t.Errorf("%s: openapi.yaml says x-torq-permission %q, the route needs %q", k, permissions[k], a.perm)
 		}
 	}
 	for k := range documented {

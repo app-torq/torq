@@ -5,13 +5,13 @@
 openapi: "3.1.0"
 info:
   title: torq API
-  version: "9"
+  version: "10"
   description: |-
     The REST API of torq, a self-hosted vehicle maintenance and DIY repair tracker. It is used by the web app and the torq mobile app.
 
     **Authentication.** Browsers use the `torq_session` cookie and send `X-Torq-Request: 1` on every request that is not GET or HEAD. Apps and other clients sign in with `"token": true` and send the token as `Authorization: Bearer <token>`; such requests need no extra header. Tokens expire after 30 days without use and can be revoked under `/me/sessions`.
 
-    **Errors.** Errors are JSON with a dotted code (`{"error": {"code": "validation.failed", "fields": {...}}}`), never prose. Every operation can return `auth.unauthenticated` (401), `request.malformed` (400) and `internal` (500); operations with a path ID can return `not_found` (404); cookie requests can return `csrf.missing_header` and `csrf.origin_mismatch` (403). `x-torq-error-codes` lists the codes specific to an operation. `x-torq-access` states who may call it: `public`, `member` (any signed-in user) or `admin`.
+    **Errors.** Errors are JSON with a dotted code (`{"error": {"code": "validation.failed", "fields": {...}}}`), never prose. Every operation can return `auth.unauthenticated` (401), `request.malformed` (400) and `internal` (500); operations with a path ID can return `not_found` (404); cookie requests can return `csrf.missing_header` and `csrf.origin_mismatch` (403). `x-torq-error-codes` lists the codes specific to an operation. `x-torq-access` states who may call it: `public`, `member` (any signed-in user) or `admin`. `x-torq-permission` names the permission a `member` operation also needs: garage-wide permissions are checked for every call, per-vehicle ones on the vehicle the request is about. A vehicle the caller can't see answers `not_found` like a missing one; a visible vehicle without the permission answers `auth.forbidden` (403). Operations on a vehicle's data without `x-torq-permission` only need the vehicle to be visible.
 
     **Compatibility.** Within `/api/v1`, changes are additive only: no operation, field or error code is removed or renamed, no new request field becomes required, and no field changes its meaning. Clients must ignore fields they don't know, and handle unknown values in fields whose description lists the possible values: such lists can grow. `info.version` is the API level; it is also returned as `api_version` by `GET /instance` and rises by one with every release that adds operations, fields or capabilities, so clients can detect features. Servers older than torq 1.1.0 have no `GET /instance` and answer 404: treat that as level 0.
   license:
@@ -480,12 +480,17 @@ paths:
                   type: string
                 role:
                   type: string
+                  description: "admin or member: picks the Administrator or Member role. Kept for older clients; role_id wins."
+                role_id:
+                  type: integer
+                  description: The user's role; without role and role_id the user gets the Member role.
                 username:
                   type: string
               additionalProperties: false
       x-torq-error-codes:
         - demo.accounts_locked
         - user.username_taken
+        - validation.invalid_choice
       responses:
         "201":
           description: Success.
@@ -529,10 +534,17 @@ paths:
                   type:
                     - string
                     - "null"
+                  description: "admin or member: picks the Administrator or Member role. Kept for older clients; must agree with role_id when both are sent."
+                role_id:
+                  type:
+                    - integer
+                    - "null"
+                  description: The user's role; takes effect on the user's next request.
               additionalProperties: false
       x-torq-error-codes:
         - demo.accounts_locked
         - user.last_admin
+        - validation.invalid_choice
       responses:
         "200":
           description: Success.
@@ -586,6 +598,199 @@ paths:
               additionalProperties: false
       x-torq-error-codes:
         - demo.accounts_locked
+      responses:
+        "204":
+          description: "Done; no body."
+        default:
+          $ref: "#/components/responses/Error"
+  "/users/{id}/vehicle-access":
+    get:
+      operationId: getUserVehicleAccess
+      summary: The vehicles assigned to a user
+      description: "Assignments only take effect while the user's role uses assigned vehicles (all_vehicles false); they are kept otherwise."
+      x-torq-access: admin
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VehicleAccess"
+        default:
+          $ref: "#/components/responses/Error"
+    put:
+      operationId: putUserVehicleAccess
+      summary: Replace the vehicles assigned to a user
+      x-torq-access: admin
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - items
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/VehicleAssignment"
+              additionalProperties: false
+      x-torq-error-codes:
+        - demo.accounts_locked
+        - validation.failed
+        - validation.invalid_choice
+        - validation.duplicate
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VehicleAccess"
+        default:
+          $ref: "#/components/responses/Error"
+  /roles:
+    get:
+      operationId: listRoles
+      summary: Roles, and the permissions a role can grant
+      description: "Built-in roles first (admin, member, viewer), then custom roles by name."
+      x-torq-access: admin
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                  - permissions
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Role"
+                  permissions:
+                    type: array
+                    description: Every permission in display order; the list can grow.
+                    items:
+                      type: object
+                      required:
+                        - key
+                        - scope
+                      properties:
+                        key:
+                          type: string
+                        scope:
+                          type: string
+                          description: "vehicle (applies to vehicles the user may edit) or garage."
+        default:
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: createRole
+      summary: Create a custom role
+      x-torq-access: admin
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoleInput"
+      x-torq-error-codes:
+        - demo.accounts_locked
+        - validation.failed
+        - validation.length
+        - validation.duplicate
+        - validation.invalid_choice
+      responses:
+        "201":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - role
+                properties:
+                  role:
+                    $ref: "#/components/schemas/Role"
+        default:
+          $ref: "#/components/responses/Error"
+  "/roles/{id}":
+    patch:
+      operationId: updateRole
+      summary: Rename, describe or change a role's permissions and vehicle access
+      description: "name null resets a built-in role to its translated name. The Administrator role can't be changed. Changes take effect on each affected user's next request."
+      x-torq-access: admin
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoleInput"
+      x-torq-error-codes:
+        - demo.accounts_locked
+        - role.builtin_locked
+        - validation.failed
+        - validation.length
+        - validation.duplicate
+        - validation.invalid_choice
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - role
+                properties:
+                  role:
+                    $ref: "#/components/schemas/Role"
+        default:
+          $ref: "#/components/responses/Error"
+    delete:
+      operationId: deleteRole
+      summary: Delete a custom role
+      x-torq-access: admin
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+        - name: move_to
+          in: query
+          description: The role the deleted role's users move to; required when it has users.
+          schema:
+            type: integer
+      x-torq-error-codes:
+        - demo.accounts_locked
+        - role.builtin_locked
+        - role.move_to_invalid
+        - validation.failed
+        - validation.required
       responses:
         "204":
           description: "Done; no body."
@@ -867,7 +1072,8 @@ paths:
     post:
       operationId: startCatalogUpdate
       summary: Start an online catalog update
-      x-torq-access: admin
+      x-torq-access: member
+      x-torq-permission: catalog.update
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -931,6 +1137,7 @@ paths:
       operationId: createVehicle
       summary: Create a vehicle
       x-torq-access: member
+      x-torq-permission: vehicles.create
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -984,6 +1191,7 @@ paths:
       operationId: updateVehicle
       summary: Update a vehicle
       x-torq-access: member
+      x-torq-permission: vehicles.edit
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -1023,6 +1231,7 @@ paths:
       operationId: deleteVehicle
       summary: Delete a vehicle and everything recorded for it
       x-torq-access: member
+      x-torq-permission: vehicles.delete
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -1045,11 +1254,64 @@ paths:
           description: "Done; no body."
         default:
           $ref: "#/components/responses/Error"
+  "/vehicles/{id}/access":
+    get:
+      operationId: listVehicleUsers
+      summary: Who can see a vehicle, and how
+      description: "Active users who see the vehicle: through a role that sees all vehicles (via role) or an assignment (via assignment, level view or edit)."
+      x-torq-access: admin
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - user_id
+                        - username
+                        - display_name
+                        - role_id
+                        - role_name
+                        - via
+                        - level
+                      properties:
+                        user_id:
+                          type: integer
+                        username:
+                          type: string
+                        display_name:
+                          type: string
+                        role_id:
+                          type: integer
+                        role_name:
+                          type: string
+                        via:
+                          type: string
+                          description: role or assignment.
+                        level:
+                          type: string
+                          description: "view or edit (edit for users who see the vehicle through their role)."
+        default:
+          $ref: "#/components/responses/Error"
   "/vehicles/{id}/archive":
     post:
       operationId: archiveVehicle
       summary: Archive a vehicle
       x-torq-access: member
+      x-torq-permission: vehicles.edit
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -1074,6 +1336,7 @@ paths:
       operationId: unarchiveVehicle
       summary: Restore an archived vehicle
       x-torq-access: member
+      x-torq-permission: vehicles.edit
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -1098,6 +1361,7 @@ paths:
       operationId: quickUpdateOdometer
       summary: Record an odometer reading
       x-torq-access: member
+      x-torq-permission: vehicles.edit
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -1188,6 +1452,7 @@ paths:
       operationId: createHourMeter
       summary: Add an hour meter to a vehicle
       x-torq-access: member
+      x-torq-permission: vehicles.edit
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -1235,6 +1500,7 @@ paths:
       operationId: renameHourMeter
       summary: Rename an hour meter
       x-torq-access: member
+      x-torq-permission: vehicles.edit
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -1272,6 +1538,7 @@ paths:
       summary: Remove an hour meter
       description: "Refused while service entries or repairs have hours for it, or reminders use only its hours (hour_meter.in_use with params service_logs, repairs and reminders), and on a vehicle without an odometer (hour_meter.required). Reminders that also use distance or time lose their hours interval."
       x-torq-access: member
+      x-torq-permission: vehicles.edit
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -1330,6 +1597,7 @@ paths:
       summary: Record an hour meter reading
       description: Same rules as the odometer quick update. A lower value or a jump of more than double the current value or more than 5,000 h needs the matching confirm flag.
       x-torq-access: member
+      x-torq-permission: vehicles.edit
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -1409,6 +1677,7 @@ paths:
       operationId: putSpecs
       summary: Replace the spec sheet values
       x-torq-access: member
+      x-torq-permission: specs.edit
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -1446,6 +1715,7 @@ paths:
       operationId: autofillSpecs
       summary: Look up spec sheet values on the web (optional feature)
       x-torq-access: member
+      x-torq-permission: specs.edit
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -1483,6 +1753,7 @@ paths:
       operationId: createSpecEntry
       summary: Add a custom spec entry
       x-torq-access: member
+      x-torq-permission: specs.edit
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -1519,6 +1790,7 @@ paths:
       operationId: reorderSpecEntries
       summary: Reorder custom spec entries
       x-torq-access: member
+      x-torq-permission: specs.edit
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -1559,6 +1831,7 @@ paths:
       operationId: updateSpecEntry
       summary: Update a custom spec entry
       x-torq-access: member
+      x-torq-permission: specs.edit
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -1598,6 +1871,7 @@ paths:
       operationId: deleteSpecEntry
       summary: Delete a custom spec entry
       x-torq-access: member
+      x-torq-permission: specs.edit
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -1654,6 +1928,7 @@ paths:
       operationId: createCategory
       summary: Create a service category
       x-torq-access: member
+      x-torq-permission: categories.manage
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -1682,6 +1957,7 @@ paths:
       operationId: updateCategory
       summary: Update a service category
       x-torq-access: member
+      x-torq-permission: categories.manage
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -1711,6 +1987,7 @@ paths:
       operationId: deleteCategory
       summary: Delete an unused service category
       x-torq-access: member
+      x-torq-permission: categories.manage
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -1730,6 +2007,7 @@ paths:
       operationId: archiveCategory
       summary: Archive a service category
       x-torq-access: member
+      x-torq-permission: categories.manage
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -1757,6 +2035,7 @@ paths:
       operationId: unarchiveCategory
       summary: Restore a service category
       x-torq-access: member
+      x-torq-permission: categories.manage
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -1844,6 +2123,7 @@ paths:
       operationId: createServiceLog
       summary: Log a service
       x-torq-access: member
+      x-torq-permission: service_logs.write
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -1908,6 +2188,7 @@ paths:
       operationId: replaceServiceLog
       summary: Replace a service logbook entry
       x-torq-access: member
+      x-torq-permission: service_logs.write
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -1944,6 +2225,7 @@ paths:
       operationId: deleteServiceLog
       summary: Delete a service logbook entry
       x-torq-access: member
+      x-torq-permission: service_logs.delete
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2020,6 +2302,7 @@ paths:
       operationId: createReminder
       summary: Create a reminder
       x-torq-access: member
+      x-torq-permission: reminders.write
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2074,6 +2357,7 @@ paths:
       operationId: updateReminder
       summary: Update a reminder
       x-torq-access: member
+      x-torq-permission: reminders.write
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2103,6 +2387,7 @@ paths:
       operationId: deleteReminder
       summary: Delete a reminder
       x-torq-access: member
+      x-torq-permission: reminders.write
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2118,6 +2403,7 @@ paths:
       operationId: markReminderDone
       summary: Mark a reminder as done without a logbook entry
       x-torq-access: member
+      x-torq-permission: reminders.write
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2167,6 +2453,7 @@ paths:
       operationId: pauseReminder
       summary: Pause a reminder
       x-torq-access: member
+      x-torq-permission: reminders.write
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2191,6 +2478,7 @@ paths:
       operationId: resumeReminder
       summary: Resume a paused reminder
       x-torq-access: member
+      x-torq-permission: reminders.write
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2331,6 +2619,7 @@ paths:
       operationId: createRepair
       summary: Create a repair project
       x-torq-access: member
+      x-torq-permission: repairs.write
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2385,6 +2674,7 @@ paths:
       operationId: updateRepair
       summary: Update a repair project
       x-torq-access: member
+      x-torq-permission: repairs.write
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2418,6 +2708,7 @@ paths:
       operationId: deleteRepair
       summary: Delete a repair project
       x-torq-access: member
+      x-torq-permission: repairs.delete
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2433,6 +2724,7 @@ paths:
       operationId: setRepairStatus
       summary: Change a repair project's status
       x-torq-access: member
+      x-torq-permission: repairs.write
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2492,6 +2784,7 @@ paths:
       operationId: createPart
       summary: Add a part to a repair project
       x-torq-access: member
+      x-torq-permission: repairs.write
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2522,6 +2815,7 @@ paths:
       operationId: reorderParts
       summary: Reorder a repair project's parts
       x-torq-access: member
+      x-torq-permission: repairs.write
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2560,6 +2854,7 @@ paths:
       operationId: updatePart
       summary: Update a part
       x-torq-access: member
+      x-torq-permission: repairs.write
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2589,6 +2884,7 @@ paths:
       operationId: deletePart
       summary: Delete a part
       x-torq-access: member
+      x-torq-permission: repairs.write
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2630,6 +2926,7 @@ paths:
       operationId: createRepairPriority
       summary: Add a project priority at the end of the list
       x-torq-access: member
+      x-torq-permission: repair_lists.manage
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2664,6 +2961,7 @@ paths:
       operationId: reorderRepairPriorities
       summary: Set the order of all project priorities
       x-torq-access: member
+      x-torq-permission: repair_lists.manage
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2706,6 +3004,7 @@ paths:
       operationId: updateRepairPriority
       summary: Rename, recolor or set a project priority as the default
       x-torq-access: member
+      x-torq-permission: repair_lists.manage
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2740,6 +3039,7 @@ paths:
       operationId: deleteRepairPriority
       summary: Delete a project priority
       x-torq-access: member
+      x-torq-permission: repair_lists.manage
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2791,6 +3091,7 @@ paths:
       operationId: renameRepairTag
       summary: Rename a project tag on every project
       x-torq-access: member
+      x-torq-permission: repair_lists.manage
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2831,6 +3132,7 @@ paths:
       operationId: deleteRepairTag
       summary: Delete a project tag from every project
       x-torq-access: member
+      x-torq-permission: repair_lists.manage
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2846,6 +3148,7 @@ paths:
       operationId: uploadServiceLogAttachment
       summary: Attach a photo or PDF to a logbook entry
       x-torq-access: member
+      x-torq-permission: service_logs.write
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2887,6 +3190,7 @@ paths:
       operationId: uploadRepairAttachment
       summary: Attach a photo or PDF to a repair project
       x-torq-access: member
+      x-torq-permission: repairs.write
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2928,6 +3232,7 @@ paths:
       operationId: uploadSpecEntryAttachment
       summary: Attach a photo or PDF to a spec entry
       x-torq-access: member
+      x-torq-permission: specs.edit
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2995,6 +3300,7 @@ paths:
       summary: Turn the public link on, or change its options
       description: "Creates the link (201) or changes the options of the existing one (200); the token stays the same. Omitted options keep their value (off for a new link)."
       x-torq-access: member
+      x-torq-permission: shares.manage
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -3048,6 +3354,7 @@ paths:
       summary: Turn the public link off
       description: "The link stops working at once; turning it on again creates a new token."
       x-torq-access: member
+      x-torq-permission: shares.manage
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -3064,6 +3371,7 @@ paths:
       summary: Give the public link a new token
       description: "The old address stops working at once."
       x-torq-access: member
+      x-torq-permission: shares.manage
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -3092,6 +3400,7 @@ paths:
       operationId: putAvatar
       summary: Set the vehicle photo
       x-torq-access: member
+      x-torq-permission: vehicles.edit
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -3130,6 +3439,7 @@ paths:
       operationId: deleteAvatar
       summary: Remove the vehicle photo
       x-torq-access: member
+      x-torq-permission: vehicles.edit
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -3642,6 +3952,7 @@ paths:
       operationId: history
       summary: Export the vehicle history as JSON or CSV
       x-torq-access: member
+      x-torq-permission: history.export
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -5649,6 +5960,89 @@ components:
         sort_order:
           type: integer
           description: 1 is the most urgent.
+    Role:
+      type: object
+      required:
+        - id
+        - name
+        - custom_name
+        - builtin_key
+        - description
+        - all_vehicles
+        - permissions
+        - user_count
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          description: custom_name, or the built-in role's name in the caller's language.
+        custom_name:
+          type:
+            - string
+            - "null"
+        builtin_key:
+          type:
+            - string
+            - "null"
+          description: "admin, member or viewer; null for custom roles."
+        description:
+          type: string
+        all_vehicles:
+          type: boolean
+          description: "True: the role's users see every vehicle. False: only vehicles assigned to them."
+        permissions:
+          type: array
+          description: The permissions the role grants (every one for the Administrator role).
+          items:
+            type: string
+        user_count:
+          type: integer
+    RoleInput:
+      type: object
+      properties:
+        name:
+          type:
+            - string
+            - "null"
+          description: "1–40 characters, unique regardless of case. Required on create; null on update resets a built-in role's name."
+        description:
+          type: string
+          description: Up to 200 characters.
+        all_vehicles:
+          type: boolean
+          description: Defaults to true on create.
+        permissions:
+          type: array
+          description: Replaces the role's permissions; keys from GET /roles.
+          items:
+            type: string
+      additionalProperties: false
+    VehicleAssignment:
+      type: object
+      required:
+        - vehicle_id
+        - level
+      properties:
+        vehicle_id:
+          type: integer
+        level:
+          type: string
+          description: "view (read only) or edit (the role's per-vehicle permissions apply)."
+      additionalProperties: false
+    VehicleAccess:
+      type: object
+      required:
+        - all_vehicles
+        - items
+      properties:
+        all_vehicles:
+          type: boolean
+          description: Whether the user's role sees every vehicle; the assignments then have no effect.
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/VehicleAssignment"
     RepairPriorityInput:
       type: object
       properties:
@@ -6193,6 +6587,9 @@ components:
         - priority_display
         - card_tag_limit
         - role
+        - role_id
+        - role_name
+        - role_builtin_key
         - time_format
         - torque_unit
         - username
@@ -6248,7 +6645,28 @@ components:
           description: "l or qt (US quarts). Volumes are always sent in mL."
         role:
           type: string
-          description: admin or member.
+          description: "admin for the Administrator role, member for every other role. Kept for older clients; role_id is the actual role."
+        role_id:
+          type: integer
+        role_name:
+          type: string
+          description: The role's name, translated into the caller's language for built-in roles that weren't renamed.
+        role_builtin_key:
+          type:
+            - string
+            - "null"
+          description: "admin, member or viewer for built-in roles; null for custom roles."
+        vehicle_count:
+          type: integer
+          description: Number of vehicles assigned to the user (admin user list only).
+        permissions:
+          type: array
+          description: "The signed-in user's granted permissions, see x-torq-permission (me, login and setup responses only). Administrators hold every permission."
+          items:
+            type: string
+        all_vehicles:
+          type: boolean
+          description: "Whether the signed-in user sees every vehicle (me, login and setup responses only); otherwise only assigned ones."
         username:
           type: string
     Vehicle:
@@ -6276,11 +6694,17 @@ components:
         - power_unit
         - power_w
         - reminder_counts
+        - permissions
         - tsn
         - updated_at
         - vehicle_type
         - vin
       properties:
+        permissions:
+          type: array
+          description: "The caller's per-vehicle permissions on this vehicle (see x-torq-permission). Empty when they may only read it."
+          items:
+            type: string
         archived:
           type: boolean
         avatar_url:

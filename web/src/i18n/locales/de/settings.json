@@ -93,7 +93,7 @@
   },
   "users": {
     "title": "Benutzer",
-    "intro": "Alle im Haushalt teilen sich eine Garage. Administratoren verwalten zusätzlich Benutzer, Webhooks und Instanz-Einstellungen.",
+    "intro": "Alle teilen sich eine Garage. Die Rolle eines Benutzers legt fest, was er ändern darf und welche Fahrzeuge er sieht; Administratoren verwalten zusätzlich Benutzer, Rollen, Webhooks und Instanz-Einstellungen.",
     "add": "Benutzer hinzufügen",
     "role": "Rolle",
     "roles": {
@@ -110,7 +110,20 @@
     "passwordReset": "Passwort zurückgesetzt.",
     "deleteTitle": "Benutzer löschen",
     "deleteBody": "{{name}} löschen? Von ihnen angelegte Einträge bleiben in der Garage erhalten.",
-    "you": "du"
+    "you": "du",
+    "vehicles": "Fahrzeuge",
+    "roleOf": "Rolle von {{name}}",
+    "allVehicles": "Alle Fahrzeuge",
+    "vehicleCount_one": "{{count}} Fahrzeug",
+    "vehicleCount_other": "{{count}} Fahrzeuge",
+    "vehicleAccessTitle": "Fahrzeuge für {{name}}",
+    "accessIntro": "Ansehen: sieht das Fahrzeug und alles dazu. Bearbeiten: darf außerdem die Änderungen machen, die die Rolle erlaubt.",
+    "allVehiclesNote": "Die Rolle {{role}} sieht alle Fahrzeuge. Diese Zuordnungen wirken erst, wenn die Rolle auf zugeordnete Fahrzeuge beschränkt wird.",
+    "access": {
+      "none": "Keine",
+      "view": "Ansehen",
+      "edit": "Bearbeiten"
+    }
   },
   "devices": {
     "title": "Geräte",
@@ -229,5 +242,53 @@
     "installIOS": "iPhone und iPad",
     "installAndroid": "Android",
     "installDesktop": "Desktop"
+  },
+  "roles": {
+    "title": "Rollen",
+    "intro": "Eine Rolle legt fest, was ihre Benutzer ändern dürfen und welche Fahrzeuge sie sehen. Ansehen ist bei sichtbaren Fahrzeugen immer erlaubt.",
+    "add": "Rolle hinzufügen",
+    "name": "Name",
+    "description": "Beschreibung",
+    "vehicles": "Fahrzeuge",
+    "users": "Benutzer",
+    "builtin": "Eingebaut",
+    "editNamed": "{{name}} bearbeiten",
+    "deleteNamed": "{{name}} löschen",
+    "resetName": "Namen zurücksetzen",
+    "allVehicles": "Alle Fahrzeuge",
+    "assignedVehicles": "Zugeordnete Fahrzeuge",
+    "allVehiclesHint": "Benutzer mit dieser Rolle sehen alle Fahrzeuge der Garage.",
+    "assignedVehiclesHint": "Benutzer mit dieser Rolle sehen nur die Fahrzeuge, die ihnen unter Benutzer zugeordnet sind; selbst angelegte Fahrzeuge werden ihnen zugeordnet.",
+    "losingVehicles_one": "{{count}} Benutzer hat diese Rolle und sieht dann nur noch die ihm zugeordneten Fahrzeuge.",
+    "losingVehicles_other": "{{count}} Benutzer haben diese Rolle und sehen dann nur noch die ihnen zugeordneten Fahrzeuge.",
+    "adminOnly": "Benutzer, Rollen, Fahrzeugzugriff, Webhooks und Instanz-Einstellungen bleiben immer Administratoren vorbehalten.",
+    "deleteBody": "Diese Rolle löschen?",
+    "deleteMove_one": "{{count}} Benutzer hat diese Rolle. Wähle die Rolle, in die er wechselt.",
+    "deleteMove_other": "{{count}} Benutzer haben diese Rolle. Wähle die Rolle, in die sie wechseln.",
+    "moveTo": "Benutzer verschieben nach",
+    "scope": {
+      "vehicle": "Pro Fahrzeug",
+      "garage": "Für die ganze Garage"
+    },
+    "scopeHint": {
+      "vehicle": "Bei Fahrzeugen, die der Benutzer bearbeiten darf.",
+      "garage": "Einstellungen, die die ganze Garage teilt."
+    },
+    "permission": {
+      "vehicles.edit": "Fahrzeuge bearbeiten (Profil, Stände, Betriebsstundenzähler, Foto, Archiv)",
+      "vehicles.delete": "Fahrzeuge löschen",
+      "specs.edit": "Datenblatt bearbeiten",
+      "service_logs.write": "Serviceeinträge anlegen und bearbeiten",
+      "service_logs.delete": "Serviceeinträge löschen",
+      "reminders.write": "Erinnerungen verwalten",
+      "repairs.write": "Projekte anlegen und bearbeiten",
+      "repairs.delete": "Projekte löschen",
+      "shares.manage": "Öffentliche Links verwalten",
+      "history.export": "Historie exportieren und drucken",
+      "vehicles.create": "Fahrzeuge hinzufügen",
+      "categories.manage": "Servicekategorien verwalten",
+      "repair_lists.manage": "Projektprioritäten und Tags verwalten",
+      "catalog.update": "Fahrzeugkatalog online aktualisieren"
+    }
   }
 }

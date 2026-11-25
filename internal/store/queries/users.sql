@@ -2,10 +2,10 @@
 SELECT COUNT(*) FROM users;
 
 -- name: CreateUser :one
-INSERT INTO users (username, display_name, role, locale, date_format, number_format, time_format, currency_code,
+INSERT INTO users (username, display_name, role, role_id, locale, date_format, number_format, time_format, currency_code,
                    power_unit, distance_unit, volume_unit, torque_unit, pressure_unit, displacement_unit,
                    created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING *;
 
 -- name: GetUser :one
@@ -30,7 +30,7 @@ WHERE id = ?
 RETURNING *;
 
 -- name: SetUserRole :one
-UPDATE users SET role = ?, updated_at = ? WHERE id = ? RETURNING *;
+UPDATE users SET role = ?, role_id = ?, updated_at = ? WHERE id = ? RETURNING *;
 
 -- name: SetUserDisabled :one
 UPDATE users SET disabled_at = ?, updated_at = ? WHERE id = ? RETURNING *;

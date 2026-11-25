@@ -60,7 +60,7 @@ func readingsOut(in []vehicles.HoursReading) []meterReadingJSON {
 }
 
 func (s *Server) createHourMeter(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, err := s.pathVehicle(r)
 	if err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func (s *Server) createHourMeter(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) renameHourMeter(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, err := s.pathMeter(r)
 	if err != nil {
 		return err
 	}
@@ -109,7 +109,7 @@ func (s *Server) renameHourMeter(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) deleteHourMeter(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, err := s.pathMeter(r)
 	if err != nil {
 		return err
 	}
@@ -121,7 +121,7 @@ func (s *Server) deleteHourMeter(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) quickUpdateHours(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, err := s.pathMeter(r)
 	if err != nil {
 		return err
 	}
@@ -161,7 +161,7 @@ type hoursReadingJSON struct {
 }
 
 func (s *Server) listHourMeterReadings(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, err := s.pathMeter(r)
 	if err != nil {
 		return err
 	}
@@ -178,4 +178,18 @@ func (s *Server) listHourMeterReadings(w http.ResponseWriter, r *http.Request) e
 	}
 	writeJSON(w, http.StatusOK, newList(items, int64(len(items))))
 	return nil
+}
+
+// pathMeter parses the {id} wildcard as an hour meter and checks its vehicle
+// for the route's permission.
+func (s *Server) pathMeter(r *http.Request) (int64, error) {
+	id, err := pathID(r, "id")
+	if err != nil {
+		return 0, err
+	}
+	m, err := s.vehicles.GetMeter(r.Context(), id)
+	if err != nil {
+		return 0, err
+	}
+	return id, s.guard(r, m.VehicleID)
 }

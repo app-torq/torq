@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Pencil } from 'lucide-react'
 import { useFormat } from '../../lib/useFormat'
 import { useErrorText } from '../../lib/errors'
+import { canOn } from '../../lib/permissions'
 import { vehicleName, type Vehicle } from '../../lib/types'
 import { Badge, ErrorBanner, Loading } from '../../components/ui'
 import { useVehicle } from './hooks'
@@ -39,10 +40,12 @@ export function VehicleDetailLayout() {
             {[v.chassis_code, v.engine_code, v.model_year, currentReading(v, fmt, t)].filter(Boolean).join(' · ')}
           </p>
         </div>
-        <Link to={`/vehicles/${v.id}/edit`} className="focus-ring inline-flex h-10 items-center gap-2 rounded-md border border-zinc-700 bg-zinc-900 px-4 text-sm hover:bg-zinc-800">
-          <Pencil size={15} />
-          {t('common:actions.edit')}
-        </Link>
+        {canOn(v, 'vehicles.edit') && (
+          <Link to={`/vehicles/${v.id}/edit`} className="focus-ring inline-flex h-10 items-center gap-2 rounded-md border border-zinc-700 bg-zinc-900 px-4 text-sm hover:bg-zinc-800">
+            <Pencil size={15} />
+            {t('common:actions.edit')}
+          </Link>
+        )}
       </div>
       <nav className="mb-6 flex gap-1 overflow-x-auto border-b border-zinc-800">
         {vehicleTabs.map((tab) => (

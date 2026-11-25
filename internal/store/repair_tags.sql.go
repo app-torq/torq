@@ -7,6 +7,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"strings"
 )
 
@@ -158,8 +159,12 @@ func (q *Queries) ListRepairLogTags(ctx context.Context, ids []int64) ([]ListRep
 }
 
 const listRepairTags = `-- name: ListRepairTags :many
-SELECT t.id, t.name, t.created_at, t.updated_at, CAST((SELECT COUNT(*) FROM repair_log_tags rt WHERE rt.tag_id = t.id) AS INTEGER) AS project_count
+SELECT t.id, t.name, t.created_at, t.updated_at, CAST((SELECT COUNT(*) FROM repair_log_tags rt JOIN repair_logs r ON r.id = rt.repair_log_id
+                  WHERE rt.tag_id = t.id AND (CAST(?1 AS TEXT) IS NULL OR r.vehicle_id IN (SELECT value FROM json_each(CAST(?1 AS TEXT))))) AS INTEGER) AS project_count
 FROM repair_tags t
+WHERE CAST(?1 AS TEXT) IS NULL
+   OR EXISTS (SELECT 1 FROM repair_log_tags rt JOIN repair_logs r ON r.id = rt.repair_log_id
+              WHERE rt.tag_id = t.id AND r.vehicle_id IN (SELECT value FROM json_each(CAST(?1 AS TEXT))))
 ORDER BY t.name COLLATE NOCASE, t.id
 `
 
@@ -171,8 +176,9 @@ type ListRepairTagsRow struct {
 	ProjectCount int64
 }
 
-func (q *Queries) ListRepairTags(ctx context.Context) ([]ListRepairTagsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listRepairTags)
+// With a scope, counts cover visible projects only and tags without one are left out.
+func (q *Queries) ListRepairTags(ctx context.Context, scope sql.NullString) ([]ListRepairTagsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listRepairTags, scope)
 	if err != nil {
 		return nil, err
 	}

@@ -8,6 +8,7 @@ import { queryKeys } from '../../lib/queryKeys'
 import { useFormat } from '../../lib/useFormat'
 import { powerW } from '../../lib/format'
 import { useErrorText } from '../../lib/errors'
+import { canOn, useIsAdmin } from '../../lib/permissions'
 import { vehicleName, type ListResponse, type OdometerReading } from '../../lib/types'
 import { Button } from '../../components/Button'
 import { ConfirmDialog } from '../../components/Dialog'
@@ -15,6 +16,7 @@ import { Card, DefinitionList, ErrorBanner, Table } from '../../components/ui'
 import { invalidateOdometerDependents } from './hooks'
 import { OdometerQuickUpdate } from './OdometerQuickUpdate'
 import { VehicleQrCard } from './VehicleQrCard'
+import { VehicleAccessCard } from './VehicleAccessCard'
 import { AddHourMeter, HourMeterCard } from './HourMeterCard'
 import { useVehicleContext } from './VehicleDetailLayout'
 
@@ -26,6 +28,9 @@ export function VehicleOverview() {
   const navigate = useNavigate()
   const errorText = useErrorText()
   const [deleting, setDeleting] = useState(false)
+  const canEdit = canOn(v, 'vehicles.edit')
+  const canDelete = canOn(v, 'vehicles.delete')
+  const isAdmin = useIsAdmin()
 
   const readings = useQuery({
     queryKey: queryKeys.odometerReadings(v.id),
@@ -72,7 +77,7 @@ export function VehicleOverview() {
       {v.has_odometer && (
       <Card title={t('odometer.title')}>
         <div className="space-y-4">
-          {!v.archived && <OdometerQuickUpdate vehicle={v} />}
+          {!v.archived && canEdit && <OdometerQuickUpdate vehicle={v} />}
           <div>
             <h3 className="mb-2 text-xs uppercase tracking-wide text-zinc-400">{t('odometer.history')}</h3>
             {readings.isError && <ErrorBanner message={errorText(readings.error)} />}
@@ -96,24 +101,31 @@ export function VehicleOverview() {
       </Card>
       )}
       {v.hour_meters.map((m) => <HourMeterCard key={m.id} vehicle={v} meter={m} />)}
-      {v.has_odometer && v.hour_meters.length === 0 && !v.archived && <AddHourMeter vehicle={v} />}
+      {v.has_odometer && v.hour_meters.length === 0 && !v.archived && canEdit && <AddHourMeter vehicle={v} />}
       <VehicleQrCard vehicle={v} />
+      {isAdmin && <VehicleAccessCard vehicle={v} />}
+      {(canEdit || canDelete) && (
       <Card className="lg:col-span-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="max-w-xl text-sm text-zinc-400">{t('archiveHint')}</p>
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => { archive.mutate() }} disabled={archive.isPending}>
-              {v.archived ? <ArchiveRestore size={16} /> : <Archive size={16} />}
-              {v.archived ? t('actions.unarchive') : t('actions.archive')}
-            </Button>
-            <Button variant="danger" onClick={() => { setDeleting(true) }}>
-              <Trash2 size={16} />
-              {t('actions.delete')}
-            </Button>
+            {canEdit && (
+              <Button onClick={() => { archive.mutate() }} disabled={archive.isPending}>
+                {v.archived ? <ArchiveRestore size={16} /> : <Archive size={16} />}
+                {v.archived ? t('actions.unarchive') : t('actions.archive')}
+              </Button>
+            )}
+            {canDelete && (
+              <Button variant="danger" onClick={() => { setDeleting(true) }}>
+                <Trash2 size={16} />
+                {t('actions.delete')}
+              </Button>
+            )}
           </div>
         </div>
         {archive.isError && <div className="mt-3"><ErrorBanner message={errorText(archive.error)} /></div>}
       </Card>
+      )}
       <ConfirmDialog
         open={deleting}
         title={t('deleteTitle')}

@@ -40,19 +40,21 @@ func (q *Queries) CountInconsistentServiceLogs(ctx context.Context, arg CountInc
 const countServiceLogs = `-- name: CountServiceLogs :one
 SELECT COUNT(*) FROM service_logs sl
 WHERE (CAST(?1 AS INTEGER) = 0 OR sl.vehicle_id = ?1)
-  AND (CAST(?2 AS INTEGER) = 0
-       OR EXISTS (SELECT 1 FROM service_log_items i WHERE i.service_log_id = sl.id AND i.category_id = ?2))
-  AND (CAST(?3 AS TEXT) = '' OR sl.service_date >= ?3)
-  AND (CAST(?4 AS TEXT) = '' OR sl.service_date <= ?4)
-  AND (CAST(?5 AS TEXT) = ''
-       OR sl.notes LIKE '%' || ?5 || '%'
+  AND (CAST(?2 AS TEXT) IS NULL OR sl.vehicle_id IN (SELECT value FROM json_each(CAST(?2 AS TEXT))))
+  AND (CAST(?3 AS INTEGER) = 0
+       OR EXISTS (SELECT 1 FROM service_log_items i WHERE i.service_log_id = sl.id AND i.category_id = ?3))
+  AND (CAST(?4 AS TEXT) = '' OR sl.service_date >= ?4)
+  AND (CAST(?5 AS TEXT) = '' OR sl.service_date <= ?5)
+  AND (CAST(?6 AS TEXT) = ''
+       OR sl.notes LIKE '%' || ?6 || '%'
        OR EXISTS (SELECT 1 FROM service_log_items i WHERE i.service_log_id = sl.id
-                  AND (i.brand LIKE '%' || ?5 || '%' OR i.specification LIKE '%' || ?5 || '%'
-                       OR i.oem_part_number LIKE '%' || ?5 || '%' OR i.aftermarket_part_number LIKE '%' || ?5 || '%')))
+                  AND (i.brand LIKE '%' || ?6 || '%' OR i.specification LIKE '%' || ?6 || '%'
+                       OR i.oem_part_number LIKE '%' || ?6 || '%' OR i.aftermarket_part_number LIKE '%' || ?6 || '%')))
 `
 
 type CountServiceLogsParams struct {
 	VehicleID  int64
+	Scope      sql.NullString
 	CategoryID int64
 	FromDate   string
 	ToDate     string
@@ -62,6 +64,7 @@ type CountServiceLogsParams struct {
 func (q *Queries) CountServiceLogs(ctx context.Context, arg CountServiceLogsParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, countServiceLogs,
 		arg.VehicleID,
+		arg.Scope,
 		arg.CategoryID,
 		arg.FromDate,
 		arg.ToDate,
@@ -316,21 +319,23 @@ func (q *Queries) ListServiceLogItemsForLogs(ctx context.Context, ids []int64) (
 const listServiceLogs = `-- name: ListServiceLogs :many
 SELECT sl.id, sl.vehicle_id, sl.service_date, sl.odometer_km, sl.notes, sl.extra_cost_cents, sl.extra_cost_label, sl.created_by, sl.created_at, sl.updated_at, sl.odometer_recorded FROM service_logs sl
 WHERE (CAST(?1 AS INTEGER) = 0 OR sl.vehicle_id = ?1)
-  AND (CAST(?2 AS INTEGER) = 0
-       OR EXISTS (SELECT 1 FROM service_log_items i WHERE i.service_log_id = sl.id AND i.category_id = ?2))
-  AND (CAST(?3 AS TEXT) = '' OR sl.service_date >= ?3)
-  AND (CAST(?4 AS TEXT) = '' OR sl.service_date <= ?4)
-  AND (CAST(?5 AS TEXT) = ''
-       OR sl.notes LIKE '%' || ?5 || '%'
+  AND (CAST(?2 AS TEXT) IS NULL OR sl.vehicle_id IN (SELECT value FROM json_each(CAST(?2 AS TEXT))))
+  AND (CAST(?3 AS INTEGER) = 0
+       OR EXISTS (SELECT 1 FROM service_log_items i WHERE i.service_log_id = sl.id AND i.category_id = ?3))
+  AND (CAST(?4 AS TEXT) = '' OR sl.service_date >= ?4)
+  AND (CAST(?5 AS TEXT) = '' OR sl.service_date <= ?5)
+  AND (CAST(?6 AS TEXT) = ''
+       OR sl.notes LIKE '%' || ?6 || '%'
        OR EXISTS (SELECT 1 FROM service_log_items i WHERE i.service_log_id = sl.id
-                  AND (i.brand LIKE '%' || ?5 || '%' OR i.specification LIKE '%' || ?5 || '%'
-                       OR i.oem_part_number LIKE '%' || ?5 || '%' OR i.aftermarket_part_number LIKE '%' || ?5 || '%')))
+                  AND (i.brand LIKE '%' || ?6 || '%' OR i.specification LIKE '%' || ?6 || '%'
+                       OR i.oem_part_number LIKE '%' || ?6 || '%' OR i.aftermarket_part_number LIKE '%' || ?6 || '%')))
 ORDER BY sl.service_date DESC, sl.odometer_km DESC, sl.id DESC
-LIMIT ?7 OFFSET ?6
+LIMIT ?8 OFFSET ?7
 `
 
 type ListServiceLogsParams struct {
 	VehicleID  int64
+	Scope      sql.NullString
 	CategoryID int64
 	FromDate   string
 	ToDate     string
@@ -342,6 +347,7 @@ type ListServiceLogsParams struct {
 func (q *Queries) ListServiceLogs(ctx context.Context, arg ListServiceLogsParams) ([]ServiceLog, error) {
 	rows, err := q.db.QueryContext(ctx, listServiceLogs,
 		arg.VehicleID,
+		arg.Scope,
 		arg.CategoryID,
 		arg.FromDate,
 		arg.ToDate,

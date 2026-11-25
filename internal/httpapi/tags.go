@@ -18,7 +18,7 @@ func toTagJSON(t repairs.Tag) tagJSON {
 }
 
 func (s *Server) listTags(w http.ResponseWriter, r *http.Request) error {
-	rows, err := s.repairs.ListTags(r.Context())
+	rows, err := s.repairs.ListTags(r.Context(), visibleVehicles(r))
 	if err != nil {
 		return err
 	}
@@ -50,7 +50,7 @@ func (s *Server) renameTag(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	// Answer with the project count, like the list.
-	rows, err := s.repairs.ListTags(r.Context())
+	rows, err := s.repairs.ListTags(r.Context(), visibleVehicles(r))
 	if err != nil {
 		return err
 	}

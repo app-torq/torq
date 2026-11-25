@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../lib/api'
 import { fieldErrors, useErrorText } from '../../lib/errors'
+import { canOn } from '../../lib/permissions'
 import { vehicleName, type Repair } from '../../lib/types'
 import { Button } from '../../components/Button'
 import { SelectField, TextAreaField, TextField } from '../../components/Field'
@@ -57,7 +58,7 @@ export function NewRepairDialog({ vehicleId, onClose }: { vehicleId?: number | u
           value={vehicle}
           onChange={setVehicle}
           error={fe.vehicle_id}
-          options={[{ value: '', label: '—' }, ...(vehicles.data?.items ?? []).map((v) => ({ value: String(v.id), label: vehicleName(v) }))]}
+          options={[{ value: '', label: '—' }, ...(vehicles.data?.items ?? []).filter((v) => canOn(v, 'repairs.write') || String(v.id) === vehicle).map((v) => ({ value: String(v.id), label: vehicleName(v) }))]}
         />
         <TextField label={t('fields.title')} value={title} onChange={setTitle} error={fe.title} maxLength={120} autoFocus />
         <PrioritySelect value={priority} onChange={setPriority} error={fe.priority_id} />

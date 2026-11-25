@@ -50,7 +50,7 @@ func toPriorityJSON(p store.RepairPriority, count int64) priorityJSON {
 }
 
 func (s *Server) listPriorities(w http.ResponseWriter, r *http.Request) error {
-	rows, err := s.repairs.ListPriorities(r.Context())
+	rows, err := s.repairs.ListPriorities(r.Context(), visibleVehicles(r))
 	if err != nil {
 		return err
 	}
@@ -74,7 +74,7 @@ func (in priorityInput) domain() repairs.PriorityInput {
 
 // writePriority answers with one priority, including its project count.
 func (s *Server) writePriority(w http.ResponseWriter, r *http.Request, status int, id int64) error {
-	rows, err := s.repairs.ListPriorities(r.Context())
+	rows, err := s.repairs.ListPriorities(r.Context(), visibleVehicles(r))
 	if err != nil {
 		return err
 	}

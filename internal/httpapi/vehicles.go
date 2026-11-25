@@ -2,9 +2,12 @@ package httpapi
 
 import (
 	"context"
+	"database/sql"
 	"net/http"
 
 	"github.com/app-torq/torq/internal/apperr"
+	"github.com/app-torq/torq/internal/auth"
+	"github.com/app-torq/torq/internal/clock"
 	"github.com/app-torq/torq/internal/store"
 	"github.com/app-torq/torq/internal/vehicles"
 )
@@ -39,8 +42,10 @@ type vehicleJSON struct {
 	AvatarURL         *string         `json:"avatar_url"`
 	Archived          bool            `json:"archived"`
 	ReminderCounts    reminderCounts  `json:"reminder_counts"`
-	CreatedAt         string          `json:"created_at"`
-	UpdatedAt         string          `json:"updated_at"`
+	// Permissions are the caller's per-vehicle permissions on it.
+	Permissions []auth.Permission `json:"permissions"`
+	CreatedAt   string            `json:"created_at"`
+	UpdatedAt   string            `json:"updated_at"`
 }
 
 // vehicleExtras are derived values shown on vehicle cards.
@@ -48,6 +53,7 @@ type vehicleExtras struct {
 	counts map[int64]reminderCounts
 	avatar map[int64]string
 	meters map[int64][]store.HourMeter
+	access auth.Access
 }
 
 func (s *Server) toVehicleJSON(v store.Vehicle, x vehicleExtras) vehicleJSON {
@@ -58,7 +64,7 @@ func (s *Server) toVehicleJSON(v store.Vehicle, x vehicleExtras) vehicleJSON {
 		PowerW: intPtr(v.PowerW), FuelType: strPtr(v.FuelType), CurrentOdometerKm: v.CurrentOdometerKm,
 		HasOdometer: v.HasOdometer == 1, HourMeters: toHourMetersJSON(x.meters[v.ID]),
 		OdometerUnit: v.OdometerUnit, DisplacementUnit: strPtr(v.DisplacementUnit), PowerUnit: strPtr(v.PowerUnit), Archived: v.ArchivedAt.Valid,
-		ReminderCounts: x.counts[v.ID], CreatedAt: v.CreatedAt, UpdatedAt: v.UpdatedAt,
+		ReminderCounts: x.counts[v.ID], Permissions: x.access.VehiclePermissions(v.ID), CreatedAt: v.CreatedAt, UpdatedAt: v.UpdatedAt,
 	}
 	if url, ok := x.avatar[v.ID]; ok {
 		out.AvatarURL = &url
@@ -69,6 +75,9 @@ func (s *Server) toVehicleJSON(v store.Vehicle, x vehicleExtras) vehicleJSON {
 // loadVehicleExtras loads reminder counts and avatar URLs for vehicle cards.
 func (s *Server) loadVehicleExtras(ctx context.Context) (vehicleExtras, error) {
 	x := vehicleExtras{counts: map[int64]reminderCounts{}, avatar: map[int64]string{}}
+	if u, ok := auth.UserFrom(ctx); ok {
+		x.access = u.Access
+	}
 	counts, err := s.reminders.CountsByVehicle(ctx)
 	if err != nil {
 		return x, err
@@ -151,7 +160,7 @@ func (s *Server) listVehicles(w http.ResponseWriter, r *http.Request) error {
 	default:
 		return apperr.BadRequest("request.malformed")
 	}
-	rows, err := s.vehicles.List(r.Context(), filter)
+	rows, err := s.vehicles.List(r.Context(), filter, visibleVehicles(r))
 	if err != nil {
 		return err
 	}
@@ -195,9 +204,21 @@ func (s *Server) createVehicle(w http.ResponseWriter, r *http.Request) error {
 	if in.CurrentOdometerKm == nil {
 		in.CurrentOdometerKm = new(int64)
 	}
-	veh, err := s.vehicles.Create(r.Context(), p, *in.CurrentOdometerKm, currentUser(r).ID)
+	me := currentUser(r)
+	var grant func(ctx context.Context, tx *sql.Tx, vehicleID int64) error
+	if _, all := me.Access.Scope(); !all {
+		// Users who see only assigned vehicles can edit the ones they add.
+		grant = func(ctx context.Context, tx *sql.Tx, vehicleID int64) error {
+			return auth.GrantVehicle(ctx, tx, clock.Timestamp(s.Clock.Now()), me.ID, vehicleID)
+		}
+	}
+	veh, err := s.vehicles.CreateThen(r.Context(), p, *in.CurrentOdometerKm, me.ID, grant)
 	if err != nil {
 		return err
+	}
+	if grant != nil && me.Access.Vehicles != nil {
+		// The response already shows what the user may do with it.
+		me.Access.Vehicles[veh.ID] = auth.LevelEdit
 	}
 	out, err := s.vehicleOut(r.Context(), veh)
 	if err != nil {
@@ -208,7 +229,7 @@ func (s *Server) createVehicle(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) getVehicle(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, err := s.pathVehicle(r)
 	if err != nil {
 		return err
 	}
@@ -225,7 +246,7 @@ func (s *Server) getVehicle(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) updateVehicle(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, err := s.pathVehicle(r)
 	if err != nil {
 		return err
 	}
@@ -266,7 +287,7 @@ func (s *Server) updateVehicle(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) deleteVehicle(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, err := s.pathVehicle(r)
 	if err != nil {
 		return err
 	}
@@ -285,7 +306,7 @@ func (s *Server) deleteVehicle(w http.ResponseWriter, r *http.Request) error {
 
 func (s *Server) setVehicleArchived(archived bool) handlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) error {
-		id, err := pathID(r, "id")
+		id, err := s.pathVehicle(r)
 		if err != nil {
 			return err
 		}
@@ -303,7 +324,7 @@ func (s *Server) setVehicleArchived(archived bool) handlerFunc {
 }
 
 func (s *Server) quickUpdateOdometer(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, err := s.pathVehicle(r)
 	if err != nil {
 		return err
 	}
@@ -353,7 +374,7 @@ type readingJSON struct {
 }
 
 func (s *Server) listOdometerReadings(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, err := s.pathVehicle(r)
 	if err != nil {
 		return err
 	}

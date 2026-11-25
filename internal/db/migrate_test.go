@@ -602,3 +602,96 @@ func TestVehicleSharesMigration(t *testing.T) {
 		t.Fatalf("link survived its vehicle: %d %v", shares, err)
 	}
 }
+
+// TestRolesMigration covers migration 00021: administrators and members keep
+// what they could do, and the new tables enforce their constraints.
+func TestRolesMigration(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	d, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	sub, err := fs.Sub(migrationsFS, "migrations")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := goose.NewProvider(goose.DialectSQLite3, d.Writer, sub)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.UpTo(ctx, 20); err != nil {
+		t.Fatal(err)
+	}
+	for _, stmt := range []string{
+		`INSERT INTO users (id, username, display_name, role, created_at, updated_at) VALUES (1, 'admin', 'Admin', 'admin', 'x', 'x')`,
+		`INSERT INTO users (id, username, display_name, role, created_at, updated_at) VALUES (2, 'anna', 'Anna', 'member', 'x', 'x')`,
+		`INSERT INTO users (id, username, display_name, role, created_at, updated_at) VALUES (3, 'ben', 'Ben', 'member', 'x', 'x')`,
+		`INSERT INTO vehicles (id, make, model, current_odometer_km, created_at, updated_at) VALUES (1, 'BMW', '330d', 4000, 'x', 'x')`,
+	} {
+		if _, err := d.Writer.ExecContext(ctx, stmt); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := Migrate(ctx, d, dir); err != nil {
+		t.Fatal(err)
+	}
+
+	roleOf := func(user int) string {
+		var key string
+		if err := d.Reader.QueryRowContext(ctx, `SELECT roles.builtin_key FROM users JOIN roles ON roles.id = users.role_id WHERE users.id = ?`, user).Scan(&key); err != nil {
+			t.Fatal(err)
+		}
+		return key
+	}
+	if roleOf(1) != "admin" || roleOf(2) != "member" || roleOf(3) != "member" {
+		t.Fatalf("roles after migration: %s %s %s", roleOf(1), roleOf(2), roleOf(3))
+	}
+	var member, viewer, admin, access int
+	if err := d.Reader.QueryRowContext(ctx, `SELECT
+		(SELECT count(*) FROM role_permissions JOIN roles ON roles.id = role_id WHERE builtin_key = 'member'),
+		(SELECT count(*) FROM role_permissions JOIN roles ON roles.id = role_id WHERE builtin_key = 'viewer'),
+		(SELECT count(*) FROM role_permissions JOIN roles ON roles.id = role_id WHERE builtin_key = 'admin'),
+		(SELECT count(*) FROM vehicle_access)`).Scan(&member, &viewer, &admin, &access); err != nil {
+		t.Fatal(err)
+	}
+	if member != 13 || viewer != 0 || admin != 0 || access != 0 {
+		t.Fatalf("permissions: member %d, viewer %d, admin %d; access rows %d", member, viewer, admin, access)
+	}
+
+	if _, err := d.Writer.ExecContext(ctx, `INSERT INTO roles (custom_name, created_at, updated_at) VALUES ('Customer', 'x', 'x')`); err != nil {
+		t.Fatal(err)
+	}
+	insertAccess := `INSERT INTO vehicle_access (user_id, vehicle_id, level, created_at) VALUES (?, ?, ?, 'x')`
+	if _, err := d.Writer.ExecContext(ctx, insertAccess, 2, 1, "edit"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.Writer.ExecContext(ctx, insertAccess, 3, 1, "view"); err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []struct {
+		stmt string
+		args []any
+	}{
+		{`INSERT INTO roles (custom_name, created_at, updated_at) VALUES ('customer', 'x', 'x')`, nil}, // duplicate name
+		{`INSERT INTO roles (created_at, updated_at) VALUES ('x', 'x')`, nil},                          // no name
+		{`INSERT INTO roles (builtin_key, created_at, updated_at) VALUES ('owner', 'x', 'x')`, nil},    // unknown built-in
+		{`UPDATE roles SET all_vehicles = 2`, nil},
+		{insertAccess, []any{2, 1, "edit"}}, // duplicate
+		{"UPDATE vehicle_access SET level = 'manage'", nil},
+	} {
+		if _, err := d.Writer.ExecContext(ctx, c.stmt, c.args...); err == nil {
+			t.Errorf("accepted %s %v", c.stmt, c.args)
+		}
+	}
+	if _, err := d.Writer.ExecContext(ctx, "DELETE FROM users WHERE id = 3"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.Writer.ExecContext(ctx, "DELETE FROM vehicles WHERE id = 1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.Reader.QueryRowContext(ctx, "SELECT count(*) FROM vehicle_access").Scan(&access); err != nil || access != 0 {
+		t.Fatalf("access rows survived their user or vehicle: %d %v", access, err)
+	}
+}

@@ -16,7 +16,7 @@
   },
   "auth": {
     "unauthenticated": "Please sign in again.",
-    "forbidden": "Only administrators can do this.",
+    "forbidden": "You don't have permission to do this.",
     "invalid_credentials": "Wrong username or password.",
     "throttled": "Too many attempts. Try again in {{retry_after_s}} s."
   },
@@ -143,5 +143,9 @@
   },
   "share": {
     "disabled": "Public links are turned off on this server."
+  },
+  "role": {
+    "builtin_locked": "Built-in roles can't be deleted, and the Administrator role can't be changed.",
+    "move_to_invalid": "Choose another role for the users of this role."
   }
 }

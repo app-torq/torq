@@ -37,8 +37,11 @@ func (s *Server) costReport(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	if vehicleID != 0 && !currentUser(r).Access.Sees(vehicleID) {
+		return apperr.NotFound()
+	}
 	q := r.URL.Query()
-	rep, err := s.reports.CostReport(r.Context(), vehicleID, q.Get("from"), q.Get("to"))
+	rep, err := s.reports.CostReport(r.Context(), vehicleID, q.Get("from"), q.Get("to"), visibleVehicles(r))
 	if err != nil {
 		return err
 	}
@@ -76,7 +79,7 @@ type timelineJSON struct {
 }
 
 func (s *Server) timeline(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, err := s.pathVehicle(r)
 	if err != nil {
 		return err
 	}
@@ -118,7 +121,7 @@ func boolQuery(r *http.Request, key string, def bool) (bool, error) {
 }
 
 func (s *Server) history(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, err := s.pathVehicle(r)
 	if err != nil {
 		return err
 	}
