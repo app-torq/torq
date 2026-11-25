@@ -1,0 +1,18 @@
+{
+  "title": "Maintenance record",
+  "readOnly": "Read-only. Shared by the owner through torq.",
+  "profile": "Vehicle",
+  "reminders": "Upcoming maintenance",
+  "noReminders": "No maintenance scheduled.",
+  "services": "Service history",
+  "noServices": "No service recorded yet.",
+  "specs": "Specifications",
+  "noSpecs": "No specifications recorded yet.",
+  "signIn": "Sign in to torq",
+  "openInTorq": "Open in torq",
+  "error": "The record could not be loaded.",
+  "notFound": {
+    "title": "Link not found",
+    "body": "This link does not exist or was turned off by the owner."
+  }
+}

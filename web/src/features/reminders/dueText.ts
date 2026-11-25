@@ -15,9 +15,12 @@ export function intervalText(r: Reminder, t: TFunction, fmt: Formatter, unit: Di
 }
 
 /** Remaining or exceeded distance/hours/time, e.g. "900 km left · 350 days left". */
-export function remainingText(r: Reminder, t: TFunction, fmt: Formatter, unit: DistanceUnit): string {
+export function remainingText(
+  r: Pick<Reminder, 'remaining_km' | 'remaining_hours' | 'remaining_days'> & { baseline?: Pick<Reminder['baseline'], 'source'> },
+  t: TFunction, fmt: Formatter, unit: DistanceUnit,
+): string {
   const parts: string[] = []
-  if (r.baseline.source === 'unknown') {
+  if (r.baseline?.source === 'unknown') {
     // Due since the start point: say why instead of "0 km left · due today".
     parts.push(t('reminders:due.neverDone'))
     if (r.remaining_km !== null && r.remaining_km < 0) parts.push(t('reminders:due.overKm', { value: fmt.distance(-r.remaining_km, unit) }))
@@ -39,7 +42,7 @@ export function remainingText(r: Reminder, t: TFunction, fmt: Formatter, unit: D
 }
 
 /** Next due point, e.g. "at 225,000 km · on 2027-10-15" or "at 1,512 h". */
-export function dueText(r: Reminder, t: TFunction, fmt: Formatter, unit: DistanceUnit): string {
+export function dueText(r: Pick<Reminder, 'next_due_km' | 'next_due_hours' | 'next_due_date'>, t: TFunction, fmt: Formatter, unit: DistanceUnit): string {
   const parts: string[] = []
   if (r.next_due_km !== null) parts.push(t('reminders:due.km', { km: fmt.distance(r.next_due_km, unit) }))
   if (r.next_due_hours !== null) parts.push(t('reminders:due.hours', { hours: fmt.hours(r.next_due_hours) }))

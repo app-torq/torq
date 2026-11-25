@@ -30,7 +30,7 @@ func Recover(log *slog.Logger, next http.Handler) http.Handler {
 				if v == http.ErrAbortHandler {
 					panic(v)
 				}
-				log.ErrorContext(r.Context(), "panic", "method", r.Method, "path", r.URL.Path, "panic", v)
+				log.ErrorContext(r.Context(), "panic", "method", r.Method, "path", logPath(r.URL.Path), "panic", v)
 				writeJSON(w, http.StatusInternalServerError, errorBody{errorPayload{Code: "internal"}})
 			}
 		}()
@@ -56,9 +56,26 @@ func RequestLog(log *slog.Logger, next http.Handler) http.Handler {
 			level = slog.LevelError
 		}
 		log.Log(r.Context(), level, "request",
-			"id", reqID, "method", r.Method, "path", r.URL.Path,
+			"id", reqID, "method", r.Method, "path", logPath(r.URL.Path),
 			"status", rec.status, "duration_ms", time.Since(start).Milliseconds())
 	})
+}
+
+// sharePrefixes are paths whose next segment is a share token (#38).
+var sharePrefixes = []string{"/s/", "/api/v1/shared/"}
+
+// logPath returns path with share tokens replaced by "[token]", so logs never
+// hold a working public link.
+func logPath(path string) string {
+	for _, p := range sharePrefixes {
+		if rest, ok := strings.CutPrefix(path, p); ok {
+			if _, tail, found := strings.Cut(rest, "/"); found {
+				return p + "[token]/" + tail
+			}
+			return p + "[token]"
+		}
+	}
+	return path
 }
 
 // CSRF requires X-Torq-Request: 1 on mutating API requests and rejects

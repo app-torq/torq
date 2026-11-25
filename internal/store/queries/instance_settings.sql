@@ -47,3 +47,6 @@ ON CONFLICT (id) DO UPDATE SET mime_type = excluded.mime_type, data = excluded.d
 
 -- name: DeleteInstanceLogo :exec
 DELETE FROM instance_logo WHERE id = 1;
+
+-- name: SetPublicLinksEnabled :one
+UPDATE instance_settings SET public_links_enabled = ? WHERE id = 1 RETURNING *;

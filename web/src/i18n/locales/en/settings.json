@@ -176,6 +176,21 @@
       "phone": "Phone",
       "email": "Email",
       "website": "Website"
+    },
+    "publicLinks": {
+      "title": "Public links",
+      "intro": "Members can share a read-only page of a vehicle with people who have no account, e.g. a workshop or a buyer. The links are listed here.",
+      "enabled": "Allow public links",
+      "offNotice": "All public links are turned off and answer “not found”. Turning this back on makes the existing links work again.",
+      "empty": "No vehicle has a public link.",
+      "vehicle": "Vehicle",
+      "turnedOn": "Turned on",
+      "lastOpened": "Last opened",
+      "never": "Never",
+      "paused": "Paused (archived)",
+      "turnOff": "Turn off",
+      "offTitle": "Turn off the link of {{name}}?",
+      "offBody": "The link stops working at once. Turning it on again creates a new address."
     }
   },
   "about": {

@@ -50,7 +50,7 @@ const (
 // info.version in openapi.yaml. Within /api/v1 changes are additive only, and
 // every release that adds operations, fields or capabilities raises it by one
 // so clients can detect features (research M7).
-const APIVersion = 8
+const APIVersion = 9
 
 // Server holds the handler dependencies, domain services and the route table.
 type Server struct {
@@ -64,13 +64,15 @@ type Server struct {
 	// a stranger can't easily lock someone out.
 	throttle     *auth.Throttle
 	userThrottle *auth.Throttle
-	vehicles     *vehicles.Service
-	servicelog   *servicelog.Service
-	reminders    *reminders.Service
-	repairs      *repairs.Service
-	files        *attachments.Store
-	notify       *notify.Service
-	reports      *reports.Service
+	// shareThrottle slows down an IP that keeps opening invalid share links.
+	shareThrottle *auth.Throttle
+	vehicles      *vehicles.Service
+	servicelog    *servicelog.Service
+	reminders     *reminders.Service
+	repairs       *repairs.Service
+	files         *attachments.Store
+	notify        *notify.Service
+	reports       *reports.Service
 	// catalogUpdate runs admin-triggered online catalog updates.
 	catalogUpdate *catalogUpdater
 	// specfill looks up spec sheets on the web; nil unless GEMINI_API_KEY and
@@ -93,6 +95,7 @@ func NewServer(d Deps) *Server {
 	s.password = &local.Provider{DB: d.DB, Clock: d.Clock}
 	s.throttle = auth.NewThrottle(d.Clock.Now, 5)
 	s.userThrottle = auth.NewThrottle(d.Clock.Now, 50)
+	s.shareThrottle = auth.NewThrottle(d.Clock.Now, 10)
 	s.vehicles = &vehicles.Service{DB: d.DB, Clock: d.Clock}
 	s.notify = notify.New(d.DB, d.Clock, d.Config.BaseURL, d.Version, d.Log)
 	s.reminders = &reminders.Service{DB: d.DB, Clock: d.Clock, Vehicles: s.vehicles, OnTransitions: s.notify.EnqueueTransitions}

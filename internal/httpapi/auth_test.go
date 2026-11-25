@@ -362,7 +362,7 @@ func TestInstance(t *testing.T) {
 	if b, ok := info["branding"].(map[string]any); !ok || b["name"] != "" || b["logo_url"] != nil || b["contact"] != nil {
 		t.Errorf("branding = %v", info["branding"])
 	}
-	if len(info) != len(want)+1 {
+	if len(info) != len(want)+2 { // branding (above) and public_links (shares_test.go)
 		t.Errorf("unexpected fields: %v", info)
 	}
 

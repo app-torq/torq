@@ -46,7 +46,7 @@ func (q *Queries) GetInstanceLogoUpdatedAt(ctx context.Context) (string, error) 
 }
 
 const getInstanceSettings = `-- name: GetInstanceSettings :one
-SELECT id, weekly_digest_weekday, weekly_digest_hour, monthly_digest_day, monthly_digest_hour, default_date_format, default_number_format, default_time_format, default_currency_code, default_power_unit, default_distance_unit, default_volume_unit, default_torque_unit, default_pressure_unit, default_displacement_unit, brand_name, brand_address, brand_phone, brand_email, brand_website FROM instance_settings WHERE id = 1
+SELECT id, weekly_digest_weekday, weekly_digest_hour, monthly_digest_day, monthly_digest_hour, default_date_format, default_number_format, default_time_format, default_currency_code, default_power_unit, default_distance_unit, default_volume_unit, default_torque_unit, default_pressure_unit, default_displacement_unit, brand_name, brand_address, brand_phone, brand_email, brand_website, public_links_enabled FROM instance_settings WHERE id = 1
 `
 
 func (q *Queries) GetInstanceSettings(ctx context.Context) (InstanceSetting, error) {
@@ -73,6 +73,7 @@ func (q *Queries) GetInstanceSettings(ctx context.Context) (InstanceSetting, err
 		&i.BrandPhone,
 		&i.BrandEmail,
 		&i.BrandWebsite,
+		&i.PublicLinksEnabled,
 	)
 	return i, err
 }
@@ -93,6 +94,39 @@ func (q *Queries) PutInstanceLogo(ctx context.Context, arg PutInstanceLogoParams
 	return err
 }
 
+const setPublicLinksEnabled = `-- name: SetPublicLinksEnabled :one
+UPDATE instance_settings SET public_links_enabled = ? WHERE id = 1 RETURNING id, weekly_digest_weekday, weekly_digest_hour, monthly_digest_day, monthly_digest_hour, default_date_format, default_number_format, default_time_format, default_currency_code, default_power_unit, default_distance_unit, default_volume_unit, default_torque_unit, default_pressure_unit, default_displacement_unit, brand_name, brand_address, brand_phone, brand_email, brand_website, public_links_enabled
+`
+
+func (q *Queries) SetPublicLinksEnabled(ctx context.Context, publicLinksEnabled int64) (InstanceSetting, error) {
+	row := q.db.QueryRowContext(ctx, setPublicLinksEnabled, publicLinksEnabled)
+	var i InstanceSetting
+	err := row.Scan(
+		&i.ID,
+		&i.WeeklyDigestWeekday,
+		&i.WeeklyDigestHour,
+		&i.MonthlyDigestDay,
+		&i.MonthlyDigestHour,
+		&i.DefaultDateFormat,
+		&i.DefaultNumberFormat,
+		&i.DefaultTimeFormat,
+		&i.DefaultCurrencyCode,
+		&i.DefaultPowerUnit,
+		&i.DefaultDistanceUnit,
+		&i.DefaultVolumeUnit,
+		&i.DefaultTorqueUnit,
+		&i.DefaultPressureUnit,
+		&i.DefaultDisplacementUnit,
+		&i.BrandName,
+		&i.BrandAddress,
+		&i.BrandPhone,
+		&i.BrandEmail,
+		&i.BrandWebsite,
+		&i.PublicLinksEnabled,
+	)
+	return i, err
+}
+
 const updateInstanceBranding = `-- name: UpdateInstanceBranding :one
 UPDATE instance_settings
 SET brand_name    = ?,
@@ -101,7 +135,7 @@ SET brand_name    = ?,
     brand_email   = ?,
     brand_website = ?
 WHERE id = 1
-RETURNING id, weekly_digest_weekday, weekly_digest_hour, monthly_digest_day, monthly_digest_hour, default_date_format, default_number_format, default_time_format, default_currency_code, default_power_unit, default_distance_unit, default_volume_unit, default_torque_unit, default_pressure_unit, default_displacement_unit, brand_name, brand_address, brand_phone, brand_email, brand_website
+RETURNING id, weekly_digest_weekday, weekly_digest_hour, monthly_digest_day, monthly_digest_hour, default_date_format, default_number_format, default_time_format, default_currency_code, default_power_unit, default_distance_unit, default_volume_unit, default_torque_unit, default_pressure_unit, default_displacement_unit, brand_name, brand_address, brand_phone, brand_email, brand_website, public_links_enabled
 `
 
 type UpdateInstanceBrandingParams struct {
@@ -142,6 +176,7 @@ func (q *Queries) UpdateInstanceBranding(ctx context.Context, arg UpdateInstance
 		&i.BrandPhone,
 		&i.BrandEmail,
 		&i.BrandWebsite,
+		&i.PublicLinksEnabled,
 	)
 	return i, err
 }
@@ -159,7 +194,7 @@ SET default_date_format       = ?,
     default_pressure_unit     = ?,
     default_displacement_unit = ?
 WHERE id = 1
-RETURNING id, weekly_digest_weekday, weekly_digest_hour, monthly_digest_day, monthly_digest_hour, default_date_format, default_number_format, default_time_format, default_currency_code, default_power_unit, default_distance_unit, default_volume_unit, default_torque_unit, default_pressure_unit, default_displacement_unit, brand_name, brand_address, brand_phone, brand_email, brand_website
+RETURNING id, weekly_digest_weekday, weekly_digest_hour, monthly_digest_day, monthly_digest_hour, default_date_format, default_number_format, default_time_format, default_currency_code, default_power_unit, default_distance_unit, default_volume_unit, default_torque_unit, default_pressure_unit, default_displacement_unit, brand_name, brand_address, brand_phone, brand_email, brand_website, public_links_enabled
 `
 
 type UpdateInstanceDefaultsParams struct {
@@ -210,6 +245,7 @@ func (q *Queries) UpdateInstanceDefaults(ctx context.Context, arg UpdateInstance
 		&i.BrandPhone,
 		&i.BrandEmail,
 		&i.BrandWebsite,
+		&i.PublicLinksEnabled,
 	)
 	return i, err
 }
@@ -221,7 +257,7 @@ SET weekly_digest_weekday = ?,
     monthly_digest_day    = ?,
     monthly_digest_hour   = ?
 WHERE id = 1
-RETURNING id, weekly_digest_weekday, weekly_digest_hour, monthly_digest_day, monthly_digest_hour, default_date_format, default_number_format, default_time_format, default_currency_code, default_power_unit, default_distance_unit, default_volume_unit, default_torque_unit, default_pressure_unit, default_displacement_unit, brand_name, brand_address, brand_phone, brand_email, brand_website
+RETURNING id, weekly_digest_weekday, weekly_digest_hour, monthly_digest_day, monthly_digest_hour, default_date_format, default_number_format, default_time_format, default_currency_code, default_power_unit, default_distance_unit, default_volume_unit, default_torque_unit, default_pressure_unit, default_displacement_unit, brand_name, brand_address, brand_phone, brand_email, brand_website, public_links_enabled
 `
 
 type UpdateInstanceSettingsParams struct {
@@ -260,6 +296,7 @@ func (q *Queries) UpdateInstanceSettings(ctx context.Context, arg UpdateInstance
 		&i.BrandPhone,
 		&i.BrandEmail,
 		&i.BrandWebsite,
+		&i.PublicLinksEnabled,
 	)
 	return i, err
 }

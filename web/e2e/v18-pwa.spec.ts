@@ -60,6 +60,10 @@ test('V18b–c: the worker keeps only the app shell, never data', async ({ page 
     await fetch(exportUrl)
   }, urls)
   await page.goto(attachment.url)
+  // A public share page (#38) loads its record from /api/ too.
+  const { share } = (await (await page.request.put(`/api/v1/vehicles/${String(vid)}/share`, { headers, data: {} })).json()) as { share: { path: string } }
+  await page.goto(share.path)
+  await expect(page.getByRole('heading', { name: /PWA Test/ })).toBeVisible()
 
   await page.goto('/')
   const cached = await page.evaluate(async () => {

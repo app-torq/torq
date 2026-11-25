@@ -124,6 +124,7 @@ type InstanceSetting struct {
 	BrandPhone              string
 	BrandEmail              string
 	BrandWebsite            string
+	PublicLinksEnabled      int64
 }
 
 type OdometerReading struct {
@@ -355,6 +356,18 @@ type Vehicle struct {
 	PowerUnit         sql.NullString
 	HasOdometer       int64
 	VehicleType       string
+}
+
+type VehicleShare struct {
+	VehicleID           int64
+	Token               string
+	TokenSha256         []byte
+	IncludeCosts        int64
+	IncludeLicensePlate int64
+	IncludeVin          int64
+	CreatedBy           sql.NullInt64
+	CreatedAt           string
+	LastOpenedAt        sql.NullString
 }
 
 type VehicleSpec struct {

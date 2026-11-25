@@ -5,7 +5,7 @@
 openapi: "3.1.0"
 info:
   title: torq API
-  version: "8"
+  version: "9"
   description: |-
     The REST API of torq, a self-hosted vehicle maintenance and DIY repair tracker. It is used by the web app and the torq mobile app.
 
@@ -52,6 +52,32 @@ paths:
               schema:
                 type: string
                 contentMediaType: application/octet-stream
+        default:
+          $ref: "#/components/responses/Error"
+  "/shared/{token}":
+    get:
+      operationId: getSharedRecord
+      summary: The public record of a vehicle share link
+      description: "No sign-in needed. Every invalid, revoked or disabled link answers the same 404. Repeated failures from one address get 429. Responses are not cacheable (Cache-Control: no-store) and carry X-Robots-Tag: noindex and Referrer-Policy: no-referrer. Category names follow Accept-Language (de or en)."
+      x-torq-access: public
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          description: The token of the link (43 characters).
+          schema:
+            type: string
+      x-torq-error-codes:
+        - auth.throttled
+        - not_found
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicVehicleRecord"
         default:
           $ref: "#/components/responses/Error"
   /setup/status:
@@ -2938,6 +2964,129 @@ paths:
                     $ref: "#/components/schemas/Attachment"
         default:
           $ref: "#/components/responses/Error"
+  "/vehicles/{id}/share":
+    get:
+      operationId: getShare
+      summary: The vehicle's public link
+      x-torq-access: member
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Success; share is null when the vehicle has no link.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - share
+                properties:
+                  share:
+                    oneOf:
+                      - $ref: "#/components/schemas/Share"
+                      - type: "null"
+        default:
+          $ref: "#/components/responses/Error"
+    put:
+      operationId: putShare
+      summary: Turn the public link on, or change its options
+      description: "Creates the link (201) or changes the options of the existing one (200); the token stays the same. Omitted options keep their value (off for a new link)."
+      x-torq-access: member
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                include_costs:
+                  type: boolean
+                include_license_plate:
+                  type: boolean
+                include_vin:
+                  type: boolean
+              additionalProperties: false
+      x-torq-error-codes:
+        - demo.shares_locked
+        - not_found
+        - share.disabled
+      responses:
+        "201":
+          description: The link was turned on.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - share
+                properties:
+                  share:
+                    $ref: "#/components/schemas/Share"
+        "200":
+          description: Options changed.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - share
+                properties:
+                  share:
+                    $ref: "#/components/schemas/Share"
+        default:
+          $ref: "#/components/responses/Error"
+    delete:
+      operationId: deleteShare
+      summary: Turn the public link off
+      description: "The link stops working at once; turning it on again creates a new token."
+      x-torq-access: member
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "204":
+          description: "Done; no body."
+        default:
+          $ref: "#/components/responses/Error"
+  "/vehicles/{id}/share/renew":
+    post:
+      operationId: renewShare
+      summary: Give the public link a new token
+      description: "The old address stops working at once."
+      x-torq-access: member
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      x-torq-error-codes:
+        - demo.shares_locked
+        - not_found
+        - share.disabled
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - share
+                properties:
+                  share:
+                    $ref: "#/components/schemas/Share"
+        default:
+          $ref: "#/components/responses/Error"
   "/vehicles/{id}/avatar":
     put:
       operationId: putAvatar
@@ -3267,6 +3416,30 @@ paths:
                     description: Number of matching items, independent of limit and offset.
         default:
           $ref: "#/components/responses/Error"
+  /shares:
+    get:
+      operationId: listShares
+      summary: All public links (admin)
+      x-torq-access: admin
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ShareListItem"
+        default:
+          $ref: "#/components/responses/Error"
   /settings/instance:
     get:
       operationId: getInstanceSettings
@@ -3302,6 +3475,8 @@ paths:
                   $ref: "#/components/schemas/BrandingInput"
                 defaults:
                   $ref: "#/components/schemas/FormatsInput"
+                public_links_enabled:
+                  type: boolean
                 monthly_digest_day:
                   type: integer
                 monthly_digest_hour:
@@ -4440,6 +4615,7 @@ components:
         - branding
         - demo_mode
         - max_upload_mb
+        - public_links
         - spec_autofill
         - token_auth
         - version
@@ -4455,6 +4631,9 @@ components:
         max_upload_mb:
           type: integer
           description: "Upload limit per file in MB; 0 when uploads are off."
+        public_links:
+          type: boolean
+          description: Vehicles can be shared by public link on this server.
         spec_autofill:
           type: boolean
           description: The optional spec-sheet auto-fill is configured on this server.
@@ -4473,6 +4652,7 @@ components:
         - max_upload_mb
         - monthly_digest_day
         - monthly_digest_hour
+        - public_links_enabled
         - time_zone
         - version
         - weekly_digest_hour
@@ -4493,6 +4673,9 @@ components:
           type: integer
         monthly_digest_hour:
           type: integer
+        public_links_enabled:
+          type: boolean
+          description: The switch for public vehicle links; off stops every link.
         time_zone:
           type: string
         version:
@@ -4702,6 +4885,288 @@ components:
         source:
           type: string
           description: initial, quick_update, service_log, reminder_done or repair_completion.
+    PublicReading:
+      type: object
+      required:
+        - hour_meter_id
+        - hours
+      properties:
+        hour_meter_id:
+          type: integer
+        hours:
+          type: number
+    PublicReminder:
+      type: object
+      required:
+        - hour_meter
+        - name
+        - next_due_date
+        - next_due_hours
+        - next_due_km
+        - remaining_days
+        - remaining_hours
+        - remaining_km
+        - state
+        - trigger
+      properties:
+        hour_meter:
+          type:
+            - string
+            - "null"
+        name:
+          type: string
+          description: Category name in the request's language, or the reminder's own title.
+        next_due_date:
+          type:
+            - string
+            - "null"
+        next_due_hours:
+          type:
+            - number
+            - "null"
+        next_due_km:
+          type:
+            - integer
+            - "null"
+        remaining_days:
+          type:
+            - integer
+            - "null"
+        remaining_hours:
+          type:
+            - number
+            - "null"
+        remaining_km:
+          type:
+            - integer
+            - "null"
+        state:
+          type: string
+          description: upcoming, due_soon or overdue.
+        trigger:
+          type:
+            - string
+            - "null"
+          description: km, time or hours.
+    PublicService:
+      type: object
+      required:
+        - extra_cost_cents
+        - extra_cost_label
+        - items
+        - meter_readings
+        - odometer_km
+        - odometer_recorded
+        - service_date
+        - total_cents
+      properties:
+        extra_cost_cents:
+          type:
+            - integer
+            - "null"
+        extra_cost_label:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicServiceItem"
+        meter_readings:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicReading"
+        odometer_km:
+          type: integer
+        odometer_recorded:
+          type: boolean
+        service_date:
+          type: string
+        total_cents:
+          type:
+            - integer
+            - "null"
+          description: Null unless the owner included costs.
+    PublicServiceItem:
+      type: object
+      required:
+        - aftermarket_part_number
+        - brand
+        - category
+        - cost_cents
+        - oem_part_number
+        - quantity_ml
+        - quantity_unit
+        - specification
+      properties:
+        aftermarket_part_number:
+          type: string
+        brand:
+          type: string
+        category:
+          type: string
+        cost_cents:
+          type:
+            - integer
+            - "null"
+          description: Null unless the owner included costs.
+        oem_part_number:
+          type: string
+        quantity_ml:
+          type:
+            - integer
+            - "null"
+        quantity_unit:
+          type:
+            - string
+            - "null"
+        specification:
+          type: string
+    PublicVehicle:
+      type: object
+      required:
+        - chassis_code
+        - current_odometer_km
+        - displacement_cc
+        - displacement_unit
+        - engine_code
+        - fuel_type
+        - has_odometer
+        - hour_meters
+        - hsn
+        - license_plate
+        - make
+        - model
+        - model_year
+        - odometer_unit
+        - power_kw
+        - power_unit
+        - power_w
+        - tsn
+        - vehicle_type
+        - vin
+      properties:
+        chassis_code:
+          type: string
+        current_odometer_km:
+          type: integer
+        displacement_cc:
+          type:
+            - integer
+            - "null"
+        displacement_unit:
+          type:
+            - string
+            - "null"
+        engine_code:
+          type: string
+        fuel_type:
+          type:
+            - string
+            - "null"
+        has_odometer:
+          type: boolean
+        hour_meters:
+          type: array
+          items:
+            $ref: "#/components/schemas/HourMeter"
+        hsn:
+          type:
+            - string
+            - "null"
+        license_plate:
+          type:
+            - string
+            - "null"
+          description: Null unless the owner included it.
+        make:
+          type: string
+        model:
+          type: string
+        model_year:
+          type:
+            - integer
+            - "null"
+        odometer_unit:
+          type: string
+        power_kw:
+          type:
+            - integer
+            - "null"
+        power_unit:
+          type:
+            - string
+            - "null"
+        power_w:
+          type:
+            - integer
+            - "null"
+        tsn:
+          type:
+            - string
+            - "null"
+        vehicle_type:
+          type: string
+          description: car or motorcycle. More types may follow.
+        vin:
+          type:
+            - string
+            - "null"
+          description: Null unless the owner included it.
+    PublicVehicleRecord:
+      type: object
+      description: "The read-only record a share link shows. It never contains notes, attachments, repairs or user data."
+      required:
+        - branding
+        - formats
+        - reminders
+        - service_logs
+        - spec_entries
+        - specs
+        - vehicle
+      properties:
+        branding:
+          type: object
+          required:
+            - logo_url
+            - name
+          properties:
+            logo_url:
+              type:
+                - string
+                - "null"
+            name:
+              type: string
+        formats:
+          $ref: "#/components/schemas/Formats"
+          description: The instance defaults, for showing values to a visitor.
+        reminders:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicReminder"
+        service_logs:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicService"
+        spec_entries:
+          type: array
+          items:
+            type: object
+            required:
+              - label
+              - value
+            properties:
+              label:
+                type: string
+              value:
+                type: string
+        specs:
+          type: object
+          additionalProperties: {}
+          description: The spec sheet values, keyed like the history export.
+        vehicle:
+          $ref: "#/components/schemas/PublicVehicle"
+        vehicle_id:
+          type: integer
+          description: Only for signed-in requests, to open the vehicle in the app.
     Reminder:
       type: object
       required:
@@ -5294,6 +5759,7 @@ components:
         - branding
         - demo_mode
         - max_upload_mb
+        - public_links
         - setup_required
         - spec_autofill
         - token_auth
@@ -5310,6 +5776,9 @@ components:
         max_upload_mb:
           type: integer
           description: "Upload limit per file in MB; 0 when uploads are off."
+        public_links:
+          type: boolean
+          description: Vehicles can be shared by public link on this server.
         setup_required:
           type: boolean
           description: "No account exists yet; first-boot setup is pending."
@@ -5572,6 +6041,60 @@ components:
         os:
           type: string
           description: "Operating system parsed from the user agent, e.g. macOS or iOS; empty when unknown."
+    Share:
+      type: object
+      required:
+        - created_at
+        - include_costs
+        - include_license_plate
+        - include_vin
+        - last_opened_at
+        - path
+        - token
+      properties:
+        created_at:
+          type: string
+        include_costs:
+          type: boolean
+        include_license_plate:
+          type: boolean
+        include_vin:
+          type: boolean
+        last_opened_at:
+          type:
+            - string
+            - "null"
+        path:
+          type: string
+          description: "/s/<token>; prefix the server address to get the link."
+        token:
+          type: string
+    ShareListItem:
+      type: object
+      required:
+        - archived
+        - created_at
+        - created_by_name
+        - last_opened_at
+        - vehicle_id
+        - vehicle_name
+      properties:
+        archived:
+          type: boolean
+        created_at:
+          type: string
+        created_by_name:
+          type:
+            - string
+            - "null"
+        last_opened_at:
+          type:
+            - string
+            - "null"
+        vehicle_id:
+          type: integer
+        vehicle_name:
+          type: string
     SpecEntry:
       type: object
       required:

@@ -1,15 +1,18 @@
 import { useRef, useState } from 'react'
+import { Link } from 'react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Trash2, Upload } from 'lucide-react'
 import { api } from '../../lib/api'
 import { queryKeys } from '../../lib/queryKeys'
 import { fieldErrors, useErrorText } from '../../lib/errors'
-import type { Branding, Contact, Formats, InstanceSettings } from '../../lib/types'
+import type { Branding, Contact, Formats, InstanceSettings, ShareListItem } from '../../lib/types'
+import { useFormat } from '../../lib/useFormat'
 import { useSession } from '../../app/session'
 import { Button } from '../../components/Button'
-import { SelectField, TextAreaField, TextField } from '../../components/Field'
-import { Card, DefinitionList, ErrorBanner, Loading, Notice, PageHeader } from '../../components/ui'
+import { ConfirmDialog } from '../../components/Dialog'
+import { Checkbox, SelectField, TextAreaField, TextField } from '../../components/Field'
+import { Badge, Card, DefinitionList, ErrorBanner, Loading, Notice, PageHeader, Table } from '../../components/ui'
 import { FormatFields, UnitFields, unitChoices } from './FormatFields'
 
 /** Must match maxLogoBytes in internal/httpapi/branding.go. */
@@ -78,6 +81,7 @@ function InstanceForm({ settings }: { settings: InstanceSettings }) {
           <Button variant="primary" onClick={() => { saveDefaults.mutate() }} disabled={saveDefaults.isPending}>{t('common:actions.save')}</Button>
         </div>
       </Card>
+      <PublicLinksCard enabled={settings.public_links_enabled} />
       <Card title={t('instance.about')}>
         <DefinitionList
           items={[
@@ -184,6 +188,84 @@ function BrandingCard({ branding }: { branding: InstanceSettings['branding'] }) 
         </div>
         <Button variant="primary" onClick={() => { save.mutate() }} disabled={locked || save.isPending}>{t('common:actions.save')}</Button>
       </div>
+    </Card>
+  )
+}
+
+/** The switch for public vehicle links and the list of links that are on (#38). */
+function PublicLinksCard({ enabled }: { enabled: boolean }) {
+  const { t } = useTranslation('settings')
+  const qc = useQueryClient()
+  const errorText = useErrorText()
+  const fmt = useFormat()
+  const shares = useQuery({ queryKey: queryKeys.shares, queryFn: () => api.get<{ items: ShareListItem[] }>('/shares') })
+  const toggle = useMutation({
+    mutationFn: (on: boolean) => api.patch<InstanceSettings>('/settings/instance', { public_links_enabled: on }),
+    onSuccess: (data) => {
+      qc.setQueryData(queryKeys.instance, data)
+      // Vehicle pages read the switch from the session.
+      void qc.invalidateQueries({ queryKey: queryKeys.me })
+    },
+  })
+  const [turningOff, setTurningOff] = useState<ShareListItem | null>(null)
+  const off = useMutation({
+    mutationFn: (s: ShareListItem) => api.del(`/vehicles/${String(s.vehicle_id)}/share`),
+    onSuccess: (_, s) => {
+      setTurningOff(null)
+      void qc.invalidateQueries({ queryKey: queryKeys.shares })
+      void qc.invalidateQueries({ queryKey: queryKeys.share(s.vehicle_id) })
+    },
+  })
+  const items = shares.data?.items ?? []
+  return (
+    <Card title={t('instance.publicLinks.title')}>
+      <div className="space-y-4">
+        <p className="text-sm text-zinc-400">{t('instance.publicLinks.intro')}</p>
+        <Checkbox label={t('instance.publicLinks.enabled')} checked={enabled} disabled={toggle.isPending} onChange={(v) => { toggle.mutate(v) }} />
+        {!enabled && <Notice tone="amber">{t('instance.publicLinks.offNotice')}</Notice>}
+        {toggle.isError && <ErrorBanner message={errorText(toggle.error)} />}
+        {shares.isPending && <Loading />}
+        {shares.isError && <ErrorBanner message={errorText(shares.error)} />}
+        {shares.data && items.length === 0 && <p className="text-sm text-zinc-400">{t('instance.publicLinks.empty')}</p>}
+        {items.length > 0 && (
+          <Table>
+            <thead>
+              <tr>
+                <th>{t('instance.publicLinks.vehicle')}</th>
+                <th>{t('instance.publicLinks.turnedOn')}</th>
+                <th>{t('instance.publicLinks.lastOpened')}</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((s) => (
+                <tr key={s.vehicle_id}>
+                  <td>
+                    <Link to={`/vehicles/${String(s.vehicle_id)}`} className="text-sky-300 hover:underline">{s.vehicle_name}</Link>
+                    {s.archived && <span className="ml-2"><Badge>{t('instance.publicLinks.paused')}</Badge></span>}
+                  </td>
+                  <td>{[fmt.date(s.created_at), s.created_by_name].filter(Boolean).join(' · ')}</td>
+                  <td>{s.last_opened_at ? fmt.dateTime(s.last_opened_at) : t('instance.publicLinks.never')}</td>
+                  <td className="text-right">
+                    <Button size="sm" variant="danger" onClick={() => { setTurningOff(s) }}>{t('instance.publicLinks.turnOff')}</Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        )}
+      </div>
+      <ConfirmDialog
+        open={turningOff !== null}
+        title={t('instance.publicLinks.offTitle', { name: turningOff?.vehicle_name ?? '' })}
+        body={t('instance.publicLinks.offBody')}
+        confirmLabel={t('instance.publicLinks.turnOff')}
+        danger
+        busy={off.isPending}
+        error={off.isError ? errorText(off.error) : undefined}
+        onConfirm={() => { if (turningOff) off.mutate(turningOff) }}
+        onClose={() => { setTurningOff(null); off.reset() }}
+      />
     </Card>
   )
 }

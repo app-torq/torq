@@ -50,6 +50,93 @@ export interface InstanceInfo {
   /** The web spec lookup is configured (GEMINI_API_KEY). */
   spec_autofill: boolean
   branding: Branding
+  /** Vehicles can be shared by public link on this server. */
+  public_links: boolean
+}
+
+/** A vehicle's public read-only link (#38). */
+export interface Share {
+  token: string
+  /** "/s/<token>"; the app prefixes its own address. */
+  path: string
+  include_costs: boolean
+  include_license_plate: boolean
+  include_vin: boolean
+  created_at: string
+  last_opened_at: string | null
+}
+
+/** One active link in the administrators' list (no token). */
+export interface ShareListItem {
+  vehicle_id: number
+  vehicle_name: string
+  archived: boolean
+  created_at: string
+  created_by_name: string | null
+  last_opened_at: string | null
+}
+
+/** What a share link shows to anyone who has it. */
+export interface PublicVehicleRecord {
+  /** Only for signed-in visitors. */
+  vehicle_id?: number
+  vehicle: {
+    vehicle_type: VehicleType
+    make: string
+    model: string
+    chassis_code: string
+    model_year: number | null
+    engine_code: string
+    hsn: string | null
+    tsn: string | null
+    displacement_cc: number | null
+    power_kw: number | null
+    power_w: number | null
+    fuel_type: FuelType | null
+    has_odometer: boolean
+    current_odometer_km: number
+    odometer_unit: DistanceUnit
+    displacement_unit: DisplacementUnit | null
+    power_unit: PowerUnit | null
+    hour_meters: HourMeter[]
+    license_plate: string | null
+    vin: string | null
+  }
+  service_logs: {
+    service_date: string
+    odometer_km: number
+    odometer_recorded: boolean
+    meter_readings: MeterReading[]
+    items: {
+      category: string
+      brand: string
+      specification: string
+      quantity_ml: number | null
+      quantity_unit: QuantityUnit | null
+      oem_part_number: string
+      aftermarket_part_number: string
+      cost_cents: number | null
+    }[]
+    extra_cost_cents: number | null
+    extra_cost_label: string
+    total_cents: number | null
+  }[]
+  reminders: {
+    name: string
+    state: 'upcoming' | 'due_soon' | 'overdue'
+    trigger: string | null
+    next_due_date: string | null
+    next_due_km: number | null
+    next_due_hours: number | null
+    remaining_days: number | null
+    remaining_km: number | null
+    remaining_hours: number | null
+    hour_meter: string | null
+  }[]
+  specs: Record<string, string | number | null>
+  spec_entries: { label: string; value: string }[]
+  formats: Formats
+  branding: { name: string; logo_url: string | null }
 }
 
 /** Contact details for the printed history; empty strings when not set. */
@@ -559,6 +646,8 @@ export interface InstanceSettings {
   /** Formats and units new users start with. */
   defaults: Formats
   branding: Branding & { contact: Contact }
+  /** The switch for public vehicle links. */
+  public_links_enabled: boolean
 }
 
 export interface Costs {

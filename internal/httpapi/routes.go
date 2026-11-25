@@ -13,6 +13,7 @@ func (s *Server) routes() {
 	// Setup & auth
 	s.route("GET /instance", public, s.instance)
 	s.route("GET /instance/logo", public, s.getLogo)
+	s.route("GET /shared/{token}", public, s.getSharedRecord)
 	s.route("GET /setup/status", public, s.setupStatus)
 	s.route("POST /setup", public, s.setup)
 	s.route("POST /auth/login", public, s.login)
@@ -55,6 +56,10 @@ func (s *Server) routes() {
 	s.route("DELETE /hour-meters/{id}", member, s.deleteHourMeter)
 	s.route("POST /hour-meters/{id}/readings", member, s.quickUpdateHours)
 	s.route("GET /hour-meters/{id}/readings", member, s.listHourMeterReadings)
+	s.route("GET /vehicles/{id}/share", member, s.getShare)
+	s.route("PUT /vehicles/{id}/share", member, s.demoLocked(sharesLocked, s.putShare))
+	s.route("POST /vehicles/{id}/share/renew", member, s.demoLocked(sharesLocked, s.renewShare))
+	s.route("DELETE /vehicles/{id}/share", member, s.deleteShare)
 
 	// Spec sheet
 	s.route("GET /vehicles/{id}/specs", member, s.getSpecs)
@@ -129,6 +134,7 @@ func (s *Server) routes() {
 	s.route("DELETE /webhooks/{id}", admin, s.demoLocked(webhooksLocked, s.deleteWebhook))
 	s.route("POST /webhooks/{id}/test", admin, s.demoLocked(webhooksLocked, s.testWebhook))
 	s.route("GET /webhooks/{id}/deliveries", admin, s.listDeliveries)
+	s.route("GET /shares", admin, s.listShares)
 	s.route("GET /settings/instance", admin, s.getInstanceSettings)
 	s.route("PATCH /settings/instance", admin, s.patchInstanceSettings)
 	s.route("PUT /settings/instance/logo", admin, s.demoLocked(brandingLocked, s.putLogo))
@@ -146,6 +152,7 @@ const (
 	webhooksLocked = "demo.webhooks_locked"
 	uploadsLocked  = "demo.uploads_locked"
 	brandingLocked = "demo.branding_locked"
+	sharesLocked   = "demo.shares_locked"
 )
 
 // demoLocked refuses fn with code in demo mode. Accounts are locked so nobody
@@ -154,7 +161,8 @@ const (
 // sign each other out; webhooks so the
 // public demo cannot be used to send requests to arbitrary URLs; uploads so
 // visitors cannot store files on the demo server; the instance name and logo
-// because every visitor sees them on the sign-in page.
+// because every visitor sees them on the sign-in page; public links so the
+// demo can't publish anything.
 func (s *Server) demoLocked(code string, fn handlerFunc) handlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) error {
 		if s.Config.DemoMode {
