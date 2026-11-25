@@ -10,6 +10,9 @@ git push ─▶ GitHub Actions: lint, tests, container + e2e checks
 browser ─▶ https://torq.<your-domain> ─▶ Cloudflare ─▶ tunnel (cloudflared on the VPS) ─▶ torq
 ```
 
+Release candidate tags (`v1.11.0-rc.1`) run the same checks and publish `:1.11.0-rc.1` and `:preview` for
+testing, but never `:latest`, and nothing is deployed.
+
 The VPS never builds anything and needs no open web ports. Cloudflare Tunnel connects outward, so only SSH
 is reachable from the internet. Images are pinned to the commit they were built from, so rolling back is
 one command (see [Rolling back](#rolling-back)).
