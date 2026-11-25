@@ -31,6 +31,9 @@ func (s *Server) authorize(r *http.Request, a access) (*http.Request, error) {
 	if err != nil {
 		return r, err
 	}
+	if user.Access.MFASetupRequired && !a.setup {
+		return r, apperr.Forbidden("auth.mfa_setup_required")
+	}
 	if a.level == levelAdmin && !user.Access.Admin {
 		return r, apperr.Forbidden("auth.forbidden")
 	}

@@ -247,6 +247,8 @@ type UserPatch struct {
 	Role     *Role
 	RoleID   *int64
 	Disabled *bool
+	// MFARequired requires a second factor for the user.
+	MFARequired *bool
 }
 
 // Update applies an admin patch while keeping at least one enabled admin.
@@ -300,6 +302,14 @@ func (u *Users) Update(ctx context.Context, id int64, p UserPatch) (User, error)
 			if updated, err = q.SetUserRole(ctx, store.SetUserRoleParams{
 				Role: string(legacyRole(role)), RoleID: sql.NullInt64{Int64: role.ID, Valid: true}, UpdatedAt: now, ID: id,
 			}); err != nil {
+				return err
+			}
+		}
+		if p.MFARequired != nil {
+			if err := q.SetUserMFARequired(ctx, store.SetUserMFARequiredParams{MfaRequired: boolInt(*p.MFARequired), UpdatedAt: now, ID: id}); err != nil {
+				return err
+			}
+			if updated, err = q.GetUser(ctx, id); err != nil {
 				return err
 			}
 		}

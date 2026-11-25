@@ -57,6 +57,9 @@ type RoleInput struct {
 	Description *string
 	AllVehicles *bool
 	Permissions *[]string
+	// RequireMFA makes a second factor mandatory for the role's users; it is
+	// the only thing that can change on the Administrator role.
+	RequireMFA *bool
 }
 
 // Roles manages roles and vehicle assignments.
@@ -95,7 +98,7 @@ func (s *Roles) List(ctx context.Context) ([]RoleInfo, error) {
 	for _, r := range rows {
 		role := store.Role{
 			ID: r.ID, BuiltinKey: r.BuiltinKey, CustomName: r.CustomName, Description: r.Description,
-			AllVehicles: r.AllVehicles, CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt,
+			AllVehicles: r.AllVehicles, RequireMfa: r.RequireMfa, CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt,
 		}
 		out = append(out, RoleInfo{Role: role, Permissions: rolePermissions(role, byRole[r.ID]), UserCount: r.UserCount})
 	}
@@ -233,7 +236,7 @@ func (s *Roles) Create(ctx context.Context, in RoleInput) (RoleInfo, error) {
 		now := clock.Timestamp(s.Clock.Now())
 		r, err := q.CreateRole(ctx, store.CreateRoleParams{
 			CustomName: sql.NullString{String: name, Valid: true}, Description: desc, AllVehicles: boolInt(all),
-			CreatedAt: now, UpdatedAt: now,
+			RequireMfa: boolInt(in.RequireMFA != nil && *in.RequireMFA), CreatedAt: now, UpdatedAt: now,
 		})
 		if err != nil {
 			return err
@@ -256,7 +259,7 @@ func (s *Roles) Update(ctx context.Context, id int64, in RoleInput) (RoleInfo, e
 		if err != nil {
 			return err
 		}
-		if cur.BuiltinKey.String == builtinAdmin {
+		if cur.BuiltinKey.String == builtinAdmin && (in.Name != nil || in.Description != nil || in.AllVehicles != nil || in.Permissions != nil) {
 			return apperr.Conflict("role.builtin_locked", nil)
 		}
 		var v apperr.Validation
@@ -278,15 +281,18 @@ func (s *Roles) Update(ctx context.Context, id int64, in RoleInput) (RoleInfo, e
 		if err := v.Err(); err != nil {
 			return err
 		}
-		desc, all := cur.Description, cur.AllVehicles
+		desc, all, mfa := cur.Description, cur.AllVehicles, cur.RequireMfa
 		if in.Description != nil {
 			desc = *in.Description
 		}
 		if in.AllVehicles != nil {
 			all = boolInt(*in.AllVehicles)
 		}
+		if in.RequireMFA != nil {
+			mfa = boolInt(*in.RequireMFA)
+		}
 		if _, err := q.UpdateRole(ctx, store.UpdateRoleParams{
-			CustomName: name, Description: desc, AllVehicles: all, UpdatedAt: clock.Timestamp(s.Clock.Now()), ID: id,
+			CustomName: name, Description: desc, AllVehicles: all, RequireMfa: mfa, UpdatedAt: clock.Timestamp(s.Clock.Now()), ID: id,
 		}); err != nil {
 			return err
 		}

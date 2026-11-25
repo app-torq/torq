@@ -18,7 +18,11 @@
     "unauthenticated": "Bitte melde dich erneut an.",
     "forbidden": "Dafür fehlt dir die Berechtigung.",
     "invalid_credentials": "Benutzername oder Passwort falsch.",
-    "throttled": "Zu viele Versuche. Versuche es in {{retry_after_s}} s erneut."
+    "throttled": "Zu viele Versuche. Versuche es in {{retry_after_s}} s erneut.",
+    "mfa_required": "Dieses Konto nutzt die Zwei-Faktor-Anmeldung. Aktualisiere die App, um dich anzumelden.",
+    "mfa_invalid": "Dieser Code hat nicht funktioniert.",
+    "mfa_challenge_expired": "Die Anmeldung ist abgelaufen. Bitte melde dich erneut an.",
+    "mfa_setup_required": "Richte zuerst die Zwei-Faktor-Anmeldung ein."
   },
   "setup": {
     "already_completed": "Diese Instanz ist bereits eingerichtet."
@@ -147,5 +151,17 @@
   "role": {
     "builtin_locked": "Eingebaute Rollen können nicht gelöscht und die Rolle Administrator nicht geändert werden.",
     "move_to_invalid": "Wähle eine andere Rolle für die Benutzer dieser Rolle."
+  },
+  "mfa": {
+    "code_invalid": "Dieser Code hat nicht funktioniert. Prüfe die Uhrzeit auf deinem Handy und nimm den aktuellen Code.",
+    "required": "Für dein Konto ist die Zwei-Faktor-Anmeldung Pflicht, deshalb kannst du die letzte Methode nicht entfernen.",
+    "no_factor": "Richte zuerst die Zwei-Faktor-Anmeldung ein.",
+    "no_setup": "Starte die Einrichtung erneut.",
+    "totp_enabled": "Es ist bereits eine Authenticator-App eingerichtet."
+  },
+  "passkey": {
+    "unavailable": "Passkeys brauchen die Serveradresse (TORQ_BASE_URL).",
+    "invalid": "Der Passkey konnte nicht geprüft werden.",
+    "verification_required": "Mit diesem Passkey geht die Anmeldung ohne Passwort nicht, weil er dich nicht prüft (PIN oder Biometrie)."
   }
 }

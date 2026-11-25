@@ -29,7 +29,7 @@ export interface SettingsNavItem {
 
 export const settingsNav: SettingsNavItem[] = [
   { to: '/settings/preferences', labelKey: 'nav.preferences' },
-  { to: '/settings/password', labelKey: 'actions.changePassword' },
+  { to: '/settings/security', labelKey: 'nav.security' },
   { to: '/settings/devices', labelKey: 'nav.devices' },
   { to: '/settings/categories', labelKey: 'nav.categories', permission: 'categories.manage' },
   { to: '/settings/priorities', labelKey: 'nav.priorities', permission: 'repair_lists.manage' },

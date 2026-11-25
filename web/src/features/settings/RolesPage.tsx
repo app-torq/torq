@@ -10,6 +10,7 @@ import { Button, IconButton } from '../../components/Button'
 import { Checkbox, SelectField, TextAreaField, TextField } from '../../components/Field'
 import { ConfirmDialog, Dialog } from '../../components/Dialog'
 import { Badge, ErrorBanner, Loading, Notice, PageHeader, Table } from '../../components/ui'
+import { useSession } from '../../app/session'
 
 export interface RolesResponse {
   items: Role[]
@@ -60,6 +61,7 @@ export function RolesPage() {
                   <div className="flex flex-wrap items-center gap-2 text-zinc-100">
                     {r.name}
                     {r.builtin_key && <Badge>{t('roles.builtin')}</Badge>}
+                    {r.require_mfa && <Badge tone="sky">{t('roles.mfaBadge')}</Badge>}
                   </div>
                   {r.description && <div className="text-xs text-zinc-400">{r.description}</div>}
                 </td>
@@ -67,11 +69,9 @@ export function RolesPage() {
                 <td className="text-right tabular-nums text-zinc-300">{r.user_count}</td>
                 <td>
                   <div className="flex justify-end gap-0.5">
-                    {r.builtin_key !== 'admin' && (
-                      <IconButton aria-label={t('roles.editNamed', { name: r.name })} onClick={() => { setEditing(r) }}>
-                        <Pencil size={15} />
-                      </IconButton>
-                    )}
+                    <IconButton aria-label={t('roles.editNamed', { name: r.name })} onClick={() => { setEditing(r) }}>
+                      <Pencil size={15} />
+                    </IconButton>
                     {r.builtin_key === null && (
                       <IconButton aria-label={t('roles.deleteNamed', { name: r.name })} className="text-red-400" onClick={() => { setDeleting(r) }}>
                         <Trash2 size={15} />
@@ -102,11 +102,18 @@ function RoleDialog({ role, permissions, onClose }: { role: Role | null; permiss
   const [description, setDescription] = useState(role?.description ?? '')
   const [allVehicles, setAllVehicles] = useState(role?.all_vehicles ?? true)
   const [granted, setGranted] = useState<Permission[]>(role?.permissions ?? [])
+  const [requireMfa, setRequireMfa] = useState(role?.require_mfa ?? false)
   const builtin = role?.builtin_key != null
+  // The Administrator role can only require a second factor.
+  const adminRole = role?.builtin_key === 'admin'
+  const { user } = useSession()
+  const lockingMyself = requireMfa && !role?.require_mfa && role?.id === user.role_id && !user.mfa_enabled
 
   const save = useMutation({
     mutationFn: () => {
+      if (adminRole) return api.patch(`/roles/${role.id}`, { require_mfa: requireMfa })
       const body = {
+        require_mfa: requireMfa,
         // An unchanged built-in name stays translated.
         name: builtin && name.trim() === role.name && role.custom_name === null ? undefined : name,
         description, all_vehicles: allVehicles, permissions: granted,
@@ -159,6 +166,8 @@ function RoleDialog({ role, permissions, onClose }: { role: Role | null; permiss
     >
       <div className="space-y-4">
         {save.isError && Object.keys(fe).length === 0 && <ErrorBanner message={errorText(save.error)} />}
+        {adminRole && <p className="text-sm text-zinc-400">{t('roles.adminRole')}</p>}
+        {!adminRole && (<>
         <TextField
           label={t('roles.name')}
           value={name}
@@ -189,6 +198,12 @@ function RoleDialog({ role, permissions, onClose }: { role: Role | null; permiss
           {group('garage')}
         </div>
         <p className="text-xs text-zinc-400">{t('roles.adminOnly')}</p>
+        </>)}
+        <div className="space-y-1 border-t border-zinc-800 pt-4">
+          <Checkbox label={t('roles.requireMfa')} checked={requireMfa} onChange={setRequireMfa} />
+          <p className="text-xs text-zinc-400">{t('roles.requireMfaHint')}</p>
+        </div>
+        {lockingMyself && <Notice tone="amber">{t('roles.requireMfaSelf')}</Notice>}
       </div>
     </Dialog>
   )

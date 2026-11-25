@@ -2,10 +2,12 @@ package httpapi
 
 import (
 	"net/http"
+	"slices"
 	"strconv"
 
 	"github.com/app-torq/torq/internal/apperr"
 	"github.com/app-torq/torq/internal/auth"
+	"github.com/app-torq/torq/internal/store"
 )
 
 // pathID parses the {name} path wildcard as a positive int64.
@@ -30,10 +32,15 @@ func (s *Server) listUsers(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	withFactors, err := store.New(s.DB.Reader).ListUsersWithFactors(r.Context())
+	if err != nil {
+		return err
+	}
 	locale := currentUser(r).Prefs.Locale
 	items := make([]userJSON, 0, len(users))
 	for _, u := range users {
 		out := toUserJSON(u, roles[u.RoleID], locale)
+		out.MFAEnabled = slices.Contains(withFactors, u.ID)
 		n := counts[u.ID]
 		out.VehicleCount = &n
 		items = append(items, out)
@@ -78,11 +85,12 @@ func (s *Server) updateUser(w http.ResponseWriter, r *http.Request) error {
 		Role        *string `json:"role"`
 		RoleID      *int64  `json:"role_id"`
 		Disabled    *bool   `json:"disabled"`
+		MFARequired *bool   `json:"mfa_required"`
 	}
 	if err := decodeJSON(w, r, &in); err != nil {
 		return err
 	}
-	patch := auth.UserPatch{DisplayName: in.DisplayName, RoleID: in.RoleID, Disabled: in.Disabled}
+	patch := auth.UserPatch{DisplayName: in.DisplayName, RoleID: in.RoleID, Disabled: in.Disabled, MFARequired: in.MFARequired}
 	if in.Role != nil {
 		role := auth.Role(*in.Role)
 		patch.Role = &role

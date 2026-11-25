@@ -695,3 +695,70 @@ func TestRolesMigration(t *testing.T) {
 		t.Fatalf("access rows survived their user or vehicle: %d %v", access, err)
 	}
 }
+
+// TestTwoFactorMigration covers migration 00022: nobody needs a second factor
+// after the update, and the credentials go with their user.
+func TestTwoFactorMigration(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	d, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	sub, err := fs.Sub(migrationsFS, "migrations")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := goose.NewProvider(goose.DialectSQLite3, d.Writer, sub)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.UpTo(ctx, 21); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.Writer.ExecContext(ctx, `INSERT INTO users (id, username, display_name, role, role_id, created_at, updated_at)
+		VALUES (1, 'anna', 'Anna', 'member', (SELECT id FROM roles WHERE builtin_key = 'member'), 'x', 'x')`); err != nil {
+		t.Fatal(err)
+	}
+	if err := Migrate(ctx, d, dir); err != nil {
+		t.Fatal(err)
+	}
+
+	var required, roles int
+	if err := d.Reader.QueryRowContext(ctx, `SELECT (SELECT sum(mfa_required) FROM users), (SELECT sum(require_mfa) FROM roles)`).Scan(&required, &roles); err != nil {
+		t.Fatal(err)
+	}
+	if required != 0 || roles != 0 {
+		t.Fatalf("requirements after migration: users %d, roles %d", required, roles)
+	}
+
+	for _, stmt := range []string{
+		`INSERT INTO user_totp (user_id, secret_enc, created_at) VALUES (1, x'00', 'x')`,
+		`INSERT INTO user_recovery_codes (user_id, code_hash, created_at) VALUES (1, x'01', 'x')`,
+		`INSERT INTO user_webauthn (user_id, handle) VALUES (1, x'02')`,
+		`INSERT INTO user_passkeys (user_id, credential_id, credential, name, created_at) VALUES (1, x'03', '{}', 'Phone', 'x')`,
+	} {
+		if _, err := d.Writer.ExecContext(ctx, stmt); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, stmt := range []string{
+		`INSERT INTO user_recovery_codes (user_id, code_hash, created_at) VALUES (1, x'01', 'x')`,
+		`INSERT INTO user_passkeys (user_id, credential_id, credential, name, created_at) VALUES (1, x'03', '{}', 'Laptop', 'x')`,
+		`INSERT INTO user_passkeys (user_id, credential_id, credential, name, created_at) VALUES (1, x'04', '{}', '', 'x')`,
+		`UPDATE users SET mfa_required = 2`,
+	} {
+		if _, err := d.Writer.ExecContext(ctx, stmt); err == nil {
+			t.Errorf("accepted %s", stmt)
+		}
+	}
+	if _, err := d.Writer.ExecContext(ctx, "DELETE FROM users WHERE id = 1"); err != nil {
+		t.Fatal(err)
+	}
+	var left int
+	if err := d.Reader.QueryRowContext(ctx, `SELECT (SELECT count(*) FROM user_totp) + (SELECT count(*) FROM user_recovery_codes)
+		+ (SELECT count(*) FROM user_webauthn) + (SELECT count(*) FROM user_passkeys)`).Scan(&left); err != nil || left != 0 {
+		t.Fatalf("credentials survived their user: %d %v", left, err)
+	}
+}

@@ -123,7 +123,15 @@
       "none": "Keine",
       "view": "Ansehen",
       "edit": "Bearbeiten"
-    }
+    },
+    "mfa": "Zwei-Faktor",
+    "mfaOn": "An",
+    "mfaOff": "Aus",
+    "mfaRequired": "Pflicht",
+    "mfaRequire": "2FA verlangen",
+    "mfaNotRequire": "2FA nicht verlangen",
+    "mfaReset": "Zwei-Faktor-Anmeldung zurücksetzen",
+    "mfaResetBody": "Authenticator-App, Passkeys und Wiederherstellungscodes von {{name}} entfernen und überall abmelden? Danach meldet sich die Person mit ihrem Passwort an (und richtet eine neue Methode ein, falls Pflicht)."
   },
   "devices": {
     "title": "Geräte",
@@ -289,6 +297,64 @@
       "categories.manage": "Servicekategorien verwalten",
       "repair_lists.manage": "Projektprioritäten und Tags verwalten",
       "catalog.update": "Fahrzeugkatalog online aktualisieren"
+    },
+    "mfaBadge": "2FA Pflicht",
+    "requireMfa": "Zwei-Faktor-Anmeldung verlangen",
+    "requireMfaHint": "Benutzer mit dieser Rolle müssen nach ihrer nächsten Anmeldung eine Authenticator-App oder einen Passkey einrichten, bevor sie etwas anderes tun können.",
+    "requireMfaSelf": "Das ist deine Rolle und du hast noch keinen zweiten Faktor: Direkt nach dem Speichern kannst du nur noch einen einrichten.",
+    "adminRole": "Die Rolle Administrator darf immer alles. Hier kannst du für sie nur die Zwei-Faktor-Anmeldung verlangen."
+  },
+  "security": {
+    "title": "Anmeldung & Sicherheit",
+    "intro": "Dein Passwort, die Zwei-Faktor-Anmeldung und Passkeys.",
+    "setupRequired": "Für dein Konto ist die Zwei-Faktor-Anmeldung Pflicht. Richte eine Authenticator-App oder einen Passkey ein, um weiterzumachen.",
+    "on": "An",
+    "totp": {
+      "title": "Authenticator-App",
+      "intro": "Nach dem Passwort fragt torq nach einem 6-stelligen Code aus einer App wie Aegis, 2FAS, Google Authenticator oder deinem Passwortmanager.",
+      "setUp": "Einrichten",
+      "step1": "Scanne den QR-Code mit deiner Authenticator-App oder tippe den Einrichtungsschlüssel ein.",
+      "step2": "Gib den Code ein, den die App anzeigt.",
+      "qr": "QR-Code für die Authenticator-App",
+      "key": "Einrichtungsschlüssel",
+      "code": "Code aus der App",
+      "confirm": "Einschalten",
+      "turnOff": "Authenticator-App ausschalten",
+      "turnOffBody": "Die Anmeldung fragt dann nicht mehr nach einem Code aus der App."
+    },
+    "passkeys": {
+      "title": "Passkeys",
+      "intro": "Melde dich mit Fingerabdruck, Gesicht oder Geräte-PIN statt mit dem Passwort an. Ein Passkey funktioniert auch als zweiter Schritt nach dem Passwort.",
+      "add": "Passkey hinzufügen",
+      "addIntro": "Gib dem Passkey einen Namen, damit du ihn später wiedererkennst, z. B. das Gerät, auf dem er liegt. Danach fragt dein Browser nach einer Bestätigung.",
+      "name": "Name",
+      "namePlaceholder": "z. B. iPhone",
+      "create": "Weiter",
+      "cancelled": "Der Passkey wurde nicht angelegt.",
+      "unavailable": "Passkeys sind auf diesem Server nicht verfügbar: Ein Administrator muss die Serveradresse (TORQ_BASE_URL) setzen.",
+      "unsupported": "Dieser Browser unterstützt keine Passkeys.",
+      "added": "Hinzugefügt am {{date}}",
+      "lastUsed": "zuletzt verwendet {{date}}",
+      "neverUsed": "noch nie verwendet",
+      "rename": "{{name}} umbenennen",
+      "remove": "{{name}} entfernen",
+      "removeTitle": "Passkey entfernen",
+      "removeBody": "{{name}} entfernen? Damit ist keine Anmeldung mehr möglich. Lösche ihn auch auf dem Gerät."
+    },
+    "recovery": {
+      "title": "Wiederherstellungscodes",
+      "intro": "Wenn du dein Handy verlierst, meldest du dich stattdessen mit einem Wiederherstellungscode an. Jeder Code funktioniert nur einmal.",
+      "left_one": "Noch {{count}} unbenutzter Code.",
+      "left_other": "Noch {{count}} unbenutzte Codes.",
+      "low": "Dir gehen die Wiederherstellungscodes aus. Erstelle neue.",
+      "renew": "Neue Codes erstellen",
+      "renewBody": "Deine bisherigen Wiederherstellungscodes funktionieren dann nicht mehr.",
+      "newTitle": "Deine Wiederherstellungscodes",
+      "newIntro": "Bewahre sie sicher auf, z. B. ausgedruckt oder im Passwortmanager. Sie werden nur jetzt angezeigt.",
+      "copy": "Kopieren",
+      "copied": "Kopiert",
+      "print": "Drucken",
+      "saved": "Ich habe sie gespeichert"
     }
   }
 }

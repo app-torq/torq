@@ -26,6 +26,7 @@ export function UsersPage() {
   const [assigning, setAssigning] = useState<User | null>(null)
   const [resetting, setResetting] = useState<User | null>(null)
   const [deleting, setDeleting] = useState<User | null>(null)
+  const [resettingMfa, setResettingMfa] = useState<User | null>(null)
   const [actionError, setActionError] = useState<unknown>(null)
 
   const invalidate = () => qc.invalidateQueries({ queryKey: queryKeys.users })
@@ -37,6 +38,10 @@ export function UsersPage() {
       void qc.invalidateQueries({ queryKey: queryKeys.roles })
     },
     onError: setActionError,
+  })
+  const resetMfa = useMutation({
+    mutationFn: (id: number) => api.del(`/users/${id}/mfa`),
+    onSuccess: () => { setResettingMfa(null); void invalidate() },
   })
   const remove = useMutation({
     mutationFn: (id: number) => api.del(`/users/${id}`),
@@ -66,6 +71,7 @@ export function UsersPage() {
               <th>{t('auth:fields.username')}</th>
               <th>{t('users.role')}</th>
               <th>{t('users.vehicles')}</th>
+              <th>{t('users.mfa')}</th>
               <th>{t('users.status')}</th>
               <th />
             </tr>
@@ -99,12 +105,26 @@ export function UsersPage() {
                     </button>
                   )}
                 </td>
+                <td>
+                  <div className="flex flex-wrap items-center gap-1">
+                    {u.mfa_enabled ? <Badge tone="emerald">{t('users.mfaOn')}</Badge> : <Badge>{t('users.mfaOff')}</Badge>}
+                    {u.mfa_required && <Badge tone="sky">{t('users.mfaRequired')}</Badge>}
+                  </div>
+                </td>
                 <td>{u.disabled ? <Badge tone="red">{t('users.disabled')}</Badge> : <Badge tone="emerald">{t('users.active')}</Badge>}</td>
                 <td>
                   <div className="flex justify-end gap-1">
                     {u.id !== me.id && (
                       <Button size="sm" variant="ghost" onClick={() => { update.mutate({ id: u.id, body: { disabled: !u.disabled } }) }}>
                         {u.disabled ? t('users.enable') : t('users.disable')}
+                      </Button>
+                    )}
+                    <Button size="sm" variant="ghost" onClick={() => { update.mutate({ id: u.id, body: { mfa_required: !u.mfa_required } }) }}>
+                      {u.mfa_required ? t('users.mfaNotRequire') : t('users.mfaRequire')}
+                    </Button>
+                    {u.mfa_enabled && u.id !== me.id && (
+                      <Button size="sm" variant="ghost" onClick={() => { setResettingMfa(u) }}>
+                        {t('users.mfaReset')}
                       </Button>
                     )}
                     <Button size="sm" variant="ghost" onClick={() => { setResetting(u) }}>
@@ -126,6 +146,17 @@ export function UsersPage() {
       <CreateUserDialog open={creating} onClose={() => { setCreating(false) }} onCreated={() => { setCreating(false); void invalidate() }} />
       <ResetPasswordDialog user={resetting} onClose={() => { setResetting(null) }} />
       {assigning && <VehicleAccessDialog user={assigning} onClose={() => { setAssigning(null) }} />}
+      <ConfirmDialog
+        open={resettingMfa !== null}
+        title={t('users.mfaReset')}
+        body={t('users.mfaResetBody', { name: resettingMfa?.display_name ?? '' })}
+        confirmLabel={t('users.mfaReset')}
+        danger
+        busy={resetMfa.isPending}
+        error={resetMfa.isError ? errorText(resetMfa.error) : undefined}
+        onConfirm={() => { if (resettingMfa) resetMfa.mutate(resettingMfa.id) }}
+        onClose={() => { setResettingMfa(null); resetMfa.reset() }}
+      />
       <ConfirmDialog
         open={deleting !== null}
         title={t('users.deleteTitle')}

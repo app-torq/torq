@@ -5,13 +5,13 @@
 openapi: "3.1.0"
 info:
   title: torq API
-  version: "10"
+  version: "11"
   description: |-
     The REST API of torq, a self-hosted vehicle maintenance and DIY repair tracker. It is used by the web app and the torq mobile app.
 
     **Authentication.** Browsers use the `torq_session` cookie and send `X-Torq-Request: 1` on every request that is not GET or HEAD. Apps and other clients sign in with `"token": true` and send the token as `Authorization: Bearer <token>`; such requests need no extra header. Tokens expire after 30 days without use and can be revoked under `/me/sessions`.
 
-    **Errors.** Errors are JSON with a dotted code (`{"error": {"code": "validation.failed", "fields": {...}}}`), never prose. Every operation can return `auth.unauthenticated` (401), `request.malformed` (400) and `internal` (500); operations with a path ID can return `not_found` (404); cookie requests can return `csrf.missing_header` and `csrf.origin_mismatch` (403). `x-torq-error-codes` lists the codes specific to an operation. `x-torq-access` states who may call it: `public`, `member` (any signed-in user) or `admin`. `x-torq-permission` names the permission a `member` operation also needs: garage-wide permissions are checked for every call, per-vehicle ones on the vehicle the request is about. A vehicle the caller can't see answers `not_found` like a missing one; a visible vehicle without the permission answers `auth.forbidden` (403). Operations on a vehicle's data without `x-torq-permission` only need the vehicle to be visible.
+    **Errors.** Errors are JSON with a dotted code (`{"error": {"code": "validation.failed", "fields": {...}}}`), never prose. Every operation can return `auth.unauthenticated` (401), `request.malformed` (400) and `internal` (500); operations with a path ID can return `not_found` (404); cookie requests can return `csrf.missing_header` and `csrf.origin_mismatch` (403). `x-torq-error-codes` lists the codes specific to an operation. `x-torq-access` states who may call it: `public`, `member` (any signed-in user) or `admin`. `x-torq-permission` names the permission a `member` operation also needs: garage-wide permissions are checked for every call, per-vehicle ones on the vehicle the request is about. A vehicle the caller can't see answers `not_found` like a missing one; a visible vehicle without the permission answers `auth.forbidden` (403). Operations on a vehicle's data without `x-torq-permission` only need the vehicle to be visible. While a user must set up a second factor first, only operations with `x-torq-mfa-setup: true` are allowed; all others answer `auth.mfa_setup_required` (403).
 
     **Compatibility.** Within `/api/v1`, changes are additive only: no operation, field or error code is removed or renamed, no new request field becomes required, and no field changes its meaning. Clients must ignore fields they don't know, and handle unknown values in fields whose description lists the possible values: such lists can grow. `info.version` is the API level; it is also returned as `api_version` by `GET /instance` and rises by one with every release that adds operations, fields or capabilities, so clients can detect features. Servers older than torq 1.1.0 have no `GET /instance` and answer 404: treat that as level 0.
   license:
@@ -197,9 +197,11 @@ paths:
                 username:
                   type: string
               additionalProperties: false
+      description: "For users with a second factor, a correct password returns 401 auth.mfa_required with params.challenge (valid 5 minutes, 5 attempts) and params.methods (totp, recovery_code, passkey) instead of a session; complete it with POST /auth/mfa."
       x-torq-error-codes:
         - auth.invalid_credentials
         - auth.throttled
+        - auth.mfa_required
       responses:
         "200":
           description: Success.
@@ -209,11 +211,480 @@ paths:
                 $ref: "#/components/schemas/MeResponse"
         default:
           $ref: "#/components/responses/Error"
+  /auth/mfa:
+    post:
+      operationId: completeMFA
+      summary: Complete a sign-in with the second factor
+      description: "Answers the challenge from POST /auth/login with exactly one of code (authenticator app), recovery_code or passkey (the WebAuthn assertion, after POST /auth/mfa/passkey-options). Wrong answers count against the challenge (5) and the sign-in throttle."
+      x-torq-access: public
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - challenge
+              properties:
+                challenge:
+                  type: string
+                code:
+                  type: string
+                recovery_code:
+                  type: string
+                passkey:
+                  type: object
+                  description: The PublicKeyCredential from the browser as JSON.
+                  additionalProperties: true
+              additionalProperties: false
+      x-torq-error-codes:
+        - auth.mfa_invalid
+        - auth.mfa_challenge_expired
+        - auth.throttled
+      responses:
+        "200":
+          description: Success; the same body as POST /auth/login.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /auth/mfa/passkey-options:
+    post:
+      operationId: challengePasskeyOptions
+      summary: Start the passkey check of a sign-in challenge
+      x-torq-access: public
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - challenge
+              properties:
+                challenge:
+                  type: string
+              additionalProperties: false
+      x-torq-error-codes:
+        - auth.mfa_challenge_expired
+        - passkey.unavailable
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - options
+                properties:
+                  options:
+                    type: object
+                    description: "WebAuthn request options: {publicKey: PublicKeyCredentialRequestOptions JSON}."
+                    additionalProperties: true
+        default:
+          $ref: "#/components/responses/Error"
+  /auth/passkey/options:
+    post:
+      operationId: passkeySignInOptions
+      summary: Start a sign-in with a passkey, without username or password
+      x-torq-access: public
+      security: []
+      x-torq-error-codes:
+        - passkey.unavailable
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - session
+                  - options
+                properties:
+                  session:
+                    type: string
+                  options:
+                    type: object
+                    description: "WebAuthn request options: {publicKey: PublicKeyCredentialRequestOptions JSON}."
+                    additionalProperties: true
+        default:
+          $ref: "#/components/responses/Error"
+  /auth/passkey:
+    post:
+      operationId: passkeySignIn
+      summary: Sign in with a passkey
+      description: "The passkey must verify its user (PIN or biometrics); it then counts as both factors."
+      x-torq-access: public
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - session
+                - credential
+              properties:
+                session:
+                  type: string
+                credential:
+                  type: object
+                  description: The PublicKeyCredential from the browser as JSON.
+                  additionalProperties: true
+                token:
+                  type: boolean
+                  description: Return a bearer token instead of setting the session cookie.
+                device_name:
+                  type: string
+                  description: Name shown in the Devices list. Cut to 64 characters.
+              additionalProperties: false
+      x-torq-error-codes:
+        - passkey.invalid
+        - passkey.verification_required
+        - passkey.unavailable
+        - auth.throttled
+      responses:
+        "200":
+          description: Success; the same body as POST /auth/login.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /me/mfa:
+    get:
+      operationId: getMFA
+      summary: The signed-in user's second factors
+      x-torq-access: member
+      x-torq-mfa-setup: true
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - totp
+                  - recovery_codes_left
+                  - passkeys
+                  - required
+                  - passkeys_available
+                properties:
+                  totp:
+                    type: boolean
+                  recovery_codes_left:
+                    type: integer
+                  passkeys:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Passkey"
+                  required:
+                    type: boolean
+                    description: A second factor is required by the role or for the user.
+                  passkeys_available:
+                    type: boolean
+                    description: Passkeys work on this server.
+        default:
+          $ref: "#/components/responses/Error"
+  /me/totp:
+    post:
+      operationId: beginTOTP
+      summary: Start setting up an authenticator app
+      x-torq-access: member
+      x-torq-mfa-setup: true
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      x-torq-error-codes:
+        - demo.accounts_locked
+        - mfa.totp_enabled
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - secret
+                  - uri
+                properties:
+                  secret:
+                    type: string
+                    description: The setup key (base32) to type into the app.
+                  uri:
+                    type: string
+                    description: The otpauth link to show as a QR code.
+        default:
+          $ref: "#/components/responses/Error"
+    delete:
+      operationId: deleteTOTP
+      summary: Turn the authenticator app off
+      x-torq-access: member
+      x-torq-mfa-setup: true
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      x-torq-error-codes:
+        - demo.accounts_locked
+        - mfa.required
+      responses:
+        "204":
+          description: "Done; no body."
+        default:
+          $ref: "#/components/responses/Error"
+  /me/totp/confirm:
+    post:
+      operationId: confirmTOTP
+      summary: Turn the authenticator app on with a code from it
+      x-torq-access: member
+      x-torq-mfa-setup: true
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+              properties:
+                code:
+                  type: string
+              additionalProperties: false
+      x-torq-error-codes:
+        - demo.accounts_locked
+        - mfa.code_invalid
+        - mfa.no_setup
+        - mfa.totp_enabled
+        - validation.failed
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - recovery_codes
+                properties:
+                  recovery_codes:
+                    type: array
+                    description: "New recovery codes, shown once; empty when the user already had a second factor."
+                    items:
+                      type: string
+        default:
+          $ref: "#/components/responses/Error"
+  /me/recovery-codes:
+    post:
+      operationId: newRecoveryCodes
+      summary: Replace the recovery codes
+      x-torq-access: member
+      x-torq-mfa-setup: true
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      x-torq-error-codes:
+        - demo.accounts_locked
+        - mfa.no_factor
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - recovery_codes
+                properties:
+                  recovery_codes:
+                    type: array
+                    description: "New recovery codes, shown once; empty when the user already had a second factor."
+                    items:
+                      type: string
+        default:
+          $ref: "#/components/responses/Error"
+  /me/passkeys/options:
+    post:
+      operationId: passkeyRegistrationOptions
+      summary: Start adding a passkey
+      x-torq-access: member
+      x-torq-mfa-setup: true
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      x-torq-error-codes:
+        - demo.accounts_locked
+        - passkey.unavailable
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - session
+                  - options
+                properties:
+                  session:
+                    type: string
+                  options:
+                    type: object
+                    description: "WebAuthn creation options: {publicKey: PublicKeyCredentialCreationOptions JSON}."
+                    additionalProperties: true
+        default:
+          $ref: "#/components/responses/Error"
+  /me/passkeys:
+    post:
+      operationId: addPasskey
+      summary: Add a passkey
+      x-torq-access: member
+      x-torq-mfa-setup: true
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - session
+                - name
+                - credential
+              properties:
+                session:
+                  type: string
+                name:
+                  type: string
+                  description: 1–64 characters.
+                credential:
+                  type: object
+                  description: The PublicKeyCredential from the browser as JSON.
+                  additionalProperties: true
+              additionalProperties: false
+      x-torq-error-codes:
+        - demo.accounts_locked
+        - passkey.invalid
+        - passkey.unavailable
+        - validation.failed
+      responses:
+        "201":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - passkey
+                  - recovery_codes
+                properties:
+                  passkey:
+                    $ref: "#/components/schemas/Passkey"
+                  recovery_codes:
+                    type: array
+                    description: "New recovery codes when this is the first second factor, shown once; else empty."
+                    items:
+                      type: string
+        default:
+          $ref: "#/components/responses/Error"
+  "/me/passkeys/{id}":
+    patch:
+      operationId: renamePasskey
+      summary: Rename a passkey
+      x-torq-access: member
+      x-torq-mfa-setup: true
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+              additionalProperties: false
+      x-torq-error-codes:
+        - demo.accounts_locked
+        - validation.failed
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - passkey
+                properties:
+                  passkey:
+                    $ref: "#/components/schemas/Passkey"
+        default:
+          $ref: "#/components/responses/Error"
+    delete:
+      operationId: deletePasskey
+      summary: Remove a passkey
+      x-torq-access: member
+      x-torq-mfa-setup: true
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      x-torq-error-codes:
+        - demo.accounts_locked
+        - mfa.required
+      responses:
+        "204":
+          description: "Done; no body."
+        default:
+          $ref: "#/components/responses/Error"
+  "/users/{id}/mfa":
+    delete:
+      operationId: resetUserMFA
+      summary: "Remove a user's second factors and end their sessions"
+      x-torq-access: admin
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      x-torq-error-codes:
+        - demo.accounts_locked
+      responses:
+        "204":
+          description: "Done; no body."
+        default:
+          $ref: "#/components/responses/Error"
   /auth/logout:
     post:
       operationId: logout
       summary: Sign out the current session or token
       x-torq-access: member
+      x-torq-mfa-setup: true
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -227,6 +698,7 @@ paths:
       operationId: me
       summary: The signed-in user and server information
       x-torq-access: member
+      x-torq-mfa-setup: true
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -244,6 +716,7 @@ paths:
       operationId: changePassword
       summary: "Change your password; other sessions end"
       x-torq-access: member
+      x-torq-mfa-setup: true
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -274,6 +747,7 @@ paths:
       operationId: updatePreferences
       summary: Update your display name and formatting preferences
       x-torq-access: member
+      x-torq-mfa-setup: true
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -540,6 +1014,11 @@ paths:
                     - integer
                     - "null"
                   description: The user's role; takes effect on the user's next request.
+                mfa_required:
+                  type:
+                    - boolean
+                    - "null"
+                  description: Require a second factor for this user.
               additionalProperties: false
       x-torq-error-codes:
         - demo.accounts_locked
@@ -4927,6 +5406,7 @@ components:
         - demo_mode
         - max_upload_mb
         - public_links
+        - passkeys
         - spec_autofill
         - token_auth
         - version
@@ -4945,6 +5425,9 @@ components:
         public_links:
           type: boolean
           description: Vehicles can be shared by public link on this server.
+        passkeys:
+          type: boolean
+          description: "Passkeys work on this server (it needs TORQ_BASE_URL). API level 11."
         spec_autofill:
           type: boolean
           description: The optional spec-sheet auto-fill is configured on this server.
@@ -5960,6 +6443,28 @@ components:
         sort_order:
           type: integer
           description: 1 is the most urgent.
+    Passkey:
+      type: object
+      required:
+        - id
+        - name
+        - user_verified
+        - created_at
+        - last_used_at
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        user_verified:
+          type: boolean
+          description: The passkey verifies its user (PIN or biometrics), so it can sign in without a password.
+        created_at:
+          type: string
+        last_used_at:
+          type:
+            - string
+            - "null"
     Role:
       type: object
       required:
@@ -5971,6 +6476,7 @@ components:
         - all_vehicles
         - permissions
         - user_count
+        - require_mfa
       properties:
         id:
           type: integer
@@ -5998,6 +6504,9 @@ components:
             type: string
         user_count:
           type: integer
+        require_mfa:
+          type: boolean
+          description: The role's users must have a second factor.
     RoleInput:
       type: object
       properties:
@@ -6017,6 +6526,9 @@ components:
           description: Replaces the role's permissions; keys from GET /roles.
           items:
             type: string
+        require_mfa:
+          type: boolean
+          description: "Require a second factor for the role's users; the only field the Administrator role accepts."
       additionalProperties: false
     VehicleAssignment:
       type: object
@@ -6154,6 +6666,7 @@ components:
         - demo_mode
         - max_upload_mb
         - public_links
+        - passkeys
         - setup_required
         - spec_autofill
         - token_auth
@@ -6173,6 +6686,9 @@ components:
         public_links:
           type: boolean
           description: Vehicles can be shared by public link on this server.
+        passkeys:
+          type: boolean
+          description: "Passkeys work on this server (it needs TORQ_BASE_URL). API level 11."
         setup_required:
           type: boolean
           description: "No account exists yet; first-boot setup is pending."
@@ -6590,6 +7106,8 @@ components:
         - role_id
         - role_name
         - role_builtin_key
+        - mfa_enabled
+        - mfa_required
         - time_format
         - torque_unit
         - username
@@ -6667,6 +7185,15 @@ components:
         all_vehicles:
           type: boolean
           description: "Whether the signed-in user sees every vehicle (me, login and setup responses only); otherwise only assigned ones."
+        mfa_enabled:
+          type: boolean
+          description: The user has a second factor (authenticator app or passkey). API level 11.
+        mfa_required:
+          type: boolean
+          description: An administrator requires a second factor for this user; roles can require it too (require_mfa).
+        mfa_setup_required:
+          type: boolean
+          description: "The signed-in user must set up a second factor before anything else; every other request answers auth.mfa_setup_required (me, login and setup responses only)."
         username:
           type: string
     Vehicle:

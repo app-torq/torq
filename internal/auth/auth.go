@@ -54,7 +54,10 @@ type User struct {
 	Role     Role
 	RoleID   int64
 	Disabled bool
-	Prefs    Preferences
+	// MFARequired is set when an administrator requires a second factor for
+	// this user (roles can require it too, see Access).
+	MFARequired bool
+	Prefs       Preferences
 	// Access is loaded with the session; it is empty for users read
 	// elsewhere.
 	Access Access
@@ -107,6 +110,7 @@ func FromStore(u store.User) User {
 		Role:        Role(u.Role),
 		RoleID:      u.RoleID.Int64,
 		Disabled:    u.DisabledAt.Valid,
+		MFARequired: u.MfaRequired == 1,
 		Prefs: Preferences{
 			Locale:          u.Locale,
 			CurrencySymbol:  u.CurrencySymbol.String,

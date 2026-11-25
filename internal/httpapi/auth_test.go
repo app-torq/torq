@@ -352,6 +352,7 @@ func TestInstance(t *testing.T) {
 	want := map[string]any{
 		"api_version": float64(APIVersion), "version": "test", "setup_required": true,
 		"demo_mode": false, "token_auth": true, "spec_autofill": false, "max_upload_mb": float64(25),
+		"passkeys": false, // no TORQ_BASE_URL; mfa_test.go covers passkeys
 	}
 	for k, v := range want {
 		if info[k] != v {

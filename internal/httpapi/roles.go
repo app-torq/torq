@@ -19,12 +19,14 @@ type roleJSON struct {
 	AllVehicles bool              `json:"all_vehicles"`
 	Permissions []auth.Permission `json:"permissions"`
 	UserCount   int64             `json:"user_count"`
+	RequireMFA  bool              `json:"require_mfa"`
 }
 
 func toRoleJSON(r auth.RoleInfo, locale string) roleJSON {
 	return roleJSON{
 		ID: r.ID, Name: auth.RoleName(r.Role, locale), CustomName: strPtr(r.CustomName), BuiltinKey: strPtr(r.BuiltinKey),
 		Description: r.Description, AllVehicles: r.AllVehicles == 1, Permissions: r.Permissions, UserCount: r.UserCount,
+		RequireMFA: r.RequireMfa == 1,
 	}
 }
 
@@ -58,10 +60,11 @@ type roleInput struct {
 	Description *string         `json:"description"`
 	AllVehicles *bool           `json:"all_vehicles"`
 	Permissions *[]string       `json:"permissions"`
+	RequireMFA  *bool           `json:"require_mfa"`
 }
 
 func (in roleInput) domain() (auth.RoleInput, error) {
-	out := auth.RoleInput{Description: in.Description, AllVehicles: in.AllVehicles, Permissions: in.Permissions}
+	out := auth.RoleInput{Description: in.Description, AllVehicles: in.AllVehicles, Permissions: in.Permissions, RequireMFA: in.RequireMFA}
 	switch {
 	case in.Name == nil:
 	case bytes.Equal(in.Name, []byte("null")):

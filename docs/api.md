@@ -30,6 +30,9 @@ same two fields, so an app can also create the first account on a fresh server.
 - `POST /api/v1/auth/logout` with a token revokes that token only.
 - Settings → Devices in the web app lists every signed-in browser and app and can sign them out
   (`GET`/`DELETE /api/v1/me/sessions`). Changing the password signs out everything else, tokens included.
+- Accounts with two-factor sign-in answer a correct password with `401 auth.mfa_required` instead of a
+  session; see [Two-factor sign-in](#two-factor-sign-in-and-passkeys-api-level-11). Clients that don't
+  support it can show that error as is.
 - When a request carries a bearer token, only the token counts. An invalid token is rejected even if the
   request also has a valid cookie.
 - `Authorization` headers with other schemes, such as basic auth added by a reverse proxy in front of torq,
@@ -73,6 +76,8 @@ bearer exemption unsafe.
   shared documents.
 - `public_links` (API level 9) is `false` when an admin turned public vehicle links off. Hide the share
   controls then.
+- `passkeys` (API level 11) is `true` when passkeys work on the server (it has `TORQ_BASE_URL`). Offer
+  passkey sign-in only then.
 
 ## Compatibility
 
@@ -195,6 +200,39 @@ all vehicles); administrators add their own.
   `role.builtin_locked`), `GET/PUT /users/{id}/vehicle-access` (assignments with `level` `view` or `edit`;
   they only apply while the user's role uses assigned vehicles) and `GET /vehicles/{id}/access` (who sees a
   vehicle, and how). Changes apply on each affected user's next request.
+
+### Two-factor sign-in and passkeys (API level 11)
+
+Users can add an authenticator app (6-digit codes, 30-second steps), passkeys and single-use recovery
+codes. Administrators can require a second factor per role (`require_mfa`) or per user (`mfa_required`).
+
+**Signing in with a password**
+
+1. `POST /auth/login` as before. Without a second factor nothing changes. With one, the answer is
+   `401 auth.mfa_required` with `params.challenge` and `params.methods` (`totp`, `recovery_code`,
+   `passkey`). No cookie and no token are issued.
+2. `POST /auth/mfa` with `{"challenge": …, "code": "123456"}` or `{"challenge": …, "recovery_code": …}`
+   answers like a successful login (with `token` when step 1 asked for one). For a passkey, get options with
+   `POST /auth/mfa/passkey-options` and send the assertion as `passkey`.
+3. A challenge lasts 5 minutes and takes 5 wrong answers (`auth.mfa_invalid` with
+   `params.attempts_left`), then `auth.mfa_challenge_expired`. Failures also count towards the sign-in
+   throttle (`auth.throttled`).
+
+**Signing in with a passkey only**: `POST /auth/passkey/options` returns `{session, options}`; pass
+`options.publicKey` to the platform's passkey API and send the result to `POST /auth/passkey` with
+`session` (plus `token`/`device_name` for apps). Only passkeys that verify the user (PIN, biometrics)
+work here; they count as both factors. Passkeys are bound to the server's address and need
+`TORQ_BASE_URL`; otherwise these routes answer `409 passkey.unavailable`.
+
+**Required but not set up**: `user.mfa_setup_required` in `/auth/me` and the login response. Until the
+user adds a factor, every request except the ones marked `x-torq-mfa-setup: true` in `openapi.yaml`
+answers `403 auth.mfa_setup_required`. Show only the setup then.
+
+**Self-service** (`/me/mfa`, `/me/totp`, `/me/totp/confirm`, `/me/recovery-codes`, `/me/passkeys…`):
+`POST /me/totp` returns the `secret` and an `otpauth://` `uri` for a QR code; `POST /me/totp/confirm`
+turns it on. The first factor returns `recovery_codes`, shown once. Removing the last factor while one is
+required answers `409 mfa.required`. Administrators remove a user's factors with
+`DELETE /users/{id}/mfa`, which also ends that user's sessions. In the demo, all of this is locked.
 
 ## Errors
 

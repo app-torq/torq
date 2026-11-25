@@ -10,6 +10,7 @@ import (
 	"github.com/app-torq/torq/internal/apperr"
 	"github.com/app-torq/torq/internal/auth"
 	"github.com/app-torq/torq/internal/auth/local"
+	"github.com/app-torq/torq/internal/auth/mfa"
 	"github.com/app-torq/torq/internal/store"
 )
 
@@ -64,6 +65,13 @@ type userJSON struct {
 	// (me, login, setup).
 	Permissions *[]auth.Permission `json:"permissions,omitempty"`
 	AllVehicles *bool              `json:"all_vehicles,omitempty"`
+	// MFAEnabled is set when the user has a second factor; MFARequired when
+	// an administrator requires one for this user (roles can too).
+	MFAEnabled  bool `json:"mfa_enabled"`
+	MFARequired bool `json:"mfa_required"`
+	// MFASetupRequired tells the signed-in user to set up a second factor
+	// before anything else (me, login, setup).
+	MFASetupRequired *bool `json:"mfa_setup_required,omitempty"`
 	formatsJSON
 }
 
@@ -72,7 +80,7 @@ func toUserJSON(u auth.User, role store.Role, locale string) userJSON {
 	out := userJSON{
 		ID: u.ID, Username: u.Username, DisplayName: u.DisplayName, Role: string(u.Role),
 		Locale: u.Prefs.Locale, PriorityDisplay: u.Prefs.PriorityDisplay, CardTagLimit: u.Prefs.CardTagLimit, Disabled: u.Disabled,
-		RoleID: u.RoleID, RoleName: auth.RoleName(role, locale), RoleBuiltinKey: strPtr(role.BuiltinKey),
+		RoleID: u.RoleID, RoleName: auth.RoleName(role, locale), RoleBuiltinKey: strPtr(role.BuiltinKey), MFARequired: u.MFARequired,
 		formatsJSON: toFormatsJSON(u.Prefs.Formats),
 	}
 	if u.Prefs.CurrencySymbol != "" {
@@ -101,7 +109,10 @@ func (s *Server) userOut(r *http.Request, u auth.User) (userJSON, error) {
 	if err != nil {
 		return userJSON{}, err
 	}
-	return toUserJSON(u, roles[u.RoleID], currentUser(r).Prefs.Locale), nil
+	out := toUserJSON(u, roles[u.RoleID], currentUser(r).Prefs.Locale)
+	n, err := mfa.Factors(r.Context(), store.New(s.DB.Reader), u.ID)
+	out.MFAEnabled = n > 0
+	return out, err
 }
 
 // meOut renders the signed-in user with their own permissions. Users from a
@@ -116,9 +127,11 @@ func (s *Server) meOut(ctx context.Context, u auth.User) (userJSON, error) {
 		return userJSON{}, err
 	}
 	out := toUserJSON(u, roles[u.RoleID], u.Prefs.Locale)
-	granted, all := a.Granted(), a.Admin || a.AllVehicles
-	out.Permissions, out.AllVehicles = &granted, &all
-	return out, nil
+	granted, all, setup := a.Granted(), a.Admin || a.AllVehicles, a.MFASetupRequired
+	out.Permissions, out.AllVehicles, out.MFASetupRequired = &granted, &all, &setup
+	n, err := mfa.Factors(ctx, store.New(s.DB.Reader), u.ID)
+	out.MFAEnabled = n > 0
+	return out, err
 }
 
 // meResponse adds instance facts every signed-in user needs (upload limit,
@@ -150,6 +163,9 @@ type instanceInfo struct {
 	Branding     brandingJSON `json:"branding"`
 	// PublicLinks tells clients whether vehicles can be shared by link.
 	PublicLinks bool `json:"public_links"`
+	// Passkeys tells clients whether passkeys work on this server (it needs
+	// TORQ_BASE_URL).
+	Passkeys bool `json:"passkeys"`
 }
 
 // instanceInfo includes the contact details only for signed-in users.
@@ -165,7 +181,7 @@ func (s *Server) instanceInfo(ctx context.Context, signedIn bool) (instanceInfo,
 	return instanceInfo{
 		APIVersion: APIVersion, MaxUploadMB: s.Config.MaxUploadMB, Version: s.Version,
 		DemoMode: s.Config.DemoMode, TokenAuth: true, SpecAutofill: s.specfill != nil, Branding: b,
-		PublicLinks: c.PublicLinksEnabled == 1,
+		PublicLinks: c.PublicLinksEnabled == 1, Passkeys: s.mfa.Passkeys != nil,
 	}, nil
 }
 
@@ -284,6 +300,10 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) error {
 	s.userThrottle.Succeed(userKeys...)
 	user, err := s.users.Get(r.Context(), userID)
 	if err != nil {
+		return err
+	}
+	// A second factor: no session yet, but a challenge to complete.
+	if err := s.startChallenge(r, userID, in.signIn); err != nil {
 		return err
 	}
 	token, err := s.startSession(w, r, userID, in.signIn)

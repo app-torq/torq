@@ -48,15 +48,16 @@ func (q *Queries) CountRoleUsersWithoutAccess(ctx context.Context, roleID sql.Nu
 }
 
 const createRole = `-- name: CreateRole :one
-INSERT INTO roles (custom_name, description, all_vehicles, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?)
-RETURNING id, builtin_key, custom_name, description, all_vehicles, created_at, updated_at
+INSERT INTO roles (custom_name, description, all_vehicles, require_mfa, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?)
+RETURNING id, builtin_key, custom_name, description, all_vehicles, created_at, updated_at, require_mfa
 `
 
 type CreateRoleParams struct {
 	CustomName  sql.NullString
 	Description string
 	AllVehicles int64
+	RequireMfa  int64
 	CreatedAt   string
 	UpdatedAt   string
 }
@@ -66,6 +67,7 @@ func (q *Queries) CreateRole(ctx context.Context, arg CreateRoleParams) (Role, e
 		arg.CustomName,
 		arg.Description,
 		arg.AllVehicles,
+		arg.RequireMfa,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -78,6 +80,7 @@ func (q *Queries) CreateRole(ctx context.Context, arg CreateRoleParams) (Role, e
 		&i.AllVehicles,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.RequireMfa,
 	)
 	return i, err
 }
@@ -101,7 +104,7 @@ func (q *Queries) DeleteRolePermissions(ctx context.Context, roleID int64) error
 }
 
 const getRole = `-- name: GetRole :one
-SELECT id, builtin_key, custom_name, description, all_vehicles, created_at, updated_at FROM roles WHERE id = ?
+SELECT id, builtin_key, custom_name, description, all_vehicles, created_at, updated_at, require_mfa FROM roles WHERE id = ?
 `
 
 func (q *Queries) GetRole(ctx context.Context, id int64) (Role, error) {
@@ -115,12 +118,13 @@ func (q *Queries) GetRole(ctx context.Context, id int64) (Role, error) {
 		&i.AllVehicles,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.RequireMfa,
 	)
 	return i, err
 }
 
 const getRoleByBuiltinKey = `-- name: GetRoleByBuiltinKey :one
-SELECT id, builtin_key, custom_name, description, all_vehicles, created_at, updated_at FROM roles WHERE builtin_key = ?
+SELECT id, builtin_key, custom_name, description, all_vehicles, created_at, updated_at, require_mfa FROM roles WHERE builtin_key = ?
 `
 
 func (q *Queries) GetRoleByBuiltinKey(ctx context.Context, builtinKey sql.NullString) (Role, error) {
@@ -134,6 +138,7 @@ func (q *Queries) GetRoleByBuiltinKey(ctx context.Context, builtinKey sql.NullSt
 		&i.AllVehicles,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.RequireMfa,
 	)
 	return i, err
 }
@@ -193,7 +198,7 @@ func (q *Queries) ListRolePermissions(ctx context.Context, roleID int64) ([]stri
 }
 
 const listRoles = `-- name: ListRoles :many
-SELECT r.id, r.builtin_key, r.custom_name, r.description, r.all_vehicles, r.created_at, r.updated_at, CAST((SELECT COUNT(*) FROM users u WHERE u.role_id = r.id) AS INTEGER) AS user_count
+SELECT r.id, r.builtin_key, r.custom_name, r.description, r.all_vehicles, r.created_at, r.updated_at, r.require_mfa, CAST((SELECT COUNT(*) FROM users u WHERE u.role_id = r.id) AS INTEGER) AS user_count
 FROM roles r
 ORDER BY CASE r.builtin_key WHEN 'admin' THEN 0 WHEN 'member' THEN 1 WHEN 'viewer' THEN 2 ELSE 3 END,
          r.custom_name COLLATE NOCASE, r.id
@@ -207,6 +212,7 @@ type ListRolesRow struct {
 	AllVehicles int64
 	CreatedAt   string
 	UpdatedAt   string
+	RequireMfa  int64
 	UserCount   int64
 }
 
@@ -227,6 +233,7 @@ func (q *Queries) ListRoles(ctx context.Context) ([]ListRolesRow, error) {
 			&i.AllVehicles,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.RequireMfa,
 			&i.UserCount,
 		); err != nil {
 			return nil, err
@@ -265,13 +272,14 @@ func (q *Queries) MoveRoleUsers(ctx context.Context, arg MoveRoleUsersParams) er
 }
 
 const updateRole = `-- name: UpdateRole :one
-UPDATE roles SET custom_name = ?, description = ?, all_vehicles = ?, updated_at = ? WHERE id = ? RETURNING id, builtin_key, custom_name, description, all_vehicles, created_at, updated_at
+UPDATE roles SET custom_name = ?, description = ?, all_vehicles = ?, require_mfa = ?, updated_at = ? WHERE id = ? RETURNING id, builtin_key, custom_name, description, all_vehicles, created_at, updated_at, require_mfa
 `
 
 type UpdateRoleParams struct {
 	CustomName  sql.NullString
 	Description string
 	AllVehicles int64
+	RequireMfa  int64
 	UpdatedAt   string
 	ID          int64
 }
@@ -281,6 +289,7 @@ func (q *Queries) UpdateRole(ctx context.Context, arg UpdateRoleParams) (Role, e
 		arg.CustomName,
 		arg.Description,
 		arg.AllVehicles,
+		arg.RequireMfa,
 		arg.UpdatedAt,
 		arg.ID,
 	)
@@ -293,6 +302,7 @@ func (q *Queries) UpdateRole(ctx context.Context, arg UpdateRoleParams) (Role, e
 		&i.AllVehicles,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.RequireMfa,
 	)
 	return i, err
 }

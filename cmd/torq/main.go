@@ -14,6 +14,7 @@ import (
 	"time"
 	_ "time/tzdata" // lets TZ work on distroless images without zoneinfo
 
+	"github.com/app-torq/torq/internal/auth/mfa"
 	"github.com/app-torq/torq/internal/clock"
 	"github.com/app-torq/torq/internal/config"
 	"github.com/app-torq/torq/internal/db"
@@ -67,7 +68,12 @@ func run() error {
 	}
 	importCatalog(ctx, log, database)
 
+	box, err := mfa.OpenBox(cfg.DataDir)
+	if err != nil {
+		return err
+	}
 	server := httpapi.NewServer(httpapi.Deps{
+		Box:     box,
 		Config:  cfg,
 		DB:      database,
 		Clock:   clock.System{},
