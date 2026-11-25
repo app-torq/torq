@@ -68,3 +68,19 @@ test('V22: hour meters on an hours-only vehicle, its service log, reminders and 
   await expect(page.getByText(/· 1,262 h/)).toBeVisible()
   await expect(page.getByText(/\d km/).filter({ visible: true })).toHaveCount(0)
 })
+
+// Issue #39: the dashboard asks for what a vehicle is tracked by; with
+// odometer and hours, both inputs are there.
+test('V22b: the dashboard offers odometer and hours for a vehicle tracked by both', async ({ page }) => {
+  await login(page)
+  await apiPost(page.request, '/vehicles', {
+    make: 'Hymer', model: 'B 544 Generator', current_odometer_km: 98000, hour_meters: [{ name: 'Generator', hours: 312 }],
+  })
+  await page.goto('/')
+  const card = page.locator('div', { has: page.getByRole('link', { name: 'Hymer B 544 Generator' }) })
+    .filter({ has: page.getByLabel('New odometer reading') }).last()
+  await expect(card.getByLabel('New odometer reading')).toBeVisible()
+  await card.getByLabel('New reading (Generator)').fill('320')
+  await card.getByRole('button', { name: 'Update hours' }).click()
+  await expect(card.getByText(/Generator: 320 h/)).toBeVisible()
+})
