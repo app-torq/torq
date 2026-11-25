@@ -176,6 +176,21 @@
       "phone": "Telefon",
       "email": "E-Mail",
       "website": "Website"
+    },
+    "publicLinks": {
+      "title": "Öffentliche Links",
+      "intro": "Mitglieder können eine nur lesbare Seite eines Fahrzeugs mit Personen ohne Konto teilen, z. B. einer Werkstatt oder Kaufinteressenten. Die Links stehen hier.",
+      "enabled": "Öffentliche Links erlauben",
+      "offNotice": "Alle öffentlichen Links sind ausgeschaltet und antworten mit „nicht gefunden“. Wird das wieder eingeschaltet, funktionieren die bestehenden Links wieder.",
+      "empty": "Kein Fahrzeug hat einen öffentlichen Link.",
+      "vehicle": "Fahrzeug",
+      "turnedOn": "Eingeschaltet",
+      "lastOpened": "Zuletzt geöffnet",
+      "never": "Nie",
+      "paused": "Pausiert (archiviert)",
+      "turnOff": "Ausschalten",
+      "offTitle": "Link von {{name}} ausschalten?",
+      "offBody": "Der Link funktioniert sofort nicht mehr. Wird er wieder eingeschaltet, entsteht eine neue Adresse."
     }
   },
   "about": {

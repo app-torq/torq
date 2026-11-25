@@ -51,6 +51,10 @@ func spaHandler(dist fs.FS) http.Handler {
 			return
 		}
 		w.Header().Set("Cache-Control", "no-cache")
+		// Shared pages (#38) stay out of caches, search engines and referrers.
+		if strings.HasPrefix(r.URL.Path, "/s/") {
+			setShareHeaders(w.Header())
+		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		http.ServeContent(w, r, "index.html", time.Time{}, bytes.NewReader(index))
 	})

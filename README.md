@@ -40,6 +40,7 @@ Self-hosted · one small Docker container · your data stays on your server
 - 🏍️ **Cars and motorcycles**: motorcycles get their own spec sheet fields (final drive, sprockets, chain, fork oil, valve clearance) and service categories (chain care, valve clearance, fork oil).
 - 🚗 **Vehicle catalog that works offline**: enter the HSN/TSN from the German registration certificate, or pick make → model → chassis code (W203, E46, Golf IV) → engine to fill in the technical data. Motorcycles go make → model → version.
 - 📋 **Spec sheet** with oil and fluid specs, capacities, lug torque and tyre pressure, filled in from the web on request, with a source link for every value.
+- 🏷️ **QR code and public link per vehicle**: stick a label on the vehicle that opens it in torq, or turn on a read-only link (off by default) so a workshop or a buyer can see the service history and upcoming maintenance without an account. Costs, license plate and VIN only when you include them; renew or turn it off at any time.
 - 🔔 **Notifications** via webhooks to Discord, ntfy, Gotify, Home Assistant or any JSON endpoint.
 - 📊 **Reports**: costs per vehicle, service vs. repair, cost per km, a timeline and a printable history with JSON/CSV export.
 - 📱 **On your phone like an app**: add torq to the home screen, no app store and no extra install.

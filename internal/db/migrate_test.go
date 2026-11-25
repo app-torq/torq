@@ -538,3 +538,67 @@ func TestMotorcyclesMigration(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// TestVehicleSharesMigration covers migration 00020: no vehicle is shared
+// after the upgrade, links follow their vehicle and the constraints hold.
+func TestVehicleSharesMigration(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	d, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	sub, err := fs.Sub(migrationsFS, "migrations")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := goose.NewProvider(goose.DialectSQLite3, d.Writer, sub)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.UpTo(ctx, 19); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.Writer.ExecContext(ctx, `INSERT INTO vehicles (id, make, model, current_odometer_km, created_at, updated_at) VALUES (1, 'BMW', '330d', 4000, 'x', 'x')`); err != nil {
+		t.Fatal(err)
+	}
+	if err := Migrate(ctx, d, dir); err != nil {
+		t.Fatal(err)
+	}
+
+	var shares, enabled int
+	if err := d.Reader.QueryRowContext(ctx, `SELECT (SELECT count(*) FROM vehicle_shares), public_links_enabled FROM instance_settings`).Scan(&shares, &enabled); err != nil {
+		t.Fatal(err)
+	}
+	if shares != 0 || enabled != 1 {
+		t.Fatalf("after migration: %d shares, enabled %d", shares, enabled)
+	}
+
+	insert := `INSERT INTO vehicle_shares (vehicle_id, token, token_sha256, created_at) VALUES (?, ?, ?, 'x')`
+	if _, err := d.Writer.ExecContext(ctx, insert, 1, "a", []byte{1}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.Writer.ExecContext(ctx, `INSERT INTO vehicles (id, make, model, current_odometer_km, created_at, updated_at) VALUES (2, 'VW', 'Golf', 1, 'x', 'x')`); err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []struct {
+		stmt string
+		args []any
+	}{
+		{insert, []any{1, "b", []byte{2}}}, // second link for one vehicle
+		{insert, []any{2, "c", []byte{1}}}, // duplicate hash
+		{"UPDATE vehicle_shares SET include_vin = 2", nil},
+		{"UPDATE instance_settings SET public_links_enabled = 2", nil},
+	} {
+		if _, err := d.Writer.ExecContext(ctx, c.stmt, c.args...); err == nil {
+			t.Errorf("accepted %s %v", c.stmt, c.args)
+		}
+	}
+	if _, err := d.Writer.ExecContext(ctx, "DELETE FROM vehicles WHERE id = 1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.Reader.QueryRowContext(ctx, "SELECT count(*) FROM vehicle_shares").Scan(&shares); err != nil || shares != 0 {
+		t.Fatalf("link survived its vehicle: %d %v", shares, err)
+	}
+}

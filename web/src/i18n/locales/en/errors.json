@@ -27,7 +27,8 @@
     "accounts_locked": "Accounts cannot be changed in the demo.",
     "webhooks_locked": "Webhooks are turned off in the demo.",
     "uploads_locked": "Uploads are turned off in the demo.",
-    "branding_locked": "The name and logo cannot be changed in the demo."
+    "branding_locked": "The name and logo cannot be changed in the demo.",
+    "shares_locked": "Public links cannot be changed in the demo."
   },
   "user": {
     "last_admin": "At least one active administrator is required.",
@@ -139,5 +140,8 @@
   "instance": {
     "logo_type_not_allowed": "The logo must be a PNG, JPEG or SVG image.",
     "logo_too_large": "The logo is larger than {{max_kb}} KB."
+  },
+  "share": {
+    "disabled": "Public links are turned off on this server."
   }
 }

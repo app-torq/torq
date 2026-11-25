@@ -12,7 +12,7 @@ export const testSession: Session = {
     volume_unit: 'l', torque_unit: 'nm', pressure_unit: 'bar', displacement_unit: 'cc', priority_display: 'both', card_tag_limit: 3, disabled: false,
   },
   instance: {
-    api_version: 1, max_upload_mb: 25, version: 'test', demo_mode: false, token_auth: true, spec_autofill: false,
+    api_version: 1, max_upload_mb: 25, version: 'test', demo_mode: false, token_auth: true, spec_autofill: false, public_links: true,
     branding: { name: '', logo_url: null, contact: { address: '', phone: '', email: '', website: '' } },
   },
 }

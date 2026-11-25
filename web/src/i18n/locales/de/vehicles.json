@@ -190,6 +190,36 @@
     "print": "Etikett drucken",
     "back": "Zurück zum Fahrzeug",
     "printNow": "Drucken",
-    "scanHint": "Scannen, um es in torq zu öffnen"
+    "scanHint": "Scannen, um es in torq zu öffnen",
+    "codeFor": "QR-Code für",
+    "codeApp": "In torq öffnen",
+    "codePublic": "Öffentlicher Link",
+    "introPublic": "Wer diesen Code scannt, sieht den Wartungsnachweis ohne Anmeldung.",
+    "scanHintPublic": "Scannen für den Wartungsnachweis"
+  },
+  "share": {
+    "title": "Öffentlicher Link",
+    "intro": "Eine nur lesbare Seite mit Wartungshistorie, anstehender Wartung und technischen Daten dieses Fahrzeugs, z. B. für eine Werkstatt oder Kaufinteressenten. Jeder mit dem Link kann sie ohne Anmeldung öffnen. Notizen, Anhänge, Reparaturprojekte und Benutzernamen werden nie gezeigt.",
+    "turnOn": "Einschalten",
+    "on": "Jeder mit diesem Link sieht den Wartungsnachweis. Notizen, Anhänge, Reparaturprojekte und Benutzernamen werden nie gezeigt.",
+    "archived": "Das Fahrzeug ist archiviert, der Link ist deshalb pausiert. Wird es wiederhergestellt, funktioniert er wieder.",
+    "copy": "Kopieren",
+    "copied": "Kopiert",
+    "alsoShow": "Zusätzlich zeigen",
+    "options": {
+      "include_costs": "Kosten",
+      "include_license_plate": "Kennzeichen",
+      "include_vin": "FIN"
+    },
+    "lastOpened": "Zuletzt geöffnet {{date}}",
+    "neverOpened": "Noch nicht geöffnet",
+    "renew": "Link erneuern",
+    "renewTitle": "Link erneuern?",
+    "renewBody": "Die bisherige Adresse und gedruckte QR-Codes funktionieren sofort nicht mehr. Teile den neuen Link und drucke das Etikett neu.",
+    "turnOff": "Ausschalten",
+    "offTitle": "Öffentlichen Link ausschalten?",
+    "offBody": "Der Link funktioniert sofort nicht mehr. Wird er wieder eingeschaltet, entsteht eine neue Adresse.",
+    "loadFailed": "Der öffentliche Link konnte nicht geladen werden.",
+    "noLink": "Dieses Fahrzeug hat keinen öffentlichen Link. Schalte ihn zuerst auf der Fahrzeugseite ein."
   }
 }

@@ -27,6 +27,7 @@ export const namespaces = [
   'settings',
   'webhooks',
   'errors',
+  'share',
 ] as const
 
 void i18n.use(initReactI18next).init({

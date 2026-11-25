@@ -44,7 +44,7 @@ func writeError(w http.ResponseWriter, r *http.Request, log *slog.Logger, err er
 		writeJSON(w, e.Status, errorBody{errorPayload{Code: e.Code, Fields: e.Fields, Params: e.Params}})
 		return
 	}
-	log.ErrorContext(r.Context(), "request failed", "method", r.Method, "path", r.URL.Path, "err", err)
+	log.ErrorContext(r.Context(), "request failed", "method", r.Method, "path", logPath(r.URL.Path), "err", err)
 	writeJSON(w, http.StatusInternalServerError, errorBody{errorPayload{Code: "internal"}})
 }
 

@@ -1,0 +1,18 @@
+{
+  "title": "Wartungsnachweis",
+  "readOnly": "Nur lesbar. Vom Besitzer über torq geteilt.",
+  "profile": "Fahrzeug",
+  "reminders": "Anstehende Wartung",
+  "noReminders": "Keine Wartung geplant.",
+  "services": "Wartungshistorie",
+  "noServices": "Noch keine Wartung eingetragen.",
+  "specs": "Technische Daten",
+  "noSpecs": "Noch keine technischen Daten eingetragen.",
+  "signIn": "Bei torq anmelden",
+  "openInTorq": "In torq öffnen",
+  "error": "Der Nachweis konnte nicht geladen werden.",
+  "notFound": {
+    "title": "Link nicht gefunden",
+    "body": "Diesen Link gibt es nicht oder der Besitzer hat ihn ausgeschaltet."
+  }
+}

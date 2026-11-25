@@ -231,6 +231,8 @@ type instanceSettingsJSON struct {
 	// Defaults are the formats and units new users start with.
 	Defaults formatsJSON  `json:"defaults"`
 	Branding brandingJSON `json:"branding"`
+	// PublicLinksEnabled is the instance switch for vehicle share links.
+	PublicLinksEnabled bool `json:"public_links_enabled"`
 }
 
 func (s *Server) writeInstanceSettings(w http.ResponseWriter, r *http.Request, c store.InstanceSetting) error {
@@ -243,7 +245,7 @@ func (s *Server) writeInstanceSettings(w http.ResponseWriter, r *http.Request, c
 		MonthlyDigestDay: c.MonthlyDigestDay, MonthlyDigestHour: c.MonthlyDigestHour,
 		BaseURLConfigured: s.Config.BaseURL != "", TimeZone: s.Clock.Now().Location().String(),
 		MaxUploadMB: s.Config.MaxUploadMB, Version: s.Version, Defaults: toFormatsJSON(auth.DefaultsFromStore(c)),
-		Branding: brandingJSON{Name: c.BrandName, LogoURL: logo, Contact: contactOf(c)},
+		Branding: brandingJSON{Name: c.BrandName, LogoURL: logo, Contact: contactOf(c)}, PublicLinksEnabled: c.PublicLinksEnabled == 1,
 	})
 	return nil
 }
@@ -268,7 +270,8 @@ func (s *Server) patchInstanceSettings(w http.ResponseWriter, r *http.Request) e
 		MonthlyDigestHour   int64        `json:"monthly_digest_hour"`
 		Defaults            *formatsJSON `json:"defaults"`
 		Branding            *brandingIn  `json:"branding"`
-	}{cur.WeeklyDigestWeekday, cur.WeeklyDigestHour, cur.MonthlyDigestDay, cur.MonthlyDigestHour, nil, nil}
+		PublicLinksEnabled  *bool        `json:"public_links_enabled"`
+	}{cur.WeeklyDigestWeekday, cur.WeeklyDigestHour, cur.MonthlyDigestDay, cur.MonthlyDigestHour, nil, nil, nil}
 	if err := decodeJSON(w, r, &in); err != nil {
 		return err
 	}
@@ -303,8 +306,20 @@ func (s *Server) patchInstanceSettings(w http.ResponseWriter, r *http.Request) e
 			WeeklyDigestWeekday: in.WeeklyDigestWeekday, WeeklyDigestHour: in.WeeklyDigestHour,
 			MonthlyDigestDay: in.MonthlyDigestDay, MonthlyDigestHour: in.MonthlyDigestHour,
 		})
-		if err != nil || in.Branding == nil {
+		if err != nil {
 			return err
+		}
+		if in.PublicLinksEnabled != nil {
+			enabled := int64(0)
+			if *in.PublicLinksEnabled {
+				enabled = 1
+			}
+			if c, err = q.SetPublicLinksEnabled(r.Context(), enabled); err != nil {
+				return err
+			}
+		}
+		if in.Branding == nil {
+			return nil
 		}
 		b := in.Branding
 		c, err = q.UpdateInstanceBranding(r.Context(), store.UpdateInstanceBrandingParams{

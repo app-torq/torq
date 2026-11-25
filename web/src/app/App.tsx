@@ -31,6 +31,7 @@ import { ReportsPage } from '../features/reports/ReportsPage'
 import { HistoryPrintPage } from '../features/reports/HistoryPrintPage'
 import { VehicleQrPrintPage } from '../features/vehicles/VehicleQrPrintPage'
 import { markClean } from './pwa/dirty'
+import { SharePage, shareToken } from '../features/share/SharePage'
 
 const queryClient = new QueryClient({
   // A successful save leaves nothing unsaved, so updates may apply again.
@@ -86,6 +87,15 @@ const router = createBrowserRouter([
 ])
 
 export function App() {
+  // A public share link needs no account, so it renders outside the sign-in gate.
+  const path = window.location.pathname
+  if (path.startsWith('/s/')) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <SharePage token={shareToken(path)} />
+      </QueryClientProvider>
+    )
+  }
   return (
     <QueryClientProvider client={queryClient}>
       <AuthGate>

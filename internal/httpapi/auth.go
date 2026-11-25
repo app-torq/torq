@@ -10,6 +10,7 @@ import (
 	"github.com/app-torq/torq/internal/apperr"
 	"github.com/app-torq/torq/internal/auth"
 	"github.com/app-torq/torq/internal/auth/local"
+	"github.com/app-torq/torq/internal/store"
 )
 
 // formatsJSON carries the format and unit preferences. In requests an
@@ -96,6 +97,8 @@ type instanceInfo struct {
 	// (GEMINI_API_KEY and TAVILY_API_KEY).
 	SpecAutofill bool         `json:"spec_autofill"`
 	Branding     brandingJSON `json:"branding"`
+	// PublicLinks tells clients whether vehicles can be shared by link.
+	PublicLinks bool `json:"public_links"`
 }
 
 // instanceInfo includes the contact details only for signed-in users.
@@ -104,9 +107,14 @@ func (s *Server) instanceInfo(ctx context.Context, signedIn bool) (instanceInfo,
 	if err != nil {
 		return instanceInfo{}, err
 	}
+	c, err := store.New(s.DB.Reader).GetInstanceSettings(ctx)
+	if err != nil {
+		return instanceInfo{}, err
+	}
 	return instanceInfo{
 		APIVersion: APIVersion, MaxUploadMB: s.Config.MaxUploadMB, Version: s.Version,
 		DemoMode: s.Config.DemoMode, TokenAuth: true, SpecAutofill: s.specfill != nil, Branding: b,
+		PublicLinks: c.PublicLinksEnabled == 1,
 	}, nil
 }
 

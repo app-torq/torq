@@ -71,6 +71,8 @@ bearer exemption unsafe.
   cached logo can be kept until the URL changes. The logo can be PNG, JPEG or SVG; display it as an image
   only. In `GET /auth/me`, `branding` also has `contact` (address, phone, email, website) for printed or
   shared documents.
+- `public_links` (API level 9) is `false` when an admin turned public vehicle links off. Hide the share
+  controls then.
 
 ## Compatibility
 
@@ -135,6 +137,32 @@ Operating hours are sent as numbers in hours with at most one decimal (`1250.4`)
   `GET /service-categories?vehicle_type=…` lists those that apply to a type. The list of `builtin_key`
   values grows with new built-ins (`chain_maintenance`, `chain_sprockets`, `valve_clearance`, `fork_oil`,
   `final_drive_oil`, `drive_belt`); show an unknown key through your generic fallback.
+
+### Share links (API level 9)
+
+A vehicle can have one public, read-only link that opens without an account, e.g. for a workshop or a
+buyer. Any member can manage it; the controls belong next to the vehicle's QR code.
+
+- `GET /vehicles/{id}/share` returns `{"share": null}` or the link. `PUT /vehicles/{id}/share` turns it on
+  (`201`) or changes its options (`200`): `include_costs`, `include_license_plate` and `include_vin`, all
+  off for a new link; omitted options keep their value. The token stays the same when options change.
+- `POST /vehicles/{id}/share/renew` issues a new token and retires the old one at once.
+  `DELETE /vehicles/{id}/share` turns the link off; turning it on again creates a new token.
+- `share.path` is `/s/<token>`. Prefix it with the server address the user entered to get the link to show,
+  copy or encode in a QR code.
+- `GET /shared/{token}` is the public record behind the link and needs no sign-in: vehicle profile,
+  readings, service history, reminders, spec sheet, the instance branding and the instance's default
+  `formats` for displaying values to a visitor. It never contains notes, attachments, repairs, user names
+  or IDs; `license_plate`, `vin` and the cost fields are `null` unless the owner included them. Signed-in
+  requests also get `vehicle_id`, to open the vehicle in the app. Category names follow `Accept-Language`
+  (`de` or `en`).
+- An unknown, renewed, turned-off or paused link (the vehicle is archived, or an admin turned public links
+  off) always answers the same `404 not_found`. After 10 failed lookups from one address, further ones get
+  `429 auth.throttled` with `retry_after_s`. Responses carry `Cache-Control: no-store`,
+  `X-Robots-Tag: noindex, nofollow, noarchive` and `Referrer-Policy: no-referrer`.
+- `PUT` and `renew` return `409 share.disabled` while public links are off, and `demo.shares_locked` in the
+  demo. Admins list all links with `GET /shares` (no tokens) and switch the feature with
+  `public_links_enabled` in `PATCH /settings/instance`.
 
 ## Errors
 

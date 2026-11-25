@@ -190,6 +190,36 @@
     "print": "Print label",
     "back": "Back to vehicle",
     "printNow": "Print",
-    "scanHint": "Scan to open in torq"
+    "scanHint": "Scan to open in torq",
+    "codeFor": "QR code for",
+    "codeApp": "Open in torq",
+    "codePublic": "Public link",
+    "introPublic": "Anyone who scans this code sees the maintenance record without signing in.",
+    "scanHintPublic": "Scan to see the maintenance record"
+  },
+  "share": {
+    "title": "Public link",
+    "intro": "A read-only page with this vehicle's service history, upcoming maintenance and specifications, e.g. for a workshop or a buyer. Anyone with the link can open it without signing in. Notes, attachments, repair projects and user names are never shown.",
+    "turnOn": "Turn on",
+    "on": "Anyone with this link can see the maintenance record. Notes, attachments, repair projects and user names are never shown.",
+    "archived": "The vehicle is archived, so the link is paused. Restoring the vehicle turns it back on.",
+    "copy": "Copy",
+    "copied": "Copied",
+    "alsoShow": "Also show",
+    "options": {
+      "include_costs": "Costs",
+      "include_license_plate": "License plate",
+      "include_vin": "VIN"
+    },
+    "lastOpened": "Last opened {{date}}",
+    "neverOpened": "Not opened yet",
+    "renew": "Renew link",
+    "renewTitle": "Renew the link?",
+    "renewBody": "The current address and printed QR codes stop working at once. Share the new link and print the label again.",
+    "turnOff": "Turn off",
+    "offTitle": "Turn off the public link?",
+    "offBody": "The link stops working at once. Turning it on again creates a new address.",
+    "loadFailed": "The public link could not be loaded.",
+    "noLink": "This vehicle has no public link. Turn it on on the vehicle page first."
   }
 }
