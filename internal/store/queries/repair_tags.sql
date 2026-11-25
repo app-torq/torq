@@ -1,6 +1,11 @@
 -- name: ListRepairTags :many
-SELECT t.*, CAST((SELECT COUNT(*) FROM repair_log_tags rt WHERE rt.tag_id = t.id) AS INTEGER) AS project_count
+-- With a scope, counts cover visible projects only and tags without one are left out.
+SELECT t.*, CAST((SELECT COUNT(*) FROM repair_log_tags rt JOIN repair_logs r ON r.id = rt.repair_log_id
+                  WHERE rt.tag_id = t.id AND (CAST(sqlc.narg(scope) AS TEXT) IS NULL OR r.vehicle_id IN (SELECT value FROM json_each(CAST(sqlc.narg(scope) AS TEXT))))) AS INTEGER) AS project_count
 FROM repair_tags t
+WHERE CAST(sqlc.narg(scope) AS TEXT) IS NULL
+   OR EXISTS (SELECT 1 FROM repair_log_tags rt JOIN repair_logs r ON r.id = rt.repair_log_id
+              WHERE rt.tag_id = t.id AND r.vehicle_id IN (SELECT value FROM json_each(CAST(sqlc.narg(scope) AS TEXT))))
 ORDER BY t.name COLLATE NOCASE, t.id;
 
 -- name: AllRepairTags :many

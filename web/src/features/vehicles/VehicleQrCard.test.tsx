@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
+import { vehiclePermissions } from '../../lib/permissions'
 import type { Share, Vehicle } from '../../lib/types'
 import { renderWithApp, testSession } from '../../test/render'
 import { VehicleQrCard } from './VehicleQrCard'
@@ -10,7 +11,7 @@ const vehicle: Vehicle = {
   id: 4, vehicle_type: 'car', make: 'Volkswagen', model: 'Golf', chassis_code: '', model_year: null, engine_code: '',
   vin: null, license_plate: null, hsn: null, tsn: null, displacement_cc: null, power_kw: null, power_w: null, fuel_type: null,
   current_odometer_km: 0, odometer_unit: 'km', has_odometer: true, hour_meters: [], displacement_unit: null, power_unit: null,
-  avatar_url: null, archived: false, reminder_counts: { due_soon: 0, overdue: 0 }, created_at: 'x', updated_at: 'x',
+  avatar_url: null, archived: false, reminder_counts: { due_soon: 0, overdue: 0 }, created_at: 'x', updated_at: 'x', permissions: vehiclePermissions,
 }
 const share: Share = {
   token: 'abc', path: '/s/abc', include_costs: false, include_license_plate: true, include_vin: false,
@@ -60,6 +61,21 @@ describe('VehicleQrCard', () => {
     renderCard({ ...testSession, instance: { ...testSession.instance, public_links: false } })
     expect(screen.queryByText('Public link')).toBeNull()
     expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('shows the link but no controls without the permission to manage it', async () => {
+    respond({ share })
+    renderWithApp(<MemoryRouter><VehicleQrCard vehicle={{ ...vehicle, permissions: [] }} /></MemoryRouter>)
+    expect(await screen.findByText(`${window.location.origin}/s/abc`)).toBeInTheDocument()
+    expect(screen.queryByRole('checkbox', { name: 'Costs' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Renew link' })).toBeNull()
+  })
+
+  it('offers nothing to turn on without the permission', async () => {
+    const fetchSpy = respond({ share: null })
+    renderWithApp(<MemoryRouter><VehicleQrCard vehicle={{ ...vehicle, permissions: [] }} /></MemoryRouter>)
+    await vi.waitFor(() => { expect(fetchSpy).toHaveBeenCalled() })
+    expect(screen.queryByRole('button', { name: 'Turn on' })).toBeNull()
   })
 
   it('cannot turn the link on in the demo', async () => {

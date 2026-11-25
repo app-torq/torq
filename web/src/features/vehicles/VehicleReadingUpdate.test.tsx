@@ -1,5 +1,6 @@
 import { screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
+import { vehiclePermissions } from '../../lib/permissions'
 import type { Vehicle } from '../../lib/types'
 import { renderWithApp } from '../../test/render'
 import { VehicleReadingUpdate } from './VehicleReadingUpdate'
@@ -8,7 +9,7 @@ const base: Vehicle = {
   id: 1, vehicle_type: 'car', make: 'Lux', model: 'Schneefräse', chassis_code: '', model_year: null, engine_code: '',
   vin: null, license_plate: null, hsn: null, tsn: null, displacement_cc: null, power_kw: null, power_w: null, fuel_type: null,
   current_odometer_km: 0, odometer_unit: 'km', has_odometer: true, hour_meters: [], displacement_unit: null, power_unit: null,
-  avatar_url: null, archived: false, reminder_counts: { due_soon: 0, overdue: 0 }, created_at: 'x', updated_at: 'x',
+  avatar_url: null, archived: false, reminder_counts: { due_soon: 0, overdue: 0 }, created_at: 'x', updated_at: 'x', permissions: vehiclePermissions,
 }
 const meter = { id: 3, name: 'Engine hours', current_hours: 20 }
 

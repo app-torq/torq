@@ -19,7 +19,8 @@
     "about": "Über & Datenquellen",
     "home": "{{brand}} – zur Startseite",
     "priorities": "Projektprioritäten",
-    "tags": "Projekt-Tags"
+    "tags": "Projekt-Tags",
+    "roles": "Rollen"
   },
   "actions": {
     "save": "Speichern",

@@ -10,6 +10,7 @@ SELECT * FROM service_logs WHERE id = ?;
 -- name: ListServiceLogs :many
 SELECT sl.* FROM service_logs sl
 WHERE (CAST(sqlc.arg(vehicle_id) AS INTEGER) = 0 OR sl.vehicle_id = sqlc.arg(vehicle_id))
+  AND (CAST(sqlc.narg(scope) AS TEXT) IS NULL OR sl.vehicle_id IN (SELECT value FROM json_each(CAST(sqlc.narg(scope) AS TEXT))))
   AND (CAST(sqlc.arg(category_id) AS INTEGER) = 0
        OR EXISTS (SELECT 1 FROM service_log_items i WHERE i.service_log_id = sl.id AND i.category_id = sqlc.arg(category_id)))
   AND (CAST(sqlc.arg(from_date) AS TEXT) = '' OR sl.service_date >= sqlc.arg(from_date))
@@ -25,6 +26,7 @@ LIMIT sqlc.arg(lim) OFFSET sqlc.arg(off);
 -- name: CountServiceLogs :one
 SELECT COUNT(*) FROM service_logs sl
 WHERE (CAST(sqlc.arg(vehicle_id) AS INTEGER) = 0 OR sl.vehicle_id = sqlc.arg(vehicle_id))
+  AND (CAST(sqlc.narg(scope) AS TEXT) IS NULL OR sl.vehicle_id IN (SELECT value FROM json_each(CAST(sqlc.narg(scope) AS TEXT))))
   AND (CAST(sqlc.arg(category_id) AS INTEGER) = 0
        OR EXISTS (SELECT 1 FROM service_log_items i WHERE i.service_log_id = sl.id AND i.category_id = sqlc.arg(category_id)))
   AND (CAST(sqlc.arg(from_date) AS TEXT) = '' OR sl.service_date >= sqlc.arg(from_date))

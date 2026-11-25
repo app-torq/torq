@@ -16,7 +16,7 @@
   },
   "auth": {
     "unauthenticated": "Bitte melde dich erneut an.",
-    "forbidden": "Nur Administratoren dürfen das.",
+    "forbidden": "Dafür fehlt dir die Berechtigung.",
     "invalid_credentials": "Benutzername oder Passwort falsch.",
     "throttled": "Zu viele Versuche. Versuche es in {{retry_after_s}} s erneut."
   },
@@ -143,5 +143,9 @@
   },
   "share": {
     "disabled": "Öffentliche Links sind auf diesem Server ausgeschaltet."
+  },
+  "role": {
+    "builtin_locked": "Eingebaute Rollen können nicht gelöscht und die Rolle Administrator nicht geändert werden.",
+    "move_to_invalid": "Wähle eine andere Rolle für die Benutzer dieser Rolle."
   }
 }

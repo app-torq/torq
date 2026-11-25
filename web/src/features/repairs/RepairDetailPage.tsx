@@ -28,6 +28,7 @@ import { TagInput } from './TagInput'
 import { TagList } from './tags'
 import { PartsTable } from './PartsTable'
 import { BackLink } from '../../components/BackLink'
+import { canOn } from '../../lib/permissions'
 import { entryReading } from '../vehicles/readings'
 
 export function RepairDetailPage() {
@@ -59,6 +60,7 @@ export function RepairDetailPage() {
   const tools = r.special_tools.split('\n').map((s) => s.trim()).filter(Boolean)
   const none = t('common:state.none')
   const refresh = () => void invalidateRepairs(qc, r.id)
+  const canEdit = canOn(vehicle.data, 'repairs.write')
 
   return (
     <div className="space-y-6">
@@ -68,14 +70,18 @@ export function RepairDetailPage() {
         subtitle={vehicle.data ? <Link className="text-sky-300 hover:underline" to={`/vehicles/${vehicle.data.id}/repairs`}>{vehicleName(vehicle.data)}</Link> : undefined}
         actions={
           <>
-            <Button onClick={() => { setEditing(true) }}>
-              <Pencil size={15} />
-              {t('common:actions.edit')}
-            </Button>
-            <Button variant="danger" onClick={() => { setDeleting(true) }}>
-              <Trash2 size={15} />
-              {t('common:actions.delete')}
-            </Button>
+            {canEdit && (
+              <Button onClick={() => { setEditing(true) }}>
+                <Pencil size={15} />
+                {t('common:actions.edit')}
+              </Button>
+            )}
+            {canOn(vehicle.data, 'repairs.delete') && (
+              <Button variant="danger" onClick={() => { setDeleting(true) }}>
+                <Trash2 size={15} />
+                {t('common:actions.delete')}
+              </Button>
+            )}
           </>
         }
       />
@@ -87,7 +93,7 @@ export function RepairDetailPage() {
               <ProjectPriority id={r.priority_id} />
             </div>
             <TagList tags={r.tags} />
-            <div className="w-48"><StatusMenu repair={r} onComplete={() => { setCompleting(true) }} /></div>
+            {canEdit && <div className="w-48"><StatusMenu repair={r} onComplete={() => { setCompleting(true) }} /></div>}
           </div>
           <div className="min-w-0 flex-1">
             <DefinitionList
@@ -161,12 +167,12 @@ export function RepairDetailPage() {
         {r.procedure_notes ? <p className="whitespace-pre-wrap text-sm text-zinc-200">{r.procedure_notes}</p> : <p className="text-sm text-zinc-400">{none}</p>}
       </Card>
 
-      <PartsTable repair={r} />
+      <PartsTable repair={r} canEdit={canEdit} />
 
       <Card title={t('sections.attachments')}>
         <div className="space-y-4">
-          <AttachmentGallery items={r.attachments} onChanged={refresh} />
-          <FileDrop path={`/repairs/${r.id}/attachments`} onUploaded={refresh} />
+          <AttachmentGallery items={r.attachments} onChanged={refresh} readOnly={!canEdit} />
+          {canEdit && <FileDrop path={`/repairs/${r.id}/attachments`} onUploaded={refresh} />}
         </div>
       </Card>
 

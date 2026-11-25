@@ -19,7 +19,7 @@ const partStatuses: PartStatus[] = ['needed', 'ordered', 'in_stock', 'installed'
 const partTone = { needed: 'red', ordered: 'amber', in_stock: 'sky', installed: 'emerald' } as const
 
 /** Parts bill of materials with totals and per-status counts (FR-024, FR-025). */
-export function PartsTable({ repair }: { repair: Repair }) {
+export function PartsTable({ repair, canEdit }: { repair: Repair; canEdit: boolean }) {
   const { t } = useTranslation('repairs')
   const fmt = useFormat()
   const qc = useQueryClient()
@@ -53,12 +53,12 @@ export function PartsTable({ repair }: { repair: Repair }) {
   return (
     <Card
       title={t('sections.parts')}
-      actions={
+      actions={canEdit && (
         <Button size="sm" onClick={() => { setEditing('new') }}>
           <Plus size={15} />
           {t('parts.add')}
         </Button>
-      }
+      )}
     >
       {(setStatus.isError || reorder.isError) && <div className="mb-3"><ErrorBanner message={errorText(setStatus.error ?? reorder.error)} /></div>}
       {repair.parts.length > 0 && (
@@ -97,22 +97,22 @@ export function PartsTable({ repair }: { repair: Repair }) {
                 <td className="text-right tabular-nums">{p.unit_cost_cents !== null ? fmt.money(p.unit_cost_cents) : none}</td>
                 <td className="text-right tabular-nums text-zinc-100">{fmt.money(p.line_total_cents)}</td>
                 <td>
-                  <select
+                  {canEdit ? <select
                     aria-label={t('parts.status')}
                     value={p.status}
                     onChange={(e) => { setStatus.mutate({ id: p.id, status: e.target.value as PartStatus }) }}
                     className="focus-ring rounded border border-zinc-700 bg-zinc-950 px-1.5 py-1 text-xs"
                   >
                     {partStatuses.map((s) => <option key={s} value={s}>{t(`parts.statuses.${s}`)}</option>)}
-                  </select>
+                  </select> : <span className="text-xs text-zinc-300">{t(`parts.statuses.${p.status}`)}</span>}
                 </td>
                 <td>
-                  <div className="flex justify-end gap-0.5">
+                  {canEdit && <div className="flex justify-end gap-0.5">
                     <IconButton aria-label={t('common:actions.moveUp')} disabled={i === 0} onClick={() => { move(i, -1) }}><ArrowUp size={14} /></IconButton>
                     <IconButton aria-label={t('common:actions.moveDown')} disabled={i === repair.parts.length - 1} onClick={() => { move(i, 1) }}><ArrowDown size={14} /></IconButton>
                     <IconButton aria-label={t('common:actions.edit')} onClick={() => { setEditing(p) }}><Pencil size={14} /></IconButton>
                     <IconButton aria-label={t('common:actions.delete')} onClick={() => { setDeleting(p) }}><Trash2 size={14} /></IconButton>
-                  </div>
+                  </div>}
                 </td>
               </tr>
             ))}

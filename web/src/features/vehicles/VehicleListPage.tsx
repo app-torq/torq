@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Plus } from 'lucide-react'
 import { useFormat } from '../../lib/useFormat'
 import { useErrorText } from '../../lib/errors'
+import { useCan } from '../../lib/permissions'
 import { vehicleName } from '../../lib/types'
 import { Badge, EmptyState, ErrorBanner, Loading, PageHeader } from '../../components/ui'
 import { useVehicles, type ArchiveFilter } from './hooks'
@@ -17,7 +18,8 @@ export function VehicleListPage() {
   const [filter, setFilter] = useState<ArchiveFilter>('false')
   const vehicles = useVehicles(filter)
 
-  const addLink = (
+  const canCreate = useCan('vehicles.create')
+  const addLink = canCreate && (
     <Link to="/vehicles/new" className="focus-ring inline-flex h-10 items-center gap-2 rounded-md bg-sky-500 px-4 text-sm font-medium text-zinc-950 hover:bg-sky-400">
       <Plus size={16} />
       {t('add')}

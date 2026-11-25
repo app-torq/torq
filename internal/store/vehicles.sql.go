@@ -386,12 +386,18 @@ WHERE CASE CAST(?1 AS INTEGER)
           WHEN 0 THEN archived_at IS NULL
           WHEN 1 THEN archived_at IS NOT NULL
           ELSE 1 END
+  AND (CAST(?2 AS TEXT) IS NULL OR id IN (SELECT value FROM json_each(CAST(?2 AS TEXT))))
 ORDER BY archived_at IS NOT NULL, make COLLATE NOCASE, model COLLATE NOCASE, id
 `
 
+type ListVehiclesParams struct {
+	Mode  int64
+	Scope sql.NullString
+}
+
 // mode: 0 = active only, 1 = archived only, 2 = all
-func (q *Queries) ListVehicles(ctx context.Context, mode int64) ([]Vehicle, error) {
-	rows, err := q.db.QueryContext(ctx, listVehicles, mode)
+func (q *Queries) ListVehicles(ctx context.Context, arg ListVehiclesParams) ([]Vehicle, error) {
+	rows, err := q.db.QueryContext(ctx, listVehicles, arg.Mode, arg.Scope)
 	if err != nil {
 		return nil, err
 	}

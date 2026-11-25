@@ -15,6 +15,7 @@ WHERE CASE CAST(sqlc.arg(mode) AS INTEGER)
           WHEN 0 THEN archived_at IS NULL
           WHEN 1 THEN archived_at IS NOT NULL
           ELSE 1 END
+  AND (CAST(sqlc.narg(scope) AS TEXT) IS NULL OR id IN (SELECT value FROM json_each(CAST(sqlc.narg(scope) AS TEXT))))
 ORDER BY archived_at IS NOT NULL, make COLLATE NOCASE, model COLLATE NOCASE, id;
 
 -- name: UpdateVehicleProfile :one

@@ -50,7 +50,7 @@ export function AboutPage() {
       <section aria-labelledby="about-datasets" className="space-y-3">
         <h2 id="about-datasets" className="text-base font-semibold text-zinc-100">{t('about.datasets')}</h2>
         <p className="text-sm text-zinc-400">{t('about.offline')}</p>
-        {meta.data && <CatalogStatus meta={meta.data} canUpdate={user.role === 'admin'} />}
+        {meta.data && <CatalogStatus meta={meta.data} canUpdate={user.role === 'admin' || (user.permissions?.includes('catalog.update') ?? false)} />}
         {meta.isPending && <Loading />}
         {meta.isError && <ErrorBanner message={errorText(meta.error)} onRetry={() => void meta.refetch()} />}
         {meta.data && meta.data.datasets.length === 0 && <p className="text-sm text-zinc-400">{t('about.empty')}</p>}

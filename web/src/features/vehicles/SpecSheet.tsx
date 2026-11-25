@@ -11,6 +11,7 @@ import { fieldErrors, useErrorText } from '../../lib/errors'
 import { FINAL_DRIVES, type AutofillValue, type MotoFieldKey, type SpecEntry, type SpecFieldKey, type SpecMeta, type VehicleSpecs } from '../../lib/types'
 import { useSession } from '../../app/session'
 import { Button, IconButton } from '../../components/Button'
+import { canOn } from '../../lib/permissions'
 import { Checkbox, SelectField, TextAreaField, TextField } from '../../components/Field'
 import { NumberField, NumberRangeField } from '../../components/NumberField'
 import { ConfirmDialog, Dialog } from '../../components/Dialog'
@@ -83,10 +84,12 @@ export function SpecSheetPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-zinc-400">{t('intro')}</p>
-        <Button onClick={() => { setEditing(true) }}>
-          <Pencil size={15} />
-          {t('edit')}
-        </Button>
+        {canOn(v, 'specs.edit') && (
+          <Button onClick={() => { setEditing(true) }}>
+            <Pencil size={15} />
+            {t('edit')}
+          </Button>
+        )}
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <Pin title={t('groups.powertrain')}>
@@ -150,7 +153,7 @@ export function SpecSheetPage() {
           </div>
         </Pin>
       </div>
-      <CustomEntries vehicleId={v.id} entries={specs.data.entries} />
+      <CustomEntries vehicleId={v.id} entries={specs.data.entries} canEdit={canOn(v, 'specs.edit')} />
       {editing && <SpecsEditDialog vehicleId={v.id} specs={s} motorcycle={motorcycle} onClose={() => { setEditing(false) }} />}
     </div>
   )
@@ -386,7 +389,7 @@ function SourceBadge({ meta }: { meta: SpecMeta | undefined }) {
   )
 }
 
-function CustomEntries({ vehicleId, entries }: { vehicleId: number; entries: SpecEntry[] }) {
+function CustomEntries({ vehicleId, entries, canEdit }: { vehicleId: number; entries: SpecEntry[]; canEdit: boolean }) {
   const { t } = useTranslation('specs')
   const qc = useQueryClient()
   const errorText = useErrorText()
@@ -417,12 +420,12 @@ function CustomEntries({ vehicleId, entries }: { vehicleId: number; entries: Spe
   return (
     <Card
       title={t('groups.custom')}
-      actions={
+      actions={canEdit && (
         <Button size="sm" onClick={() => { setEditing('new') }}>
           <Plus size={15} />
           {t('entries.add')}
         </Button>
-      }
+      )}
     >
       {reorder.isError && <ErrorBanner message={errorText(reorder.error)} />}
       {entries.length === 0 && <p className="text-sm text-zinc-400">{t('empty')}</p>}
@@ -432,9 +435,9 @@ function CustomEntries({ vehicleId, entries }: { vehicleId: number; entries: Spe
             <div className="min-w-0 flex-1">
               <div className="text-sm font-medium text-zinc-100">{e.label}</div>
               {e.value && <div className="whitespace-pre-wrap text-sm text-zinc-300">{e.value}</div>}
-              <SpecEntryAttachments entry={e} vehicleId={vehicleId} />
+              <SpecEntryAttachments entry={e} vehicleId={vehicleId} canEdit={canEdit} />
             </div>
-            <div className="flex shrink-0 items-start gap-0.5">
+            {canEdit && <div className="flex shrink-0 items-start gap-0.5">
               <IconButton aria-label={t('common:actions.moveUp')} disabled={i === 0 || reorder.isPending} onClick={() => { move(i, -1) }}>
                 <ArrowUp size={15} />
               </IconButton>
@@ -447,7 +450,7 @@ function CustomEntries({ vehicleId, entries }: { vehicleId: number; entries: Spe
               <IconButton aria-label={t('common:actions.delete')} onClick={() => { setDeleting(e) }}>
                 <Trash2 size={15} />
               </IconButton>
-            </div>
+            </div>}
           </li>
         ))}
       </ul>

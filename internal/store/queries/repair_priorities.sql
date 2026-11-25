@@ -1,5 +1,6 @@
 -- name: ListRepairPriorities :many
-SELECT p.*, CAST((SELECT COUNT(*) FROM repair_logs r WHERE r.priority_id = p.id) AS INTEGER) AS project_count
+SELECT p.*, CAST((SELECT COUNT(*) FROM repair_logs r WHERE r.priority_id = p.id
+                  AND (CAST(sqlc.narg(scope) AS TEXT) IS NULL OR r.vehicle_id IN (SELECT value FROM json_each(CAST(sqlc.narg(scope) AS TEXT))))) AS INTEGER) AS project_count
 FROM repair_priorities p
 ORDER BY p.sort_order, p.id;
 

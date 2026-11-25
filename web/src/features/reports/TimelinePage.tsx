@@ -1,3 +1,4 @@
+import { canOn } from '../../lib/permissions'
 import { Link } from 'react-router'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -35,12 +36,12 @@ export function TimelinePage() {
   const items = timeline.data?.pages.flatMap((p) => p.items) ?? []
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      {canOn(v, 'history.export') && <div className="flex justify-end">
         <Link to={`/vehicles/${v.id}/history/print`} className="focus-ring inline-flex h-9 items-center gap-2 rounded-md border border-zinc-700 bg-zinc-900 px-3 text-sm hover:bg-zinc-800">
           <FileText size={15} />
           {t('timeline.export')}
         </Link>
-      </div>
+      </div>}
       {timeline.isPending && <Loading />}
       {timeline.isError && <ErrorBanner message={errorText(timeline.error)} />}
       {timeline.isSuccess && items.length === 0 && <EmptyState title={t('timeline.empty')} />}

@@ -17,9 +17,9 @@ const sessionCookie = "torq_session"
 type viaBearerKey struct{}
 
 // authorize resolves the session from a bearer token or the session cookie and
-// enforces the route's access level. It returns the request with the
-// authenticated user in its context.
-func (s *Server) authorize(r *http.Request, level access) (*http.Request, error) {
+// enforces the route's access level and garage-wide permission. It returns the
+// request with the authenticated user in its context.
+func (s *Server) authorize(r *http.Request, a access) (*http.Request, error) {
 	raw, viaBearer, ok := sessionToken(r)
 	if !ok {
 		return r, apperr.Unauthenticated()
@@ -31,7 +31,10 @@ func (s *Server) authorize(r *http.Request, level access) (*http.Request, error)
 	if err != nil {
 		return r, err
 	}
-	if level == admin && !user.IsAdmin() {
+	if a.level == levelAdmin && !user.Access.Admin {
+		return r, apperr.Forbidden("auth.forbidden")
+	}
+	if a.perm != "" && !a.vehicle && !user.Access.Can(a.perm) {
 		return r, apperr.Forbidden("auth.forbidden")
 	}
 	ctx := auth.WithUser(r.Context(), user, sessionID)
@@ -105,6 +108,65 @@ func (s *Server) clearSessionCookie(w http.ResponseWriter, r *http.Request) {
 		Secure:   s.secureCookies(r),
 		SameSite: http.SameSiteLaxMode,
 	})
+}
+
+// guardKey holds, for per-vehicle routes, the route's permission and whether
+// a vehicle check ran.
+type guardKey struct{}
+
+type guardState struct {
+	perm    auth.Permission
+	checked bool
+}
+
+// skippedGuard is logged when a per-vehicle handler never checked its vehicle.
+const skippedGuard = "route skipped the vehicle check"
+
+// guard checks the caller's access to a vehicle for the route's permission
+// (see onVehicle in routes.go).
+func (s *Server) guard(r *http.Request, vehicleID int64) error {
+	var p auth.Permission
+	if g, ok := r.Context().Value(guardKey{}).(*guardState); ok {
+		p = g.perm
+	}
+	return s.vehicleGuard(r, vehicleID, p)
+}
+
+// vehicleGuard checks the caller's access to a vehicle: a vehicle they can't
+// see answers exactly like a missing record, and a change they may not make
+// on a visible vehicle is forbidden. p "" checks visibility only.
+func (s *Server) vehicleGuard(r *http.Request, vehicleID int64, p auth.Permission) error {
+	if g, ok := r.Context().Value(guardKey{}).(*guardState); ok {
+		g.checked = true
+	}
+	a := currentUser(r).Access
+	if !a.Sees(vehicleID) {
+		return apperr.NotFound()
+	}
+	if p != "" && !a.CanOn(p, vehicleID) {
+		return apperr.Forbidden("auth.forbidden")
+	}
+	return nil
+}
+
+// pathVehicle parses the {id} path wildcard as a vehicle id and checks it for
+// the route's permission.
+func (s *Server) pathVehicle(r *http.Request) (int64, error) {
+	id, err := pathID(r, "id")
+	if err != nil {
+		return 0, err
+	}
+	return id, s.guard(r, id)
+}
+
+// visibleVehicles returns the vehicles the caller sees, for list filters:
+// nil when they see all of them.
+func visibleVehicles(r *http.Request) []int64 {
+	ids, all := currentUser(r).Access.Scope()
+	if all {
+		return nil
+	}
+	return ids
 }
 
 // currentUser returns the authenticated user; routes guarded by member/admin always have one.

@@ -10,6 +10,7 @@ import (
 
 	"github.com/app-torq/torq/internal/apperr"
 	"github.com/app-torq/torq/internal/clock"
+	"github.com/app-torq/torq/internal/db"
 	"github.com/app-torq/torq/internal/store"
 )
 
@@ -40,9 +41,10 @@ func getPriority(ctx context.Context, q *store.Queries, id int64) (store.RepairP
 	return p, err
 }
 
-// ListPriorities returns all priorities in order.
-func (s *Service) ListPriorities(ctx context.Context) ([]Priority, error) {
-	rows, err := store.New(s.DB.Reader).ListRepairPriorities(ctx)
+// ListPriorities returns all priorities in order, with project counts over
+// the visible vehicles (nil = all).
+func (s *Service) ListPriorities(ctx context.Context, visible []int64) ([]Priority, error) {
+	rows, err := store.New(s.DB.Reader).ListRepairPriorities(ctx, db.Scope(visible))
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +160,7 @@ func (s *Service) UpdatePriority(ctx context.Context, id int64, in PriorityInput
 func (s *Service) ReorderPriorities(ctx context.Context, ids []int64) error {
 	return s.DB.WithTx(ctx, func(tx *sql.Tx) error {
 		q := store.New(tx)
-		rows, err := q.ListRepairPriorities(ctx)
+		rows, err := q.ListRepairPriorities(ctx, sql.NullString{})
 		if err != nil {
 			return err
 		}

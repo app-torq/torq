@@ -102,7 +102,7 @@ func (s *Server) toSpecEntriesJSON(ctx context.Context, entries []store.VehicleS
 }
 
 func (s *Server) getSpecs(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, err := s.pathVehicle(r)
 	if err != nil {
 		return err
 	}
@@ -119,7 +119,7 @@ func (s *Server) getSpecs(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) putSpecs(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, err := s.pathVehicle(r)
 	if err != nil {
 		return err
 	}
@@ -145,7 +145,7 @@ func (s *Server) putSpecs(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) createSpecEntry(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, err := s.pathVehicle(r)
 	if err != nil {
 		return err
 	}
@@ -169,7 +169,7 @@ func (s *Server) createSpecEntry(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) updateSpecEntry(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, err := s.pathSpecEntry(r)
 	if err != nil {
 		return err
 	}
@@ -193,7 +193,7 @@ func (s *Server) updateSpecEntry(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) deleteSpecEntry(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, err := s.pathSpecEntry(r)
 	if err != nil {
 		return err
 	}
@@ -207,7 +207,7 @@ func (s *Server) deleteSpecEntry(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) reorderSpecEntries(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, err := s.pathVehicle(r)
 	if err != nil {
 		return err
 	}
@@ -233,12 +233,12 @@ func (s *Server) reorderSpecEntries(w http.ResponseWriter, r *http.Request) erro
 // web (optional feature, TAVILY_API_KEY and GEMINI_API_KEY). It saves nothing: the edit dialog
 // shows the values with their sources, and the user saves them.
 func (s *Server) autofillSpecs(w http.ResponseWriter, r *http.Request) error {
-	if s.specfill == nil {
-		return apperr.Forbidden("specs.autofill_disabled")
-	}
-	id, err := pathID(r, "id")
+	id, err := s.pathVehicle(r)
 	if err != nil {
 		return err
+	}
+	if s.specfill == nil {
+		return apperr.Forbidden("specs.autofill_disabled")
 	}
 	v, err := s.vehicles.Get(r.Context(), id)
 	if err != nil {
@@ -296,4 +296,18 @@ func autofillError(err error) error {
 		code = "specs.autofill_key_invalid"
 	}
 	return apperr.BadGateway(code)
+}
+
+// pathSpecEntry parses the {id} wildcard as a spec entry and checks its
+// vehicle for the route's permission.
+func (s *Server) pathSpecEntry(r *http.Request) (int64, error) {
+	id, err := pathID(r, "id")
+	if err != nil {
+		return 0, err
+	}
+	e, err := s.vehicles.GetSpecEntry(r.Context(), id)
+	if err != nil {
+		return 0, err
+	}
+	return id, s.guard(r, e.VehicleID)
 }

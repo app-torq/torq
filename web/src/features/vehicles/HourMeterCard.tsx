@@ -10,6 +10,7 @@ import { fieldErrors, useErrorText } from '../../lib/errors'
 import type { HourMeter, HourMeterReading, ListResponse, Vehicle } from '../../lib/types'
 import { useSession } from '../../app/session'
 import { Button, IconButton } from '../../components/Button'
+import { canOn } from '../../lib/permissions'
 import { TextField } from '../../components/Field'
 import { NumberField } from '../../components/NumberField'
 import { ConfirmDialog, Dialog } from '../../components/Dialog'
@@ -37,11 +38,12 @@ export function HourMeterCard({ vehicle, meter }: { vehicle: Vehicle; meter: Hou
     },
   })
   const inUse = remove.error && isApiError(remove.error, 'hour_meter.in_use')
+  const canEdit = canOn(vehicle, 'vehicles.edit')
   const removeError = remove.isError ? (inUse ? t('hours.inUse') : errorText(remove.error)) : undefined
   return (
     <Card
       title={meter.name}
-      actions={
+      actions={canEdit && (
         <div className="flex gap-0.5">
           <IconButton aria-label={t('hours.rename')} onClick={() => { setRenaming(true) }}>
             <Pencil size={15} />
@@ -52,11 +54,11 @@ export function HourMeterCard({ vehicle, meter }: { vehicle: Vehicle; meter: Hou
             </IconButton>
           )}
         </div>
-      }
+      )}
     >
       <div className="space-y-4">
         <p className="text-2xl font-semibold tabular-nums text-zinc-100">{fmt.hours(meter.current_hours)}</p>
-        {!vehicle.archived && <HoursQuickUpdate meter={meter} />}
+        {!vehicle.archived && canEdit && <HoursQuickUpdate meter={meter} />}
         <div>
           <h3 className="mb-2 text-xs uppercase tracking-wide text-zinc-400">{t('odometer.history')}</h3>
           {readings.isError && <ErrorBanner message={errorText(readings.error)} />}

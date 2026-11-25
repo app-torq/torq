@@ -5,6 +5,7 @@ package reports
 
 import (
 	"context"
+	"slices"
 	"sort"
 
 	"github.com/app-torq/torq/internal/apperr"
@@ -102,8 +103,9 @@ type CostReport struct {
 
 // CostReport sums Routine Service (items + extra costs) and completed
 // Self-Repair projects (quantity × unit cost) in [from, to]. vehicleID 0 means
-// the whole garage; its distance is the sum of per-vehicle distances.
-func (s *Service) CostReport(ctx context.Context, vehicleID int64, from, to string) (CostReport, error) {
+// the whole garage, limited to visible vehicles (nil = all); its distance is
+// the sum of per-vehicle distances.
+func (s *Service) CostReport(ctx context.Context, vehicleID int64, from, to string, visible []int64) (CostReport, error) {
 	lo, hi, err := bounds(from, to)
 	if err != nil {
 		return CostReport{}, err
@@ -181,7 +183,9 @@ func (s *Service) CostReport(ctx context.Context, vehicleID int64, from, to stri
 	out := CostReport{From: from, To: to}
 	ids := make([]int64, 0, len(per))
 	for id := range per {
-		ids = append(ids, id)
+		if visible == nil || slices.Contains(visible, id) {
+			ids = append(ids, id)
+		}
 	}
 	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
 	var distance int64

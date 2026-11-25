@@ -39,8 +39,11 @@ type NewUser struct {
 	Username    string
 	DisplayName string
 	Password    string
-	Role        Role
-	Locale      string
+	// Role (admin or member) picks a built-in role for older clients;
+	// RoleID wins when set. Neither means Member.
+	Role   Role
+	RoleID int64
+	Locale string
 }
 
 func validateNewUser(in NewUser) error {
@@ -49,7 +52,7 @@ func validateNewUser(in NewUser) error {
 	validateDisplayName(&v, in.DisplayName)
 	code := passwordError(in.Password)
 	v.Check(code != "", "password", code)
-	v.Check(in.Role != RoleAdmin && in.Role != RoleMember, "role", "validation.invalid_choice")
+	v.Check(in.Role != "" && in.Role != RoleAdmin && in.Role != RoleMember, "role", "validation.invalid_choice")
 	v.Check(in.Locale != "en" && in.Locale != "de", "locale", "validation.invalid_choice")
 	return v.Err()
 }
@@ -151,6 +154,10 @@ func (u *Users) create(ctx context.Context, tx *sql.Tx, in NewUser) (User, error
 	} else if !errors.Is(err, sql.ErrNoRows) {
 		return User{}, err
 	}
+	role, err := resolveRole(ctx, q, in.RoleID, in.Role)
+	if err != nil {
+		return User{}, err
+	}
 	hash, err := local.Hash(in.Password)
 	if err != nil {
 		return User{}, err
@@ -162,7 +169,8 @@ func (u *Users) create(ctx context.Context, tx *sql.Tx, in NewUser) (User, error
 	f := DefaultsFromStore(settings)
 	now := clock.Timestamp(u.Clock.Now())
 	row, err := q.CreateUser(ctx, store.CreateUserParams{
-		Username: in.Username, DisplayName: in.DisplayName, Role: string(in.Role), Locale: in.Locale,
+		Username: in.Username, DisplayName: in.DisplayName, Role: string(legacyRole(role)),
+		RoleID: sql.NullInt64{Int64: role.ID, Valid: true}, Locale: in.Locale,
 		DateFormat: f.DateFormat, NumberFormat: f.NumberFormat, TimeFormat: f.TimeFormat, CurrencyCode: f.CurrencyCode,
 		PowerUnit: f.PowerUnit, DistanceUnit: f.DistanceUnit, VolumeUnit: f.VolumeUnit, TorqueUnit: f.TorqueUnit,
 		PressureUnit: f.PressureUnit, DisplacementUnit: f.DisplacementUnit, CreatedAt: now, UpdatedAt: now,
@@ -177,6 +185,33 @@ func (u *Users) create(ctx context.Context, tx *sql.Tx, in NewUser) (User, error
 		return User{}, err
 	}
 	return FromStore(row), nil
+}
+
+// resolveRole returns the role with id, or the built-in role for legacy
+// (admin/member, empty = member). An unknown id is a validation error, and
+// so is a legacy value that contradicts the id.
+func resolveRole(ctx context.Context, q *store.Queries, id int64, legacy Role) (store.Role, error) {
+	if id == 0 {
+		key := builtinMember
+		if legacy == RoleAdmin {
+			key = builtinAdmin
+		}
+		return q.GetRoleByBuiltinKey(ctx, sql.NullString{String: key, Valid: true})
+	}
+	var v apperr.Validation
+	r, err := q.GetRole(ctx, id)
+	if errors.Is(err, sql.ErrNoRows) {
+		v.Add("role_id", "validation.invalid_choice")
+		return store.Role{}, v.Err()
+	}
+	if err != nil {
+		return store.Role{}, err
+	}
+	if legacy != "" && legacy != legacyRole(r) {
+		v.Add("role", "validation.invalid_choice")
+		return store.Role{}, v.Err()
+	}
+	return r, nil
 }
 
 // Get returns one user.
@@ -207,8 +242,11 @@ func (u *Users) List(ctx context.Context) ([]User, error) {
 // UserPatch is an admin update; nil fields are left unchanged.
 type UserPatch struct {
 	DisplayName *string
-	Role        *Role
-	Disabled    *bool
+	// Role (admin or member) picks a built-in role for older clients;
+	// RoleID wins when both are set and must agree with it.
+	Role     *Role
+	RoleID   *int64
+	Disabled *bool
 }
 
 // Update applies an admin patch while keeping at least one enabled admin.
@@ -243,8 +281,25 @@ func (u *Users) Update(ctx context.Context, id int64, p UserPatch) (User, error)
 				return err
 			}
 		}
-		if p.Role != nil {
-			if updated, err = q.SetUserRole(ctx, store.SetUserRoleParams{Role: string(*p.Role), UpdatedAt: now, ID: id}); err != nil {
+		if p.Role != nil || p.RoleID != nil {
+			var roleID int64
+			var legacy Role
+			if p.RoleID != nil {
+				roleID = *p.RoleID
+				if roleID <= 0 {
+					roleID = -1 // never a valid id
+				}
+			}
+			if p.Role != nil {
+				legacy = *p.Role
+			}
+			role, err := resolveRole(ctx, q, roleID, legacy)
+			if err != nil {
+				return err
+			}
+			if updated, err = q.SetUserRole(ctx, store.SetUserRoleParams{
+				Role: string(legacyRole(role)), RoleID: sql.NullInt64{Int64: role.ID, Valid: true}, UpdatedAt: now, ID: id,
+			}); err != nil {
 				return err
 			}
 		}

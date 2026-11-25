@@ -54,13 +54,25 @@ type userJSON struct {
 	PriorityDisplay string  `json:"priority_display"`
 	CardTagLimit    int64   `json:"card_tag_limit"`
 	Disabled        bool    `json:"disabled"`
+	// Role is admin or member for older clients; RoleID is the actual role.
+	RoleID         int64   `json:"role_id"`
+	RoleName       string  `json:"role_name"`
+	RoleBuiltinKey *string `json:"role_builtin_key"`
+	// VehicleCount is the number of assigned vehicles (admin user list).
+	VehicleCount *int64 `json:"vehicle_count,omitempty"`
+	// Permissions and AllVehicles describe the signed-in user's own access
+	// (me, login, setup).
+	Permissions *[]auth.Permission `json:"permissions,omitempty"`
+	AllVehicles *bool              `json:"all_vehicles,omitempty"`
 	formatsJSON
 }
 
-func toUserJSON(u auth.User) userJSON {
+// toUserJSON renders a user; role names are in locale.
+func toUserJSON(u auth.User, role store.Role, locale string) userJSON {
 	out := userJSON{
 		ID: u.ID, Username: u.Username, DisplayName: u.DisplayName, Role: string(u.Role),
 		Locale: u.Prefs.Locale, PriorityDisplay: u.Prefs.PriorityDisplay, CardTagLimit: u.Prefs.CardTagLimit, Disabled: u.Disabled,
+		RoleID: u.RoleID, RoleName: auth.RoleName(role, locale), RoleBuiltinKey: strPtr(role.BuiltinKey),
 		formatsJSON: toFormatsJSON(u.Prefs.Formats),
 	}
 	if u.Prefs.CurrencySymbol != "" {
@@ -68,6 +80,45 @@ func toUserJSON(u auth.User) userJSON {
 		out.CurrencySymbol = &sym
 	}
 	return out
+}
+
+// rolesByID returns every role by id.
+func (s *Server) rolesByID(ctx context.Context) (map[int64]store.Role, error) {
+	roles, err := s.roles.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[int64]store.Role, len(roles))
+	for _, r := range roles {
+		out[r.ID] = r.Role
+	}
+	return out, nil
+}
+
+// userOut renders one user with role names in the caller's language.
+func (s *Server) userOut(r *http.Request, u auth.User) (userJSON, error) {
+	roles, err := s.rolesByID(r.Context())
+	if err != nil {
+		return userJSON{}, err
+	}
+	return toUserJSON(u, roles[u.RoleID], currentUser(r).Prefs.Locale), nil
+}
+
+// meOut renders the signed-in user with their own permissions. Users from a
+// fresh sign-in don't carry their access yet, so it's loaded here.
+func (s *Server) meOut(ctx context.Context, u auth.User) (userJSON, error) {
+	a, err := auth.LoadAccess(ctx, store.New(s.DB.Reader), u)
+	if err != nil {
+		return userJSON{}, err
+	}
+	roles, err := s.rolesByID(ctx)
+	if err != nil {
+		return userJSON{}, err
+	}
+	out := toUserJSON(u, roles[u.RoleID], u.Prefs.Locale)
+	granted, all := a.Granted(), a.Admin || a.AllVehicles
+	out.Permissions, out.AllVehicles = &granted, &all
+	return out, nil
 }
 
 // meResponse adds instance facts every signed-in user needs (upload limit,
@@ -170,7 +221,11 @@ func (s *Server) setup(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	writeJSON(w, http.StatusCreated, meResponse{User: toUserJSON(user), Instance: info, Token: token})
+	out, err := s.meOut(r.Context(), user)
+	if err != nil {
+		return err
+	}
+	writeJSON(w, http.StatusCreated, meResponse{User: out, Instance: info, Token: token})
 	return nil
 }
 
@@ -239,7 +294,11 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	writeJSON(w, http.StatusOK, meResponse{User: toUserJSON(user), Instance: info, Token: token})
+	out, err := s.meOut(r.Context(), user)
+	if err != nil {
+		return err
+	}
+	writeJSON(w, http.StatusOK, meResponse{User: out, Instance: info, Token: token})
 	return nil
 }
 
@@ -261,7 +320,11 @@ func (s *Server) me(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	writeJSON(w, http.StatusOK, meResponse{User: toUserJSON(currentUser(r)), Instance: info})
+	out, err := s.meOut(r.Context(), currentUser(r))
+	if err != nil {
+		return err
+	}
+	writeJSON(w, http.StatusOK, meResponse{User: out, Instance: info})
 	return nil
 }
 
@@ -300,6 +363,10 @@ func (s *Server) updatePreferences(w http.ResponseWriter, r *http.Request) error
 	if err != nil {
 		return err
 	}
-	writeJSON(w, http.StatusOK, map[string]userJSON{"user": toUserJSON(user)})
+	out, err := s.meOut(r.Context(), user)
+	if err != nil {
+		return err
+	}
+	writeJSON(w, http.StatusOK, map[string]userJSON{"user": out})
 	return nil
 }

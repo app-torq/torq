@@ -15,7 +15,8 @@ import { Checkbox, TextField } from '../../components/Field'
 import { NumberField } from '../../components/NumberField'
 import { ConfirmDialog, Dialog } from '../../components/Dialog'
 import { Card, EmptyState, ErrorBanner, Loading, PageHeader } from '../../components/ui'
-import { invalidateOdometerDependents, useVehicles } from '../vehicles/hooks'
+import { invalidateOdometerDependents, useAnyVehicleCan, useVehicles } from '../vehicles/hooks'
+import { canOn } from '../../lib/permissions'
 import { useCategories } from '../service-log/hooks'
 import { useReminders } from './hooks'
 import { ReminderForm } from './ReminderForm'
@@ -52,7 +53,9 @@ export function ReminderListPage({ vehicleId }: { vehicleId?: number }) {
   const catById = new Map(categories.data?.items.map((c) => [c.id, c]))
   const items = reminders.data?.items ?? []
 
-  const addButton = (
+  const anyCan = useAnyVehicleCan('reminders.write')
+  const canAdd = vehicleId === undefined ? anyCan : canOn(vehicleById.get(vehicleId), 'reminders.write')
+  const addButton = canAdd && (
     <Button variant="primary" onClick={() => { setEditing('new') }}>
       <Plus size={16} />
       {t('add')}
@@ -86,19 +89,24 @@ export function ReminderListPage({ vehicleId }: { vehicleId?: number }) {
                       reminder={r}
                       category={catById.get(r.service_category_id ?? 0)}
                       vehicle={vehicleId === undefined ? vehicleById.get(r.vehicle_id) : undefined}
-                      actions={
+                      actions={(() => {
+                        const v = vehicleById.get(r.vehicle_id)
+                        const canWrite = canOn(v, 'reminders.write')
+                        const canLog = canOn(v, 'service_logs.write')
+                        return (
                         <>
-                          {r.service_category_id === null ? (
+                          {r.service_category_id === null ? canWrite && (
                             <Button size="sm" onClick={() => { setMarking(r) }}>
                               <CheckCircle2 size={15} />
                               {t('actions.markDone')}
                             </Button>
-                          ) : (
+                          ) : canLog && (
                             <Link to={`/service/new?vehicle=${r.vehicle_id}`} className="focus-ring inline-flex h-8 items-center gap-2 rounded-md border border-zinc-700 bg-zinc-900 px-2.5 text-sm hover:bg-zinc-800">
                               <NotebookPen size={15} />
                               {t('actions.logService')}
                             </Link>
                           )}
+                          {canWrite && <>
                           <IconButton aria-label={r.paused ? t('actions.resume') : t('actions.pause')} title={r.paused ? t('actions.resume') : t('actions.pause')} onClick={() => { pause.mutate(r) }}>
                             {r.paused ? <Play size={15} /> : <Pause size={15} />}
                           </IconButton>
@@ -108,8 +116,10 @@ export function ReminderListPage({ vehicleId }: { vehicleId?: number }) {
                           <IconButton aria-label={t('common:actions.delete')} onClick={() => { setDeleting(r) }}>
                             <Trash2 size={15} />
                           </IconButton>
+                          </>}
                         </>
-                      }
+                        )
+                      })()}
                     />
                   </li>
                 ))}

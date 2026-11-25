@@ -11,7 +11,8 @@ import { vehicleName, type ListResponse, type ServiceLog } from '../../lib/types
 import { Button } from '../../components/Button'
 import { inputClass } from '../../components/Field'
 import { Badge, EmptyState, ErrorBanner, Loading, PageHeader, Table } from '../../components/ui'
-import { useOdometerUnit, useVehicles } from '../vehicles/hooks'
+import { useAnyVehicleCan, useOdometerUnit, useVehicles } from '../vehicles/hooks'
+import { canOn } from '../../lib/permissions'
 import { categoryLabel, useCategories } from './hooks'
 import { entryReading } from '../vehicles/readings'
 
@@ -56,6 +57,8 @@ export function ServiceLogListPage({ vehicleId }: { vehicleId?: number }) {
   const items = logs.data?.pages.flatMap((p) => p.items) ?? []
   const total = logs.data?.pages[0]?.total ?? 0
   const newLink = `/service/new${filters.vehicle_id ? `?vehicle=${filters.vehicle_id}` : ''}`
+  const anyCan = useAnyVehicleCan('service_logs.write')
+  const canAdd = vehicleId === undefined ? anyCan : canOn(vehicleById.get(vehicleId), 'service_logs.write')
 
   return (
     <div>
@@ -63,15 +66,15 @@ export function ServiceLogListPage({ vehicleId }: { vehicleId?: number }) {
         <PageHeader
           title={t('title')}
           subtitle={t('subtitle')}
-          actions={
+          actions={canAdd && (
             <Link to={newLink} className="focus-ring inline-flex h-10 items-center gap-2 rounded-md bg-sky-500 px-4 text-sm font-medium text-zinc-950 hover:bg-sky-400">
               <Plus size={16} />
               {t('add')}
             </Link>
-          }
+          )}
         />
       )}
-      {vehicleId !== undefined && (
+      {vehicleId !== undefined && canAdd && (
         <div className="mb-4 flex justify-end">
           <Link to={newLink} className="focus-ring inline-flex h-9 items-center gap-2 rounded-md bg-sky-500 px-3 text-sm font-medium text-zinc-950 hover:bg-sky-400">
             <Plus size={16} />

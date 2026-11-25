@@ -16,6 +16,7 @@ WHERE (CAST(sqlc.arg(vehicle_id) AS INTEGER) = 0 OR r.vehicle_id = sqlc.arg(vehi
   AND (CAST(sqlc.arg(state) AS TEXT) = '' OR r.state = sqlc.arg(state))
   AND (CAST(sqlc.arg(include_paused) AS INTEGER) = 1 OR r.paused_at IS NULL)
   AND (CAST(sqlc.arg(include_archived) AS INTEGER) = 1 OR v.archived_at IS NULL)
+  AND (CAST(sqlc.narg(scope) AS TEXT) IS NULL OR r.vehicle_id IN (SELECT value FROM json_each(CAST(sqlc.narg(scope) AS TEXT))))
 ORDER BY r.id;
 
 -- name: ListRemindersForVehicle :many

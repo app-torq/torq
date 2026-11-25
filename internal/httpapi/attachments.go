@@ -12,6 +12,7 @@ import (
 
 	"github.com/app-torq/torq/internal/apperr"
 	"github.com/app-torq/torq/internal/attachments"
+	"github.com/app-torq/torq/internal/auth"
 	"github.com/app-torq/torq/internal/store"
 )
 
@@ -117,6 +118,9 @@ func (s *Server) uploadTo(owner func(id int64) attachments.Owner) handlerFunc {
 		if err != nil {
 			return err
 		}
+		if err := s.guardOwner(r, owner(id)); err != nil {
+			return err
+		}
 		a, err := s.receiveUpload(w, r, owner(id), attachments.PurposeFile)
 		if err != nil {
 			return err
@@ -127,7 +131,7 @@ func (s *Server) uploadTo(owner func(id int64) attachments.Owner) handlerFunc {
 }
 
 func (s *Server) putAvatar(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, err := s.pathVehicle(r)
 	if err != nil {
 		return err
 	}
@@ -150,7 +154,7 @@ func (s *Server) putAvatar(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) deleteAvatar(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, err := s.pathVehicle(r)
 	if err != nil {
 		return err
 	}
@@ -174,6 +178,9 @@ func (s *Server) deleteAvatar(w http.ResponseWriter, r *http.Request) error {
 func (s *Server) getAttachment(w http.ResponseWriter, r *http.Request) error {
 	id, err := pathID(r, "id")
 	if err != nil {
+		return err
+	}
+	if err := s.guardAttachment(r, id, false); err != nil {
 		return err
 	}
 	a, f, err := s.files.Open(r.Context(), id)
@@ -201,6 +208,9 @@ func (s *Server) patchAttachment(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	if err := s.guardAttachment(r, id, true); err != nil {
+		return err
+	}
 	var in struct {
 		Caption string `json:"caption"`
 	}
@@ -220,9 +230,62 @@ func (s *Server) deleteAttachment(w http.ResponseWriter, r *http.Request) error 
 	if err != nil {
 		return err
 	}
+	if err := s.guardAttachment(r, id, true); err != nil {
+		return err
+	}
 	if err := s.files.Delete(r.Context(), id); err != nil {
 		return err
 	}
 	w.WriteHeader(http.StatusNoContent)
 	return nil
+}
+
+// guardOwner checks the vehicle of the record an upload goes to, for the
+// route's permission.
+func (s *Server) guardOwner(r *http.Request, o attachments.Owner) error {
+	ctx := r.Context()
+	switch {
+	case o.ServiceLogID > 0:
+		l, err := s.servicelog.Get(ctx, o.ServiceLogID)
+		if err != nil {
+			return err
+		}
+		return s.guard(r, l.VehicleID)
+	case o.RepairLogID > 0:
+		return s.guardRepair(r, o.RepairLogID)
+	case o.SpecEntryID > 0:
+		e, err := s.vehicles.GetSpecEntry(ctx, o.SpecEntryID)
+		if err != nil {
+			return err
+		}
+		return s.guard(r, e.VehicleID)
+	}
+	return s.guard(r, o.VehicleID)
+}
+
+// guardAttachment checks the attachment's vehicle. Changes need the
+// permission that covers its owner: the vehicle photo is part of the vehicle,
+// the others belong to a service entry, a project or a spec entry.
+func (s *Server) guardAttachment(r *http.Request, id int64, write bool) error {
+	row, err := store.New(s.DB.Reader).GetAttachmentVehicle(r.Context(), id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return apperr.NotFound()
+	}
+	if err != nil {
+		return err
+	}
+	var p auth.Permission
+	if write {
+		switch {
+		case row.ServiceLogID.Valid:
+			p = auth.PermServiceLogsWrite
+		case row.RepairLogID.Valid:
+			p = auth.PermRepairsWrite
+		case row.SpecEntryID.Valid:
+			p = auth.PermSpecsEdit
+		default:
+			p = auth.PermVehiclesEdit
+		}
+	}
+	return s.vehicleGuard(r, row.OwnerVehicleID, p)
 }

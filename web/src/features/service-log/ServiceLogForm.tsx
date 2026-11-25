@@ -8,6 +8,7 @@ import { queryKeys } from '../../lib/queryKeys'
 import { distanceField, hoursToInput, metricField, type MetricField, parseHours, parseMoneyToCents, readDistance, readMetricField, toInputValue } from '../../lib/format'
 import { QUANTITY, QUANTITY_UNITS, type QuantityUnit } from '../../lib/units'
 import { fieldErrors, useErrorText } from '../../lib/errors'
+import { canOn } from '../../lib/permissions'
 import { vehicleName, type CostType, type ServiceCategory, type ServiceLog } from '../../lib/types'
 import { useSession } from '../../app/session'
 import { Button, IconButton } from '../../components/Button'
@@ -189,7 +190,7 @@ function ServiceLogForm({ log }: { log?: ServiceLog }) {
               value={vehicleId}
               onChange={setVehicleId}
               error={fe.vehicle_id}
-              options={[{ value: '', label: '—' }, ...(vehicles.data?.items ?? []).map((v) => ({ value: String(v.id), label: vehicleName(v) }))]}
+              options={[{ value: '', label: '—' }, ...(vehicles.data?.items ?? []).filter((v) => canOn(v, 'service_logs.write') || String(v.id) === vehicleId).map((v) => ({ value: String(v.id), label: vehicleName(v) }))]}
             />
             <TextField label={t('fields.date')} type="date" value={date} onChange={setDate} error={fe.service_date} />
             {hasOdometer && <NumberField label={t('fields.odometer')} unit={t(`common:units.${unit}`)} decimal={false} value={odometer} onChange={setOdometer} error={fe.odometer_km} />}

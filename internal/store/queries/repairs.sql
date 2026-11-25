@@ -14,6 +14,7 @@ SELECT r.* FROM repair_logs r
 LEFT JOIN repair_priorities pr ON pr.id = r.priority_id
 JOIN (SELECT CAST(sqlc.arg(sort) AS TEXT) AS mode) o
 WHERE (CAST(sqlc.arg(vehicle_id) AS INTEGER) = 0 OR r.vehicle_id = sqlc.arg(vehicle_id))
+  AND (CAST(sqlc.narg(scope) AS TEXT) IS NULL OR r.vehicle_id IN (SELECT value FROM json_each(CAST(sqlc.narg(scope) AS TEXT))))
   AND instr(',' || CAST(sqlc.arg(statuses) AS TEXT) || ',', ',' || r.status || ',') > 0
   AND (CAST(sqlc.arg(priorities) AS TEXT) = ''
        OR instr(',' || CAST(sqlc.arg(priorities) AS TEXT) || ',', ',' || COALESCE(CAST(r.priority_id AS TEXT), 'none') || ',') > 0)
@@ -38,6 +39,7 @@ LIMIT sqlc.arg(lim) OFFSET sqlc.arg(off);
 -- name: CountRepairs :one
 SELECT COUNT(*) FROM repair_logs r
 WHERE (CAST(sqlc.arg(vehicle_id) AS INTEGER) = 0 OR r.vehicle_id = sqlc.arg(vehicle_id))
+  AND (CAST(sqlc.narg(scope) AS TEXT) IS NULL OR r.vehicle_id IN (SELECT value FROM json_each(CAST(sqlc.narg(scope) AS TEXT))))
   AND instr(',' || CAST(sqlc.arg(statuses) AS TEXT) || ',', ',' || r.status || ',') > 0
   AND (CAST(sqlc.arg(priorities) AS TEXT) = ''
        OR instr(',' || CAST(sqlc.arg(priorities) AS TEXT) || ',', ',' || COALESCE(CAST(r.priority_id AS TEXT), 'none') || ',') > 0)

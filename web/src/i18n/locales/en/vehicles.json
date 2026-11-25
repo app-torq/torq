@@ -221,5 +221,15 @@
     "offBody": "The link stops working at once. Turning it on again creates a new address.",
     "loadFailed": "The public link could not be loaded.",
     "noLink": "This vehicle has no public link. Turn it on on the vehicle page first."
+  },
+  "access": {
+    "title": "Access",
+    "intro": "Who can see this vehicle, and whether they may change it.",
+    "viaRole": "All vehicles (role)",
+    "level": {
+      "view": "View",
+      "edit": "Edit"
+    },
+    "manage": "Manage users and access"
   }
 }

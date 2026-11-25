@@ -19,7 +19,8 @@
     "about": "About & data sources",
     "home": "{{brand}} – go to dashboard",
     "priorities": "Project priorities",
-    "tags": "Project tags"
+    "tags": "Project tags",
+    "roles": "Roles"
   },
   "actions": {
     "save": "Save",

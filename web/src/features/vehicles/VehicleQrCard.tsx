@@ -9,6 +9,7 @@ import { useFormat } from '../../lib/useFormat'
 import { queryKeys } from '../../lib/queryKeys'
 import { qrPng, isLocalAddress } from '../../lib/qr'
 import { vehicleName, type Share, type Vehicle } from '../../lib/types'
+import { canOn } from '../../lib/permissions'
 import { useSession } from '../../app/session'
 import { Button } from '../../components/Button'
 import { ConfirmDialog } from '../../components/Dialog'
@@ -105,7 +106,7 @@ export function VehicleQrCard({ vehicle }: { vehicle: Vehicle }) {
         </div>
       </div>
       {instance.public_links && share.data && (
-        <PublicLink vehicle={vehicle} link={link} demo={instance.demo_mode} onOff={() => { setCode('app') }} />
+        <PublicLink vehicle={vehicle} link={link} demo={instance.demo_mode} canManage={canOn(vehicle, 'shares.manage')} onOff={() => { setCode('app') }} />
       )}
       {share.isError && <ErrorBanner message={t('share.loadFailed')} />}
     </Card>
@@ -115,7 +116,7 @@ export function VehicleQrCard({ vehicle }: { vehicle: Vehicle }) {
 type Options = Pick<Share, 'include_costs' | 'include_license_plate' | 'include_vin'>
 
 /** Turns a vehicle's public read-only link on and off, and sets what it shows. */
-function PublicLink({ vehicle, link, demo, onOff }: { vehicle: Vehicle; link: Share | null; demo: boolean; onOff: () => void }) {
+function PublicLink({ vehicle, link, demo, canManage, onOff }: { vehicle: Vehicle; link: Share | null; demo: boolean; canManage: boolean; onOff: () => void }) {
   const { t } = useTranslation(['vehicles', 'errors'])
   const errorText = useErrorText()
   const fmt = useFormat()
@@ -163,6 +164,8 @@ function PublicLink({ vehicle, link, demo, onOff }: { vehicle: Vehicle; link: Sh
     }
   }
 
+  // Without the permission, an existing link is shown to copy but not changed.
+  if (!link && !canManage) return null
   return (
     <section aria-labelledby="public-link" className="mt-4 space-y-3 border-t border-zinc-800 pt-4">
       <h3 id="public-link" className="text-sm font-semibold text-zinc-100">{t('share.title')}</h3>
@@ -185,6 +188,7 @@ function PublicLink({ vehicle, link, demo, onOff }: { vehicle: Vehicle; link: Sh
               {copied ? t('share.copied') : t('share.copy')}
             </Button>
           </div>
+          {canManage && (<>
           <fieldset className="space-y-1.5">
             <legend className="mb-1 text-sm text-zinc-300">{t('share.alsoShow')}</legend>
             {(['include_costs', 'include_license_plate', 'include_vin'] as const).map((k) => (
@@ -206,6 +210,7 @@ function PublicLink({ vehicle, link, demo, onOff }: { vehicle: Vehicle; link: Sh
               {t('share.turnOff')}
             </Button>
           </div>
+          </>)}
         </>
       )}
       {put.isError && <ErrorBanner message={errorText(put.error)} />}

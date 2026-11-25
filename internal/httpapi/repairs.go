@@ -108,8 +108,8 @@ func (s *Server) toRepairJSON(ctx context.Context, r repairs.Repair) (repairJSON
 	return out, err
 }
 
-func (s *Server) openRepairs(ctx context.Context) ([]repairSummaryJSON, error) {
-	rows, err := s.repairs.OpenProjects(ctx)
+func (s *Server) openRepairs(ctx context.Context, visible []int64) ([]repairSummaryJSON, error) {
+	rows, err := s.repairs.OpenProjects(ctx, visible)
 	if err != nil {
 		return nil, err
 	}
@@ -190,6 +190,7 @@ func (s *Server) listRepairs(w http.ResponseWriter, r *http.Request) error {
 	}
 	rows, total, err := s.repairs.List(r.Context(), repairs.Filter{
 		VehicleID: vehicleID, Statuses: q["status"], Priorities: q["priority"], Tags: q["tag"], Sort: sort, Q: q.Get("q"), Limit: limit, Offset: offset,
+		VehicleIDs: visibleVehicles(r),
 	})
 	if err != nil {
 		return err
@@ -207,6 +208,11 @@ func (s *Server) createRepair(w http.ResponseWriter, r *http.Request) error {
 	if err := decodeJSON(w, r, &in); err != nil {
 		return err
 	}
+	if in.VehicleID != 0 { // 0 fails validation below
+		if err := s.guard(r, in.VehicleID); err != nil {
+			return err
+		}
+	}
 	d, err := in.domain()
 	if err != nil {
 		return err
@@ -219,7 +225,7 @@ func (s *Server) createRepair(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) getRepair(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, err := s.pathRepair(r)
 	if err != nil {
 		return err
 	}
@@ -231,7 +237,7 @@ func (s *Server) getRepair(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) updateRepair(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, err := s.pathRepair(r)
 	if err != nil {
 		return err
 	}
@@ -269,7 +275,7 @@ func (s *Server) updateRepair(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) setRepairStatus(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, err := s.pathRepair(r)
 	if err != nil {
 		return err
 	}
@@ -312,7 +318,7 @@ func (s *Server) setRepairStatus(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) deleteRepair(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, err := s.pathRepair(r)
 	if err != nil {
 		return err
 	}
@@ -344,7 +350,7 @@ func (in partInput) domain() repairs.PartInput {
 }
 
 func (s *Server) createPart(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, err := s.pathRepair(r)
 	if err != nil {
 		return err
 	}
@@ -361,7 +367,7 @@ func (s *Server) createPart(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) updatePart(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, err := s.pathPart(r)
 	if err != nil {
 		return err
 	}
@@ -386,7 +392,7 @@ func (s *Server) updatePart(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) deletePart(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, err := s.pathPart(r)
 	if err != nil {
 		return err
 	}
@@ -398,7 +404,7 @@ func (s *Server) deletePart(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) reorderParts(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "id")
+	id, err := s.pathRepair(r)
 	if err != nil {
 		return err
 	}
@@ -418,4 +424,36 @@ func (s *Server) reorderParts(w http.ResponseWriter, r *http.Request) error {
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"parts": out})
 	return nil
+}
+
+// pathRepair parses the {id} wildcard as a repair project and checks its
+// vehicle for the route's permission.
+func (s *Server) pathRepair(r *http.Request) (int64, error) {
+	id, err := pathID(r, "id")
+	if err != nil {
+		return 0, err
+	}
+	return id, s.guardRepair(r, id)
+}
+
+func (s *Server) guardRepair(r *http.Request, id int64) error {
+	rep, err := s.repairs.Get(r.Context(), id)
+	if err != nil {
+		return err
+	}
+	return s.guard(r, rep.VehicleID)
+}
+
+// pathPart parses the {id} wildcard as a project part and checks the
+// project's vehicle for the route's permission.
+func (s *Server) pathPart(r *http.Request) (int64, error) {
+	id, err := pathID(r, "id")
+	if err != nil {
+		return 0, err
+	}
+	p, err := s.repairs.GetPart(r.Context(), id)
+	if err != nil {
+		return 0, err
+	}
+	return id, s.guardRepair(r, p.RepairLogID)
 }

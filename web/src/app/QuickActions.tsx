@@ -10,6 +10,8 @@ import { useVehicles } from '../features/vehicles/hooks'
 import { VehicleReadingUpdate } from '../features/vehicles/VehicleReadingUpdate'
 import { currentReading } from '../features/vehicles/readings'
 import { quickActions, type QuickActionDef } from './paletteActions'
+import { useSession } from './session'
+import { canOn, garagePermissions, useIsAdmin } from '../lib/permissions'
 
 /** Opens the palette on Ctrl/⌘+K. */
 export function useQuickActionsHotkey(open: () => void) {
@@ -40,7 +42,13 @@ function Palette({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation()
   const fmt = useFormat()
   const navigate = useNavigate()
-  const vehicles = useVehicles('false')
+  const allVehicles = useVehicles('false')
+  const isAdmin = useIsAdmin()
+  const granted = useSession().user.permissions
+  // Per-vehicle actions are offered for the vehicles that allow them.
+  const allowedFor = (a: QuickActionDef) => (allVehicles.data?.items ?? []).filter((v) => canOn(v, a.permission))
+  const allowed = (a: QuickActionDef) =>
+    garagePermissions.includes(a.permission) ? isAdmin || (granted?.includes(a.permission) ?? false) : allowedFor(a).length > 0
   const [step, setStep] = useState<Step>({ kind: 'actions' })
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
@@ -50,17 +58,18 @@ function Palette({ onClose }: { onClose: () => void }) {
     const q = query.trim().toLowerCase()
     if (step.kind === 'actions') {
       return quickActions
+        .filter(allowed)
         .map((a) => ({ key: a.id, label: t(a.labelKey), icon: a.icon, run: () => { choose(a) } }))
         .filter((i) => i.label.toLowerCase().includes(q))
     }
     if (step.kind === 'vehicle') {
-      return (vehicles.data?.items ?? [])
+      return allowedFor(step.action)
         .map((v) => ({ key: String(v.id), label: `${vehicleName(v)} · ${currentReading(v, fmt, t)}`, icon: undefined, run: () => { pickVehicle(step.action, v) } }))
         .filter((i) => i.label.toLowerCase().includes(q))
     }
     return []
     // eslint-disable-next-line react-hooks/exhaustive-deps -- choose/pickVehicle are stable for this render
-  }, [step, query, vehicles.data, t, fmt])
+  }, [step, query, allVehicles.data, t, fmt])
 
   function choose(action: QuickActionDef) {
     if (!action.needsVehicle) {
@@ -68,7 +77,7 @@ function Palette({ onClose }: { onClose: () => void }) {
       onClose()
       return
     }
-    const list = vehicles.data?.items ?? []
+    const list = allowedFor(action)
     const only = list.length === 1 ? list[0] : undefined
     if (only) {
       pickVehicle(action, only)

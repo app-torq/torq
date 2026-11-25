@@ -3,11 +3,12 @@ import { createBrowserRouter, Navigate, RouterProvider } from 'react-router'
 import '../i18n'
 import { AuthGate } from './AuthGate'
 import { Layout } from './Layout'
-import { RequireAdmin } from './RequireAdmin'
+import { RequireAdmin, RequirePermission } from './RequireAdmin'
 import { NotFoundPage } from './NotFoundPage'
 import { SettingsLayout } from '../features/settings/SettingsLayout'
 import { PreferencesPage } from '../features/settings/PreferencesPage'
 import { UsersPage } from '../features/settings/UsersPage'
+import { RolesPage } from '../features/settings/RolesPage'
 import { DevicesPage } from '../features/settings/DevicesPage'
 import { WebhooksPage } from '../features/settings/WebhooksPage'
 import { InstanceSettingsPage } from '../features/settings/InstanceSettingsPage'
@@ -72,10 +73,11 @@ const router = createBrowserRouter([
           { path: 'preferences', element: <PreferencesPage /> },
           { path: 'password', element: <ChangePasswordPage /> },
           { path: 'devices', element: <DevicesPage /> },
-          { path: 'categories', element: <CategoriesPage /> },
-          { path: 'priorities', element: <PrioritiesPage /> },
-          { path: 'tags', element: <TagsPage /> },
+          { path: 'categories', element: <RequirePermission permission="categories.manage"><CategoriesPage /></RequirePermission> },
+          { path: 'priorities', element: <RequirePermission permission="repair_lists.manage"><PrioritiesPage /></RequirePermission> },
+          { path: 'tags', element: <RequirePermission permission="repair_lists.manage"><TagsPage /></RequirePermission> },
           { path: 'users', element: <RequireAdmin><UsersPage /></RequireAdmin> },
+          { path: 'roles', element: <RequireAdmin><RolesPage /></RequireAdmin> },
           { path: 'webhooks', element: <RequireAdmin><WebhooksPage /></RequireAdmin> },
           { path: 'instance', element: <RequireAdmin><InstanceSettingsPage /></RequireAdmin> },
           { path: 'about', element: <AboutPage /> },

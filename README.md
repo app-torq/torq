@@ -44,6 +44,7 @@ Self-hosted · one small Docker container · your data stays on your server
 - 🔔 **Notifications** via webhooks to Discord, ntfy, Gotify, Home Assistant or any JSON endpoint.
 - 📊 **Reports**: costs per vehicle, service vs. repair, cost per km, a timeline and a printable history with JSON/CSV export.
 - 📱 **On your phone like an app**: add torq to the home screen, no app store and no extra install.
+- 👥 **Roles and permissions**: several users share one garage; administrators decide per role what may be changed (read only, add service entries but not delete them, …) and whether a user sees every vehicle or only the ones assigned to them.
 - 🌍 English and German; metric, US or UK units per user (each vehicle keeps its own km or mile odometer); multiple users per garage.
 
 ## Quick start

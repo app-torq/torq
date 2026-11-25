@@ -22,9 +22,21 @@ func (s *Server) listUsers(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	roles, err := s.rolesByID(r.Context())
+	if err != nil {
+		return err
+	}
+	counts, err := s.roles.VehicleAccessCounts(r.Context())
+	if err != nil {
+		return err
+	}
+	locale := currentUser(r).Prefs.Locale
 	items := make([]userJSON, 0, len(users))
 	for _, u := range users {
-		items = append(items, toUserJSON(u))
+		out := toUserJSON(u, roles[u.RoleID], locale)
+		n := counts[u.ID]
+		out.VehicleCount = &n
+		items = append(items, out)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": items})
 	return nil
@@ -36,18 +48,23 @@ func (s *Server) createUser(w http.ResponseWriter, r *http.Request) error {
 		DisplayName string `json:"display_name"`
 		Password    string `json:"password"`
 		Role        string `json:"role"`
+		RoleID      int64  `json:"role_id"`
 	}
 	if err := decodeJSON(w, r, &in); err != nil {
 		return err
 	}
 	user, err := s.users.Create(r.Context(), auth.NewUser{
 		Username: in.Username, DisplayName: in.DisplayName, Password: in.Password,
-		Role: auth.Role(in.Role), Locale: currentUser(r).Prefs.Locale,
+		Role: auth.Role(in.Role), RoleID: in.RoleID, Locale: currentUser(r).Prefs.Locale,
 	})
 	if err != nil {
 		return err
 	}
-	writeJSON(w, http.StatusCreated, map[string]userJSON{"user": toUserJSON(user)})
+	out, err := s.userOut(r, user)
+	if err != nil {
+		return err
+	}
+	writeJSON(w, http.StatusCreated, map[string]userJSON{"user": out})
 	return nil
 }
 
@@ -59,12 +76,13 @@ func (s *Server) updateUser(w http.ResponseWriter, r *http.Request) error {
 	var in struct {
 		DisplayName *string `json:"display_name"`
 		Role        *string `json:"role"`
+		RoleID      *int64  `json:"role_id"`
 		Disabled    *bool   `json:"disabled"`
 	}
 	if err := decodeJSON(w, r, &in); err != nil {
 		return err
 	}
-	patch := auth.UserPatch{DisplayName: in.DisplayName, Disabled: in.Disabled}
+	patch := auth.UserPatch{DisplayName: in.DisplayName, RoleID: in.RoleID, Disabled: in.Disabled}
 	if in.Role != nil {
 		role := auth.Role(*in.Role)
 		patch.Role = &role
@@ -76,7 +94,11 @@ func (s *Server) updateUser(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	writeJSON(w, http.StatusOK, map[string]userJSON{"user": toUserJSON(user)})
+	out, err := s.userOut(r, user)
+	if err != nil {
+		return err
+	}
+	writeJSON(w, http.StatusOK, map[string]userJSON{"user": out})
 	return nil
 }
 

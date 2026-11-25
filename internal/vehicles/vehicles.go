@@ -191,6 +191,12 @@ func nullInt(p *int64) sql.NullInt64 {
 // Create adds a vehicle with an empty spec sheet and an initial odometer
 // reading, or, for a vehicle tracked by hours only, its hour meter.
 func (s *Service) Create(ctx context.Context, p Profile, odometerKm int64, createdBy int64) (store.Vehicle, error) {
+	return s.CreateThen(ctx, p, odometerKm, createdBy, nil)
+}
+
+// CreateThen is Create with then run in the same transaction once the
+// vehicle exists (nil: nothing).
+func (s *Service) CreateThen(ctx context.Context, p Profile, odometerKm int64, createdBy int64, then func(ctx context.Context, tx *sql.Tx, vehicleID int64) error) (store.Vehicle, error) {
 	p.normalize()
 	if p.NoOdometer {
 		odometerKm = 0
@@ -226,6 +232,11 @@ func (s *Service) Create(ctx context.Context, p Profile, odometerKm int64, creat
 		}
 		if err := q.CreateVehicleSpecs(ctx, store.CreateVehicleSpecsParams{VehicleID: out.ID, UpdatedAt: now}); err != nil {
 			return err
+		}
+		if then != nil {
+			if err := then(ctx, tx, out.ID); err != nil {
+				return err
+			}
 		}
 		if p.InitialMeter != nil {
 			if _, err := s.createMeter(ctx, q, out.ID, *p.InitialMeter); err != nil {
@@ -266,9 +277,9 @@ const (
 	All          ArchiveFilter = 2
 )
 
-// List returns vehicles matching filter.
-func (s *Service) List(ctx context.Context, filter ArchiveFilter) ([]store.Vehicle, error) {
-	return store.New(s.DB.Reader).ListVehicles(ctx, int64(filter))
+// List returns vehicles matching filter among visible (nil = all vehicles).
+func (s *Service) List(ctx context.Context, filter ArchiveFilter, visible []int64) ([]store.Vehicle, error) {
+	return store.New(s.DB.Reader).ListVehicles(ctx, store.ListVehiclesParams{Mode: int64(filter), Scope: db.Scope(visible)})
 }
 
 // Update replaces the profile fields (not the odometer). Turning the odometer

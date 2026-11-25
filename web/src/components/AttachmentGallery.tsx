@@ -19,7 +19,8 @@ function sizeLabel(bytes: number, fmt: ReturnType<typeof useFormat>): string {
   return `${fmt.number(Math.max(1, Math.round(bytes / 1024)))} KB`
 }
 
-export function AttachmentGallery({ items, onChanged }: { items: Attachment[]; onChanged: () => void }) {
+/** Shows attachments; readOnly hides caption editing and deleting. */
+export function AttachmentGallery({ items, onChanged, readOnly = false }: { items: Attachment[]; onChanged: () => void; readOnly?: boolean }) {
   const { t } = useTranslation()
   const fmt = useFormat()
   const errorText = useErrorText()
@@ -56,12 +57,16 @@ export function AttachmentGallery({ items, onChanged }: { items: Attachment[]; o
               <a href={`${a.url}?download=1`} download className="focus-ring inline-flex h-7 w-7 items-center justify-center rounded text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100" aria-label={t('attachments.download')} title={t('attachments.download')}>
                 <Download size={14} />
               </a>
-              <IconButton aria-label={t('attachments.caption')} onClick={() => { setEditing(a) }} className="h-7 w-7">
-                <Pencil size={14} />
-              </IconButton>
-              <IconButton aria-label={t('actions.delete')} onClick={() => { setDeleting(a) }} className="h-7 w-7">
-                <Trash2 size={14} />
-              </IconButton>
+              {!readOnly && (
+                <>
+                  <IconButton aria-label={t('attachments.caption')} onClick={() => { setEditing(a) }} className="h-7 w-7">
+                    <Pencil size={14} />
+                  </IconButton>
+                  <IconButton aria-label={t('actions.delete')} onClick={() => { setDeleting(a) }} className="h-7 w-7">
+                    <Trash2 size={14} />
+                  </IconButton>
+                </>
+              )}
             </div>
           </li>
         ))}

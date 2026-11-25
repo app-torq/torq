@@ -550,7 +550,9 @@ func totalsFor(ctx context.Context, q *store.Queries, ids []int64) (map[int64]To
 // Filter narrows the project list.
 type Filter struct {
 	VehicleID int64
-	Statuses  []string
+	// VehicleIDs limits the result to these vehicles; nil means all.
+	VehicleIDs []int64
+	Statuses   []string
 	// Priorities are priority ids as text, or "none" for projects without one.
 	Priorities []string
 	// Tags are tag names a project must all have, in addition to any
@@ -607,13 +609,14 @@ func (s *Service) List(ctx context.Context, f Filter) ([]Repair, int64, error) {
 	joined, prios := strings.Join(statuses, ","), strings.Join(f.Priorities, ",")
 	rows, err := q.ListRepairs(ctx, store.ListRepairsParams{
 		VehicleID: f.VehicleID, Statuses: joined, Priorities: prios, TagIds: tagIDs.joined, TagCount: tagIDs.count,
-		Q: search.Text, Sort: f.Sort, Lim: f.Limit, Off: f.Offset,
+		Q: search.Text, Sort: f.Sort, Lim: f.Limit, Off: f.Offset, Scope: db.Scope(f.VehicleIDs),
 	})
 	if err != nil {
 		return nil, 0, err
 	}
 	total, err := q.CountRepairs(ctx, store.CountRepairsParams{
 		VehicleID: f.VehicleID, Statuses: joined, Priorities: prios, TagIds: tagIDs.joined, TagCount: tagIDs.count, Q: search.Text,
+		Scope: db.Scope(f.VehicleIDs),
 	})
 	if err != nil {
 		return nil, 0, err

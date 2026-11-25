@@ -10,7 +10,7 @@ export function SettingsLayout() {
     <div className="flex flex-col gap-6 lg:flex-row">
       <nav aria-label={t('nav.settings')} className="flex gap-1 overflow-x-auto lg:w-52 lg:shrink-0 lg:flex-col">
         {settingsNav
-          .filter((i) => !i.adminOnly || user.role === 'admin')
+          .filter((i) => (!i.adminOnly || user.role === 'admin') && (!i.permission || user.role === 'admin' || user.permissions?.includes(i.permission)))
           .map((i) => (
             <NavLink
               key={i.to}

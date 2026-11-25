@@ -243,6 +243,21 @@ type RepairTorqueSpec struct {
 	SortOrder   int64
 }
 
+type Role struct {
+	ID          int64
+	BuiltinKey  sql.NullString
+	CustomName  sql.NullString
+	Description string
+	AllVehicles int64
+	CreatedAt   string
+	UpdatedAt   string
+}
+
+type RolePermission struct {
+	RoleID     int64
+	Permission string
+}
+
 type ServiceCategory struct {
 	ID                    int64
 	BuiltinKey            sql.NullString
@@ -318,6 +333,7 @@ type User struct {
 	DisplacementUnit string
 	PriorityDisplay  string
 	CardTagLimit     int64
+	RoleID           sql.NullInt64
 }
 
 type UserIdentity struct {
@@ -356,6 +372,13 @@ type Vehicle struct {
 	PowerUnit         sql.NullString
 	HasOdometer       int64
 	VehicleType       string
+}
+
+type VehicleAccess struct {
+	UserID    int64
+	VehicleID int64
+	Level     string
+	CreatedAt string
 }
 
 type VehicleShare struct {

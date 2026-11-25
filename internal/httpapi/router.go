@@ -37,20 +37,43 @@ type Deps struct {
 	Dist    fs.FS
 }
 
-// access is the authorization level a route requires.
-type access int
+// level is who may call a route at all.
+type level int
 
 const (
-	public access = iota
-	member
-	admin
+	levelPublic level = iota
+	levelMember       // any signed-in user
+	levelAdmin
 )
+
+// access is what a route requires: a level and optionally a permission.
+// Garage-wide permissions are checked before the handler runs; per-vehicle
+// routes (vehicle true) call vehicleGuard once they know the vehicle, with
+// perm "" for reads.
+type access struct {
+	level   level
+	perm    auth.Permission
+	vehicle bool
+}
+
+var (
+	public = access{level: levelPublic}
+	member = access{level: levelMember}
+	admin  = access{level: levelAdmin}
+)
+
+// garage requires a garage-wide permission.
+func garage(p auth.Permission) access { return access{level: levelMember, perm: p} }
+
+// onVehicle marks a route about one vehicle's data; p is the permission a
+// change needs, "" for reads. Its handler must call vehicleGuard.
+func onVehicle(p auth.Permission) access { return access{level: levelMember, perm: p, vehicle: true} }
 
 // APIVersion is the API level reported by GET /instance and stated as
 // info.version in openapi.yaml. Within /api/v1 changes are additive only, and
 // every release that adds operations, fields or capabilities raises it by one
 // so clients can detect features (research M7).
-const APIVersion = 9
+const APIVersion = 10
 
 // Server holds the handler dependencies, domain services and the route table.
 type Server struct {
@@ -58,6 +81,7 @@ type Server struct {
 	mux      *http.ServeMux
 	sessions *auth.Sessions
 	users    *auth.Users
+	roles    *auth.Roles
 	password auth.PasswordAuthenticator
 	// throttle blocks an IP, or a username from one IP, after a few failed
 	// logins; userThrottle blocks a username everywhere only after many, so
@@ -92,6 +116,7 @@ func NewServer(d Deps) *Server {
 	s := &Server{Deps: d, mux: http.NewServeMux()}
 	s.sessions = &auth.Sessions{DB: d.DB, Clock: d.Clock}
 	s.users = &auth.Users{DB: d.DB, Clock: d.Clock, Sessions: s.sessions}
+	s.roles = &auth.Roles{DB: d.DB, Clock: d.Clock}
 	s.password = &local.Provider{DB: d.DB, Clock: d.Clock}
 	s.throttle = auth.NewThrottle(d.Clock.Now, 5)
 	s.userThrottle = auth.NewThrottle(d.Clock.Now, 50)
@@ -168,17 +193,28 @@ func (s *Server) route(pattern string, level access, fn handlerFunc) {
 	s.mux.Handle(method+" /api/v1"+p, s.wrap(level, fn))
 }
 
-func (s *Server) wrap(level access, fn handlerFunc) http.Handler {
+func (s *Server) wrap(a access, fn handlerFunc) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if level != public {
+		if a.level != levelPublic {
 			var err error
-			if r, err = s.authorize(r, level); err != nil {
+			if r, err = s.authorize(r, a); err != nil {
 				writeError(w, r, s.Log, err)
 				return
 			}
 		}
-		if err := fn(w, r); err != nil {
+		var g *guardState
+		if a.vehicle {
+			g = &guardState{perm: a.perm}
+			r = r.WithContext(context.WithValue(r.Context(), guardKey{}, g))
+		}
+		err := fn(w, r)
+		if err != nil {
 			writeError(w, r, s.Log, err)
+		}
+		if g != nil && !g.checked && err == nil {
+			// Every per-vehicle handler must check the vehicle; the HTTP
+			// tests fail on this message.
+			s.Log.Error(skippedGuard, "route", r.Pattern)
 		}
 	})
 }

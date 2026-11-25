@@ -5,6 +5,7 @@ import { useErrorText } from '../../lib/errors'
 import { vehicleName } from '../../lib/types'
 import { Badge, Card, EmptyState, ErrorBanner, Loading, PageHeader } from '../../components/ui'
 import { useVehicles } from '../vehicles/hooks'
+import { useCan } from '../../lib/permissions'
 import { VehicleAvatar } from '../vehicles/VehicleAvatar'
 import { VehicleReadingUpdate } from '../vehicles/VehicleReadingUpdate'
 import { currentReading } from '../vehicles/readings'
@@ -16,6 +17,7 @@ export function DashboardPage() {
   const fmt = useFormat()
   const errorText = useErrorText()
   const vehicles = useVehicles('false')
+  const canCreate = useCan('vehicles.create')
 
   return (
     <div className="space-y-6">
@@ -29,7 +31,7 @@ export function DashboardPage() {
         {vehicles.data?.items.length === 0 && (
           <EmptyState
             title={t('dashboard.noVehicles')}
-            action={<Link to="/vehicles/new" className="text-sm text-sky-400 hover:underline">{t('add')}</Link>}
+            action={canCreate && <Link to="/vehicles/new" className="text-sm text-sky-400 hover:underline">{t('add')}</Link>}
           />
         )}
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
