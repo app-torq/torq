@@ -3,6 +3,7 @@ package vehicles
 import (
 	"encoding/base64"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/app-torq/torq/internal/apperr"
@@ -58,7 +59,13 @@ func TestShareLifecycle(t *testing.T) {
 	if got, err := s.ResolveShare(ctx, sh.Token); err != nil || got.VehicleID != v.ID {
 		t.Fatalf("resolve %+v %v", got, err)
 	}
-	for _, bad := range []string{"", "x", sh.Token + "x", sh.Token[:42] + "A", "../../etc/passwd"} {
+	// Change the last character to one it isn't: it carries only 4 bits, so a
+	// fixed replacement would match the real token every 16th run.
+	last := "A"
+	if strings.HasSuffix(sh.Token, last) {
+		last = "Q"
+	}
+	for _, bad := range []string{"", "x", sh.Token + "x", sh.Token[:42] + last, "../../etc/passwd"} {
 		if _, err := s.ResolveShare(ctx, bad); !isNotFound(err) {
 			t.Errorf("resolve %q: %v", bad, err)
 		}
