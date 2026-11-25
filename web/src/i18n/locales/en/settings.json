@@ -123,7 +123,15 @@
       "none": "None",
       "view": "View",
       "edit": "Edit"
-    }
+    },
+    "mfa": "Two-factor",
+    "mfaOn": "On",
+    "mfaOff": "Off",
+    "mfaRequired": "Required",
+    "mfaRequire": "Require 2FA",
+    "mfaNotRequire": "Don't require 2FA",
+    "mfaReset": "Reset two-factor sign-in",
+    "mfaResetBody": "Remove the authenticator app, passkeys and recovery codes of {{name}} and sign them out everywhere? They then sign in with their password (and set up a new method if one is required)."
   },
   "devices": {
     "title": "Devices",
@@ -289,6 +297,64 @@
       "categories.manage": "Manage service categories",
       "repair_lists.manage": "Manage project priorities and tags",
       "catalog.update": "Update the vehicle catalog online"
+    },
+    "mfaBadge": "2FA required",
+    "requireMfa": "Require two-factor sign-in",
+    "requireMfaHint": "Users with this role must set up an authenticator app or a passkey after their next sign-in before they can do anything else.",
+    "requireMfaSelf": "This is your role and you have no second factor yet: right after saving you can only set one up.",
+    "adminRole": "The Administrator role always may do everything. Here you can only require two-factor sign-in for it."
+  },
+  "security": {
+    "title": "Sign-in & security",
+    "intro": "Your password, two-factor sign-in and passkeys.",
+    "setupRequired": "Your account requires two-factor sign-in. Set up an authenticator app or a passkey to continue.",
+    "on": "On",
+    "totp": {
+      "title": "Authenticator app",
+      "intro": "After your password, torq asks for a 6-digit code from an app such as Aegis, 2FAS, Google Authenticator or your password manager.",
+      "setUp": "Set up",
+      "step1": "Scan the QR code with your authenticator app, or type the setup key.",
+      "step2": "Enter the code the app shows.",
+      "qr": "QR code for the authenticator app",
+      "key": "Setup key",
+      "code": "Code from the app",
+      "confirm": "Turn on",
+      "turnOff": "Turn off authenticator app",
+      "turnOffBody": "Sign-in then no longer asks for a code from the app."
+    },
+    "passkeys": {
+      "title": "Passkeys",
+      "intro": "Sign in with your fingerprint, face or device PIN instead of a password. A passkey also works as the second step after your password.",
+      "add": "Add passkey",
+      "addIntro": "Give the passkey a name so you recognize it later, e.g. the device it's on. Your browser then asks you to confirm.",
+      "name": "Name",
+      "namePlaceholder": "e.g. iPhone",
+      "create": "Continue",
+      "cancelled": "The passkey wasn't created.",
+      "unavailable": "Passkeys aren't available on this server: an administrator has to set the server address (TORQ_BASE_URL).",
+      "unsupported": "This browser doesn't support passkeys.",
+      "added": "Added {{date}}",
+      "lastUsed": "last used {{date}}",
+      "neverUsed": "never used",
+      "rename": "Rename {{name}}",
+      "remove": "Remove {{name}}",
+      "removeTitle": "Remove passkey",
+      "removeBody": "Remove {{name}}? It can't be used to sign in any more. Also delete it on the device."
+    },
+    "recovery": {
+      "title": "Recovery codes",
+      "intro": "If you lose your phone, sign in with a recovery code instead. Each code works once.",
+      "left_one": "{{count}} unused code left.",
+      "left_other": "{{count}} unused codes left.",
+      "low": "You are running out of recovery codes. Generate new ones.",
+      "renew": "Generate new codes",
+      "renewBody": "Your current recovery codes stop working.",
+      "newTitle": "Your recovery codes",
+      "newIntro": "Store them somewhere safe, e.g. printed or in your password manager. They are shown only now.",
+      "copy": "Copy",
+      "copied": "Copied",
+      "print": "Print",
+      "saved": "I saved them"
     }
   }
 }

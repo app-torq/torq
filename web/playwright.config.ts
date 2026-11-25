@@ -30,7 +30,12 @@ export default defineConfig({
           reuseExistingServer: false,
           // The suite expects the optional spec auto-fill to be off, even when
           // a developer's .env (exported by the Makefile) sets its keys.
-          env: { TORQ_DATA_DIR: dataDir, TORQ_LISTEN_ADDR: `127.0.0.1:${port}`, TORQ_LOG_LEVEL: 'warn', GEMINI_API_KEY: '', TAVILY_API_KEY: '' },
+          // Passkeys need the server address; v28 opens the app on localhost
+          // for them (an IP address can't be a passkey's domain).
+          env: {
+            TORQ_DATA_DIR: dataDir, TORQ_LISTEN_ADDR: `127.0.0.1:${port}`, TORQ_LOG_LEVEL: 'warn', GEMINI_API_KEY: '', TAVILY_API_KEY: '',
+            TORQ_BASE_URL: `http://localhost:${port}`,
+          },
         },
       }),
 })

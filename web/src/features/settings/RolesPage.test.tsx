@@ -10,9 +10,9 @@ const permissions: PermissionInfo[] = [
   { key: 'vehicles.create', scope: 'garage' },
 ]
 const roles: Role[] = [
-  { id: 1, name: 'Administrator', custom_name: null, builtin_key: 'admin', description: '', all_vehicles: true, permissions: [], user_count: 1 },
-  { id: 2, name: 'Member', custom_name: null, builtin_key: 'member', description: '', all_vehicles: true, permissions: ['service_logs.write'], user_count: 2 },
-  { id: 4, name: 'Customer', custom_name: 'Customer', builtin_key: null, description: 'Own cars only', all_vehicles: false, permissions: ['service_logs.write'], user_count: 3 },
+  { id: 1, name: 'Administrator', custom_name: null, builtin_key: 'admin', description: '', all_vehicles: true, permissions: [], user_count: 1, require_mfa: false },
+  { id: 2, name: 'Member', custom_name: null, builtin_key: 'member', description: '', all_vehicles: true, permissions: ['service_logs.write'], user_count: 2, require_mfa: false },
+  { id: 4, name: 'Customer', custom_name: 'Customer', builtin_key: null, description: 'Own cars only', all_vehicles: false, permissions: ['service_logs.write'], user_count: 3, require_mfa: false },
 ]
 
 function respond() {
@@ -24,12 +24,20 @@ function respond() {
 afterEach(() => { vi.restoreAllMocks() })
 
 describe('RolesPage', () => {
-  it('lists roles; the Administrator role can be neither edited nor deleted', async () => {
-    respond()
+  it('lists roles; the Administrator role only takes the two-factor requirement', async () => {
+    const fetchSpy = respond()
     renderWithApp(<RolesPage />)
-    const admin = (await screen.findByText('Administrator')).closest('tr')
-    expect(admin).not.toBeNull()
-    expect(within(admin as HTMLElement).queryAllByRole('button')).toHaveLength(0)
+    const admin = (await screen.findByText('Administrator')).closest('tr') as HTMLElement
+    expect(within(admin).queryByRole('button', { name: 'Delete Administrator' })).toBeNull()
+    await userEvent.click(within(admin).getByRole('button', { name: 'Edit Administrator' }))
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).queryByLabelText('Name')).toBeNull()
+    await userEvent.click(within(dialog).getByRole('checkbox', { name: 'Require two-factor sign-in' }))
+    expect(within(dialog).getByText(/right after saving you can only set one up/)).toBeInTheDocument()
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+    const patch = fetchSpy.mock.calls.find(([, init]) => init?.method === 'PATCH')
+    expect(patch?.[0]).toBe('/api/v1/roles/1')
+    expect(JSON.parse(patch?.[1]?.body as string)).toEqual({ require_mfa: true })
     const member = screen.getByText('Member').closest('tr') as HTMLElement
     expect(within(member).getByRole('button', { name: 'Edit Member' })).toBeInTheDocument()
     expect(within(member).queryByRole('button', { name: 'Delete Member' })).toBeNull()
@@ -48,7 +56,7 @@ describe('RolesPage', () => {
     const patch = fetchSpy.mock.calls.find(([, init]) => init?.method === 'PATCH')
     expect(patch?.[0]).toBe('/api/v1/roles/4')
     expect(JSON.parse(patch?.[1]?.body as string)).toMatchObject({
-      name: 'Customer', all_vehicles: false, permissions: ['service_logs.write', 'service_logs.delete', 'vehicles.create'],
+      name: 'Customer', all_vehicles: false, require_mfa: false, permissions: ['service_logs.write', 'service_logs.delete', 'vehicles.create'],
     })
   })
 

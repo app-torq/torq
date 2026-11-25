@@ -5,6 +5,7 @@ export const queryKeys = {
   me: ['me'] as const,
   users: ['users'] as const,
   roles: ['roles'] as const,
+  mfa: ['me', 'mfa'] as const,
   vehicleAccess: (userId: number) => ['users', userId, 'vehicle-access'] as const,
   vehicleUsers: (vehicleId: number) => ['vehicles', vehicleId, 'access'] as const,
   sessions: ['sessions'] as const,

@@ -59,7 +59,7 @@ INSERT INTO users (username, display_name, role, role_id, locale, date_format, n
                    power_unit, distance_unit, volume_unit, torque_unit, pressure_unit, displacement_unit,
                    created_at, updated_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-RETURNING id, username, display_name, role, locale, date_format, number_format, currency_code, currency_symbol, disabled_at, created_at, updated_at, power_unit, time_format, distance_unit, volume_unit, torque_unit, pressure_unit, displacement_unit, priority_display, card_tag_limit, role_id
+RETURNING id, username, display_name, role, locale, date_format, number_format, currency_code, currency_symbol, disabled_at, created_at, updated_at, power_unit, time_format, distance_unit, volume_unit, torque_unit, pressure_unit, displacement_unit, priority_display, card_tag_limit, role_id, mfa_required
 `
 
 type CreateUserParams struct {
@@ -126,6 +126,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.PriorityDisplay,
 		&i.CardTagLimit,
 		&i.RoleID,
+		&i.MfaRequired,
 	)
 	return i, err
 }
@@ -180,7 +181,7 @@ func (q *Queries) GetLocalIdentityByUsername(ctx context.Context, subject string
 }
 
 const getUser = `-- name: GetUser :one
-SELECT id, username, display_name, role, locale, date_format, number_format, currency_code, currency_symbol, disabled_at, created_at, updated_at, power_unit, time_format, distance_unit, volume_unit, torque_unit, pressure_unit, displacement_unit, priority_display, card_tag_limit, role_id FROM users WHERE id = ?
+SELECT id, username, display_name, role, locale, date_format, number_format, currency_code, currency_symbol, disabled_at, created_at, updated_at, power_unit, time_format, distance_unit, volume_unit, torque_unit, pressure_unit, displacement_unit, priority_display, card_tag_limit, role_id, mfa_required FROM users WHERE id = ?
 `
 
 func (q *Queries) GetUser(ctx context.Context, id int64) (User, error) {
@@ -209,12 +210,13 @@ func (q *Queries) GetUser(ctx context.Context, id int64) (User, error) {
 		&i.PriorityDisplay,
 		&i.CardTagLimit,
 		&i.RoleID,
+		&i.MfaRequired,
 	)
 	return i, err
 }
 
 const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT id, username, display_name, role, locale, date_format, number_format, currency_code, currency_symbol, disabled_at, created_at, updated_at, power_unit, time_format, distance_unit, volume_unit, torque_unit, pressure_unit, displacement_unit, priority_display, card_tag_limit, role_id FROM users WHERE username = ?
+SELECT id, username, display_name, role, locale, date_format, number_format, currency_code, currency_symbol, disabled_at, created_at, updated_at, power_unit, time_format, distance_unit, volume_unit, torque_unit, pressure_unit, displacement_unit, priority_display, card_tag_limit, role_id, mfa_required FROM users WHERE username = ?
 `
 
 func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
@@ -243,12 +245,13 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 		&i.PriorityDisplay,
 		&i.CardTagLimit,
 		&i.RoleID,
+		&i.MfaRequired,
 	)
 	return i, err
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, username, display_name, role, locale, date_format, number_format, currency_code, currency_symbol, disabled_at, created_at, updated_at, power_unit, time_format, distance_unit, volume_unit, torque_unit, pressure_unit, displacement_unit, priority_display, card_tag_limit, role_id FROM users ORDER BY username COLLATE NOCASE
+SELECT id, username, display_name, role, locale, date_format, number_format, currency_code, currency_symbol, disabled_at, created_at, updated_at, power_unit, time_format, distance_unit, volume_unit, torque_unit, pressure_unit, displacement_unit, priority_display, card_tag_limit, role_id, mfa_required FROM users ORDER BY username COLLATE NOCASE
 `
 
 func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
@@ -283,6 +286,7 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 			&i.PriorityDisplay,
 			&i.CardTagLimit,
 			&i.RoleID,
+			&i.MfaRequired,
 		); err != nil {
 			return nil, err
 		}
@@ -298,7 +302,7 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 }
 
 const setUserDisabled = `-- name: SetUserDisabled :one
-UPDATE users SET disabled_at = ?, updated_at = ? WHERE id = ? RETURNING id, username, display_name, role, locale, date_format, number_format, currency_code, currency_symbol, disabled_at, created_at, updated_at, power_unit, time_format, distance_unit, volume_unit, torque_unit, pressure_unit, displacement_unit, priority_display, card_tag_limit, role_id
+UPDATE users SET disabled_at = ?, updated_at = ? WHERE id = ? RETURNING id, username, display_name, role, locale, date_format, number_format, currency_code, currency_symbol, disabled_at, created_at, updated_at, power_unit, time_format, distance_unit, volume_unit, torque_unit, pressure_unit, displacement_unit, priority_display, card_tag_limit, role_id, mfa_required
 `
 
 type SetUserDisabledParams struct {
@@ -333,12 +337,13 @@ func (q *Queries) SetUserDisabled(ctx context.Context, arg SetUserDisabledParams
 		&i.PriorityDisplay,
 		&i.CardTagLimit,
 		&i.RoleID,
+		&i.MfaRequired,
 	)
 	return i, err
 }
 
 const setUserRole = `-- name: SetUserRole :one
-UPDATE users SET role = ?, role_id = ?, updated_at = ? WHERE id = ? RETURNING id, username, display_name, role, locale, date_format, number_format, currency_code, currency_symbol, disabled_at, created_at, updated_at, power_unit, time_format, distance_unit, volume_unit, torque_unit, pressure_unit, displacement_unit, priority_display, card_tag_limit, role_id
+UPDATE users SET role = ?, role_id = ?, updated_at = ? WHERE id = ? RETURNING id, username, display_name, role, locale, date_format, number_format, currency_code, currency_symbol, disabled_at, created_at, updated_at, power_unit, time_format, distance_unit, volume_unit, torque_unit, pressure_unit, displacement_unit, priority_display, card_tag_limit, role_id, mfa_required
 `
 
 type SetUserRoleParams struct {
@@ -379,6 +384,7 @@ func (q *Queries) SetUserRole(ctx context.Context, arg SetUserRoleParams) (User,
 		&i.PriorityDisplay,
 		&i.CardTagLimit,
 		&i.RoleID,
+		&i.MfaRequired,
 	)
 	return i, err
 }
@@ -432,7 +438,7 @@ SET display_name = ?, locale = ?, date_format = ?, number_format = ?, time_forma
     torque_unit = ?, pressure_unit = ?, displacement_unit = ?, priority_display = ?,
     card_tag_limit = ?, updated_at = ?
 WHERE id = ?
-RETURNING id, username, display_name, role, locale, date_format, number_format, currency_code, currency_symbol, disabled_at, created_at, updated_at, power_unit, time_format, distance_unit, volume_unit, torque_unit, pressure_unit, displacement_unit, priority_display, card_tag_limit, role_id
+RETURNING id, username, display_name, role, locale, date_format, number_format, currency_code, currency_symbol, disabled_at, created_at, updated_at, power_unit, time_format, distance_unit, volume_unit, torque_unit, pressure_unit, displacement_unit, priority_display, card_tag_limit, role_id, mfa_required
 `
 
 type UpdateUserPreferencesParams struct {
@@ -499,12 +505,13 @@ func (q *Queries) UpdateUserPreferences(ctx context.Context, arg UpdateUserPrefe
 		&i.PriorityDisplay,
 		&i.CardTagLimit,
 		&i.RoleID,
+		&i.MfaRequired,
 	)
 	return i, err
 }
 
 const updateUserProfile = `-- name: UpdateUserProfile :one
-UPDATE users SET username = ?, display_name = ?, updated_at = ? WHERE id = ? RETURNING id, username, display_name, role, locale, date_format, number_format, currency_code, currency_symbol, disabled_at, created_at, updated_at, power_unit, time_format, distance_unit, volume_unit, torque_unit, pressure_unit, displacement_unit, priority_display, card_tag_limit, role_id
+UPDATE users SET username = ?, display_name = ?, updated_at = ? WHERE id = ? RETURNING id, username, display_name, role, locale, date_format, number_format, currency_code, currency_symbol, disabled_at, created_at, updated_at, power_unit, time_format, distance_unit, volume_unit, torque_unit, pressure_unit, displacement_unit, priority_display, card_tag_limit, role_id, mfa_required
 `
 
 type UpdateUserProfileParams struct {
@@ -545,6 +552,7 @@ func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfilePa
 		&i.PriorityDisplay,
 		&i.CardTagLimit,
 		&i.RoleID,
+		&i.MfaRequired,
 	)
 	return i, err
 }

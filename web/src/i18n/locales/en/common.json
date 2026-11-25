@@ -20,7 +20,8 @@
     "home": "{{brand}} – go to dashboard",
     "priorities": "Project priorities",
     "tags": "Project tags",
-    "roles": "Roles"
+    "roles": "Roles",
+    "security": "Sign-in & security"
   },
   "actions": {
     "save": "Save",

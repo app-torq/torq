@@ -18,7 +18,11 @@
     "unauthenticated": "Please sign in again.",
     "forbidden": "You don't have permission to do this.",
     "invalid_credentials": "Wrong username or password.",
-    "throttled": "Too many attempts. Try again in {{retry_after_s}} s."
+    "throttled": "Too many attempts. Try again in {{retry_after_s}} s.",
+    "mfa_required": "This account uses two-factor sign-in. Update the app to sign in.",
+    "mfa_invalid": "That code didn't work.",
+    "mfa_challenge_expired": "The sign-in timed out. Please sign in again.",
+    "mfa_setup_required": "Set up two-factor sign-in first."
   },
   "setup": {
     "already_completed": "This instance is already set up."
@@ -147,5 +151,17 @@
   "role": {
     "builtin_locked": "Built-in roles can't be deleted, and the Administrator role can't be changed.",
     "move_to_invalid": "Choose another role for the users of this role."
+  },
+  "mfa": {
+    "code_invalid": "That code didn't work. Check the time on your phone and try the current code.",
+    "required": "Two-factor sign-in is required for your account, so you can't remove your last method.",
+    "no_factor": "Set up two-factor sign-in first.",
+    "no_setup": "Start the setup again.",
+    "totp_enabled": "An authenticator app is already set up."
+  },
+  "passkey": {
+    "unavailable": "Passkeys need the server address (TORQ_BASE_URL) to be set.",
+    "invalid": "The passkey couldn't be verified.",
+    "verification_required": "This passkey can't sign in without a password because it doesn't verify you (PIN or biometrics)."
   }
 }

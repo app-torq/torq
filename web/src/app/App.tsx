@@ -13,7 +13,7 @@ import { DevicesPage } from '../features/settings/DevicesPage'
 import { WebhooksPage } from '../features/settings/WebhooksPage'
 import { InstanceSettingsPage } from '../features/settings/InstanceSettingsPage'
 import { AboutPage } from '../features/settings/AboutPage'
-import { ChangePasswordPage } from '../features/auth/ChangePasswordPage'
+import { SecurityPage } from '../features/settings/SecurityPage'
 import { DashboardPage } from '../features/dashboard/DashboardPage'
 import { VehicleListPage } from '../features/vehicles/VehicleListPage'
 import { VehicleFormPage } from '../features/vehicles/VehicleFormPage'
@@ -71,7 +71,8 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <Navigate to="preferences" replace /> },
           { path: 'preferences', element: <PreferencesPage /> },
-          { path: 'password', element: <ChangePasswordPage /> },
+          { path: 'security', element: <SecurityPage /> },
+          { path: 'password', element: <Navigate to="../security" replace /> },
           { path: 'devices', element: <DevicesPage /> },
           { path: 'categories', element: <RequirePermission permission="categories.manage"><CategoriesPage /></RequirePermission> },
           { path: 'priorities', element: <RequirePermission permission="repair_lists.manage"><PrioritiesPage /></RequirePermission> },

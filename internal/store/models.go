@@ -251,6 +251,7 @@ type Role struct {
 	AllVehicles int64
 	CreatedAt   string
 	UpdatedAt   string
+	RequireMfa  int64
 }
 
 type RolePermission struct {
@@ -334,6 +335,7 @@ type User struct {
 	PriorityDisplay  string
 	CardTagLimit     int64
 	RoleID           sql.NullInt64
+	MfaRequired      int64
 }
 
 type UserIdentity struct {
@@ -345,6 +347,38 @@ type UserIdentity struct {
 	PasswordHash sql.NullString
 	CreatedAt    string
 	LastLoginAt  sql.NullString
+}
+
+type UserPasskey struct {
+	ID           int64
+	UserID       int64
+	CredentialID []byte
+	Credential   string
+	Name         string
+	UserVerified int64
+	CreatedAt    string
+	LastUsedAt   sql.NullString
+}
+
+type UserRecoveryCode struct {
+	ID        int64
+	UserID    int64
+	CodeHash  []byte
+	UsedAt    sql.NullString
+	CreatedAt string
+}
+
+type UserTotp struct {
+	UserID      int64
+	SecretEnc   []byte
+	ConfirmedAt sql.NullString
+	LastStep    int64
+	CreatedAt   string
+}
+
+type UserWebauthn struct {
+	UserID int64
+	Handle []byte
 }
 
 type Vehicle struct {

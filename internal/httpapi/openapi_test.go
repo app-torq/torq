@@ -249,10 +249,12 @@ func TestOpenAPICoversRoutes(t *testing.T) {
 	}
 	documented := map[string]string{}
 	permissions := map[string]string{}
+	setup := map[string]bool{}
 	for _, o := range cd.ops {
 		level, _ := o.op["x-torq-access"].(string)
 		documented[key(o.method, o.path)] = level
 		permissions[key(o.method, o.path)], _ = o.op["x-torq-permission"].(string)
+		setup[key(o.method, o.path)], _ = o.op["x-torq-mfa-setup"].(bool)
 	}
 	names := map[level]string{levelPublic: "public", levelMember: "member", levelAdmin: "admin"}
 	for k, a := range registered {
@@ -264,6 +266,8 @@ func TestOpenAPICoversRoutes(t *testing.T) {
 			t.Errorf("%s: openapi.yaml says x-torq-access %q, the route is %q", k, doc, names[a.level])
 		case permissions[k] != string(a.perm):
 			t.Errorf("%s: openapi.yaml says x-torq-permission %q, the route needs %q", k, permissions[k], a.perm)
+		case setup[k] != a.setup:
+			t.Errorf("%s: openapi.yaml says x-torq-mfa-setup %v, the route has %v", k, setup[k], a.setup)
 		}
 	}
 	for k := range documented {

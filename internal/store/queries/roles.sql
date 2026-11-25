@@ -11,12 +11,12 @@ SELECT * FROM roles WHERE id = ?;
 SELECT * FROM roles WHERE builtin_key = ?;
 
 -- name: CreateRole :one
-INSERT INTO roles (custom_name, description, all_vehicles, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?)
+INSERT INTO roles (custom_name, description, all_vehicles, require_mfa, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?)
 RETURNING *;
 
 -- name: UpdateRole :one
-UPDATE roles SET custom_name = ?, description = ?, all_vehicles = ?, updated_at = ? WHERE id = ? RETURNING *;
+UPDATE roles SET custom_name = ?, description = ?, all_vehicles = ?, require_mfa = ?, updated_at = ? WHERE id = ? RETURNING *;
 
 -- name: DeleteRole :exec
 DELETE FROM roles WHERE id = ?;

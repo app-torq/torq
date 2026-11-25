@@ -13,6 +13,7 @@ import (
 	"github.com/app-torq/torq/internal/attachments"
 	"github.com/app-torq/torq/internal/auth"
 	"github.com/app-torq/torq/internal/auth/local"
+	"github.com/app-torq/torq/internal/auth/mfa"
 	"github.com/app-torq/torq/internal/catalog"
 	"github.com/app-torq/torq/internal/catalog/catalogsync"
 	"github.com/app-torq/torq/internal/clock"
@@ -35,6 +36,9 @@ type Deps struct {
 	Log     *slog.Logger
 	Version string
 	Dist    fs.FS
+	// Box encrypts authenticator secrets; when nil, NewServer opens the key
+	// in the data directory (main opens it first to report errors).
+	Box *mfa.Box
 }
 
 // level is who may call a route at all.
@@ -49,17 +53,22 @@ const (
 // access is what a route requires: a level and optionally a permission.
 // Garage-wide permissions are checked before the handler runs; per-vehicle
 // routes (vehicle true) call vehicleGuard once they know the vehicle, with
-// perm "" for reads.
+// perm "" for reads. Routes with setup true stay open to users who must set
+// up a second factor first.
 type access struct {
 	level   level
 	perm    auth.Permission
 	vehicle bool
+	setup   bool
 }
 
 var (
 	public = access{level: levelPublic}
 	member = access{level: levelMember}
 	admin  = access{level: levelAdmin}
+	// self is the caller's own account; usable while a second factor must be
+	// set up.
+	self = access{level: levelMember, setup: true}
 )
 
 // garage requires a garage-wide permission.
@@ -73,7 +82,7 @@ func onVehicle(p auth.Permission) access { return access{level: levelMember, per
 // info.version in openapi.yaml. Within /api/v1 changes are additive only, and
 // every release that adds operations, fields or capabilities raises it by one
 // so clients can detect features (research M7).
-const APIVersion = 10
+const APIVersion = 11
 
 // Server holds the handler dependencies, domain services and the route table.
 type Server struct {
@@ -82,6 +91,7 @@ type Server struct {
 	sessions *auth.Sessions
 	users    *auth.Users
 	roles    *auth.Roles
+	mfa      *mfa.Service
 	password auth.PasswordAuthenticator
 	// throttle blocks an IP, or a username from one IP, after a few failed
 	// logins; userThrottle blocks a username everywhere only after many, so
@@ -117,6 +127,18 @@ func NewServer(d Deps) *Server {
 	s.sessions = &auth.Sessions{DB: d.DB, Clock: d.Clock}
 	s.users = &auth.Users{DB: d.DB, Clock: d.Clock, Sessions: s.sessions}
 	s.roles = &auth.Roles{DB: d.DB, Clock: d.Clock}
+	box := d.Box
+	if box == nil {
+		var err error
+		if box, err = mfa.OpenBox(d.Config.DataDir); err != nil {
+			panic(err)
+		}
+	}
+	passkeys, err := mfa.NewPasskeys(d.Config.BaseURL, "torq", d.Clock)
+	if err != nil {
+		d.Log.Error("passkeys unavailable", "err", err)
+	}
+	s.mfa = mfa.New(d.DB, d.Clock, box, passkeys)
 	s.password = &local.Provider{DB: d.DB, Clock: d.Clock}
 	s.throttle = auth.NewThrottle(d.Clock.Now, 5)
 	s.userThrottle = auth.NewThrottle(d.Clock.Now, 50)

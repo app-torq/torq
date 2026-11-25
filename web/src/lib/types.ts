@@ -35,7 +35,29 @@ export interface Role {
   all_vehicles: boolean
   permissions: Permission[]
   user_count: number
+  /** The role's users must have a second factor. */
+  require_mfa: boolean
 }
+
+export interface Passkey {
+  id: number
+  name: string
+  /** Verifies its user, so it can sign in without a password. */
+  user_verified: boolean
+  created_at: string
+  last_used_at: string | null
+}
+
+/** The signed-in user's second factors (GET /me/mfa). */
+export interface MfaStatus {
+  totp: boolean
+  recovery_codes_left: number
+  passkeys: Passkey[]
+  required: boolean
+  passkeys_available: boolean
+}
+
+export type MfaMethod = 'totp' | 'recovery_code' | 'passkey'
 
 export interface PermissionInfo {
   key: Permission
@@ -89,6 +111,12 @@ export interface User extends Formats {
   permissions?: Permission[]
   /** Whether the signed-in user sees every vehicle (me, login, setup only). */
   all_vehicles?: boolean
+  /** The user has a second factor. */
+  mfa_enabled: boolean
+  /** An administrator requires a second factor for this user. */
+  mfa_required: boolean
+  /** The signed-in user must set up a second factor before anything else (me, login, setup only). */
+  mfa_setup_required?: boolean
   locale: Locale
   currency_symbol: string | null
   priority_display: PriorityDisplay
@@ -110,6 +138,8 @@ export interface InstanceInfo {
   branding: Branding
   /** Vehicles can be shared by public link on this server. */
   public_links: boolean
+  /** Passkeys work on this server (it needs TORQ_BASE_URL). */
+  passkeys: boolean
 }
 
 /** A vehicle's public read-only link (#38). */

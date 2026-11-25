@@ -25,6 +25,11 @@ type Access struct {
 	Perms       map[Permission]bool
 	// Vehicles are the assignments; only used when AllVehicles is false.
 	Vehicles map[int64]Level
+	// MFARequired says the role or the user requires a second factor;
+	// MFASetupRequired that one is required and none is set up yet, so the
+	// user may only set one up.
+	MFARequired      bool
+	MFASetupRequired bool
 }
 
 // Can reports whether the user holds a garage-wide permission.
@@ -102,6 +107,14 @@ func LoadAccess(ctx context.Context, q *store.Queries, u User) (Access, error) {
 		return Access{}, err
 	}
 	a := Access{Admin: role.BuiltinKey.String == builtinAdmin, AllVehicles: role.AllVehicles == 1, Perms: map[Permission]bool{}}
+	a.MFARequired = role.RequireMfa == 1 || u.MFARequired
+	if a.MFARequired {
+		n, err := q.CountFactors(ctx, u.ID)
+		if err != nil {
+			return Access{}, err
+		}
+		a.MFASetupRequired = n == 0
+	}
 	if a.Admin {
 		a.AllVehicles = true
 		return a, nil

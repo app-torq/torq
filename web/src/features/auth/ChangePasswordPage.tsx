@@ -5,9 +5,10 @@ import { api } from '../../lib/api'
 import { fieldErrors, useErrorText } from '../../lib/errors'
 import { Button } from '../../components/Button'
 import { TextField } from '../../components/Field'
-import { Card, ErrorBanner, Notice, PageHeader } from '../../components/ui'
+import { Card, ErrorBanner, Notice } from '../../components/ui'
 
-export function ChangePasswordPage() {
+/** Changing the own password; part of Settings → Sign-in & security. */
+export function PasswordCard() {
   const { t } = useTranslation('auth')
   const errorText = useErrorText()
   const [current, setCurrent] = useState('')
@@ -32,10 +33,9 @@ export function ChangePasswordPage() {
   }
 
   return (
-    <div className="max-w-lg">
-      <PageHeader title={t('password.title')} subtitle={t('password.intro')} />
-      <Card>
-        <form onSubmit={submit} className="space-y-4" noValidate>
+    <Card title={t('password.title')}>
+      <p className="mb-4 text-sm text-zinc-400">{t('password.intro')}</p>
+      <form onSubmit={submit} className="space-y-4" noValidate>
           {change.isSuccess && <Notice tone="emerald">{t('password.changed')}</Notice>}
           {change.isError && Object.keys(fe).length === 0 && <ErrorBanner message={errorText(change.error)} />}
           <TextField label={t('fields.currentPassword')} type="password" value={current} onChange={setCurrent} error={fe.current_password} autoComplete="current-password" />
@@ -51,8 +51,7 @@ export function ChangePasswordPage() {
           <Button type="submit" variant="primary" disabled={change.isPending || !current || !next}>
             {t('common:actions.save')}
           </Button>
-        </form>
-      </Card>
-    </div>
+      </form>
+    </Card>
   )
 }

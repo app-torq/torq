@@ -20,7 +20,8 @@
     "home": "{{brand}} – zur Startseite",
     "priorities": "Projektprioritäten",
     "tags": "Projekt-Tags",
-    "roles": "Rollen"
+    "roles": "Rollen",
+    "security": "Anmeldung & Sicherheit"
   },
   "actions": {
     "save": "Speichern",

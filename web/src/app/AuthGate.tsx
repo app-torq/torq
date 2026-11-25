@@ -9,6 +9,7 @@ import { ErrorBanner, Loading } from '../components/ui'
 import { SessionContext } from './session'
 import { SetupPage } from '../features/auth/SetupPage'
 import { LoginPage } from '../features/auth/LoginPage'
+import { MfaSetupGate } from './MfaSetupGate'
 import { OfflineScreen } from './pwa/OfflineScreen'
 import { documentTitle, useServerInfo } from './branding'
 
@@ -74,6 +75,10 @@ export function AuthGate({ children }: { children: ReactNode }) {
     return <Centered><ErrorBanner message={errorText(me.error)} onRetry={() => void me.refetch()} /></Centered>
   }
   if (!session) return <LoginPage />
+  // A second factor is required but not set up: nothing else works until it is.
+  if (session.user.mfa_setup_required) {
+    return <SessionContext.Provider value={session}><MfaSetupGate /></SessionContext.Provider>
+  }
   return <SessionContext.Provider value={session}>{children}</SessionContext.Provider>
 }
 
