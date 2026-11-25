@@ -179,5 +179,17 @@
   "vehicleType": {
     "car": "Auto",
     "motorcycle": "Motorrad"
+  },
+  "qr": {
+    "title": "QR-Code",
+    "label": "QR-Code für {{name}}",
+    "intro": "Ausdrucken und am Fahrzeug anbringen, z. B. im Motorraum. Beim Scannen öffnet sich dieses Fahrzeug in torq; dort siehst du die Historie und erfasst neue Arbeiten. Eine Anmeldung ist nötig.",
+    "localAddress": "Diese Adresse funktioniert nur auf diesem Computer. Öffne torq unter einer Adresse, die dein Smartphone erreicht (z. B. IP-Adresse oder Domain), bevor du den Code druckst.",
+    "download": "PNG herunterladen",
+    "downloadFailed": "Das PNG konnte nicht erstellt werden.",
+    "print": "Etikett drucken",
+    "back": "Zurück zum Fahrzeug",
+    "printNow": "Drucken",
+    "scanHint": "Scannen, um es in torq zu öffnen"
   }
 }

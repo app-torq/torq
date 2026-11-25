@@ -29,6 +29,7 @@ import { RepairBoardPage } from '../features/repairs/RepairBoardPage'
 import { RepairDetailPage } from '../features/repairs/RepairDetailPage'
 import { ReportsPage } from '../features/reports/ReportsPage'
 import { HistoryPrintPage } from '../features/reports/HistoryPrintPage'
+import { VehicleQrPrintPage } from '../features/vehicles/VehicleQrPrintPage'
 import { markClean } from './pwa/dirty'
 
 const queryClient = new QueryClient({
@@ -38,8 +39,9 @@ const queryClient = new QueryClient({
 })
 
 const router = createBrowserRouter([
-  // The printable history renders without the app chrome.
+  // The printable history and QR label render without the app chrome.
   { path: '/vehicles/:id/history/print', element: <HistoryPrintPage /> },
+  { path: '/vehicles/:id/qr/print', element: <VehicleQrPrintPage /> },
   {
     path: '/',
     element: <Layout />,

@@ -179,5 +179,17 @@
   "vehicleType": {
     "car": "Car",
     "motorcycle": "Motorcycle"
+  },
+  "qr": {
+    "title": "QR code",
+    "label": "QR code for {{name}}",
+    "intro": "Print it and stick it on the vehicle, e.g. in the engine bay. Scanning it opens this vehicle in torq, where you can see the history and log new work. Signing in is required.",
+    "localAddress": "This address only works on this computer. Open torq under an address your phone can reach (e.g. its IP address or domain) before printing the code.",
+    "download": "Download PNG",
+    "downloadFailed": "The PNG could not be created.",
+    "print": "Print label",
+    "back": "Back to vehicle",
+    "printNow": "Print",
+    "scanHint": "Scan to open in torq"
   }
 }

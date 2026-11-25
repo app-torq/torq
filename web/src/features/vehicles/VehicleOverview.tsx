@@ -14,6 +14,7 @@ import { ConfirmDialog } from '../../components/Dialog'
 import { Card, DefinitionList, ErrorBanner, Table } from '../../components/ui'
 import { invalidateOdometerDependents } from './hooks'
 import { OdometerQuickUpdate } from './OdometerQuickUpdate'
+import { VehicleQrCard } from './VehicleQrCard'
 import { AddHourMeter, HourMeterCard } from './HourMeterCard'
 import { useVehicleContext } from './VehicleDetailLayout'
 
@@ -96,6 +97,7 @@ export function VehicleOverview() {
       )}
       {v.hour_meters.map((m) => <HourMeterCard key={m.id} vehicle={v} meter={m} />)}
       {v.has_odometer && v.hour_meters.length === 0 && !v.archived && <AddHourMeter vehicle={v} />}
+      <VehicleQrCard vehicle={v} />
       <Card className="lg:col-span-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="max-w-xl text-sm text-zinc-400">{t('archiveHint')}</p>
