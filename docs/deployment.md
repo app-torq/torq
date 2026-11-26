@@ -10,8 +10,10 @@ git push ─▶ GitHub Actions: lint, tests, container + e2e checks
 browser ─▶ https://torq.<your-domain> ─▶ Cloudflare ─▶ tunnel (cloudflared on the VPS) ─▶ torq
 ```
 
-Release candidate tags (`v1.11.0-rc.1`) run the same checks and publish `:1.11.0-rc.1` and `:preview` for
-testing, but never `:latest`, and nothing is deployed.
+Images report their version from `git describe`: `v1.12.0-2-gabc1234` for a commit after a release. A
+release tag (`v1.12.0`) runs the same checks and rebuilds `:latest` as `v1.12.0`, also tagged `:1.12.0`, so
+a server following `:latest` shows the release once it pulls again. Release candidate tags (`v1.11.0-rc.1`)
+publish `:1.11.0-rc.1` and `:preview` for testing, but never `:latest`, and nothing is deployed.
 
 The VPS never builds anything and needs no open web ports. Cloudflare Tunnel connects outward, so only SSH
 is reachable from the internet. Images are pinned to the commit they were built from, so rolling back is
