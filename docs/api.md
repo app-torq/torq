@@ -234,6 +234,27 @@ turns it on. The first factor returns `recovery_codes`, shown once. Removing the
 required answers `409 mfa.required`. Administrators remove a user's factors with
 `DELETE /users/{id}/mfa`, which also ends that user's sessions. In the demo, all of this is locked.
 
+### What a role sees (API level 12)
+
+Roles can hide parts of a vehicle's data with eight garage-wide "see" permissions (scope `view` in
+`GET /roles`): `service_logs.view`, `repairs.view`, `reminders.view` and `reports.view` hide whole areas;
+`costs.view`, `notes.view`, `attachments.view` and `vehicle_ids.view` (VIN and license plate) hide fields.
+Administrators see everything; every role from before level 12 has all eight, and new roles start with
+all eight.
+
+- **Areas:** operations marked `x-torq-see` in `openapi.yaml` answer `403 auth.forbidden` without that
+  permission. The dashboard, the timeline and the history export leave hidden areas out, vehicles report
+  zero `reminder_counts` without `reminders.view`, and the vehicle's `permissions` drop the changes that
+  belong to a hidden area: changing an area needs seeing it.
+- **Fields:** hidden values are left out of every response and export: `null` where a field can be `null`,
+  empty text, empty attachment lists, 0 for totals. Search doesn't match hidden notes. Attachment files
+  answer `403 auth.forbidden` without `attachments.view`; the vehicle photo stays visible. Read
+  `user.permissions` to know which values are hidden rather than empty.
+- **Saving:** a hidden field keeps its stored value when the user saves the record; new records get it
+  empty. Send each service entry item with its `id` so an edited item keeps its cost; an item without
+  `id` is new. Share link options for costs, VIN and plate answer `403 auth.forbidden` without the
+  matching permission.
+
 ## Errors
 
 Errors are JSON with a dotted code and never prose, so each client translates them:

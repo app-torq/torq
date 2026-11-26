@@ -16,6 +16,7 @@ import { BRAND } from '../../lib/brand'
 import { useSession } from '../../app/session'
 import { entryReading } from '../vehicles/readings'
 import { motorcycleSpecLines } from '../vehicles/specLines'
+import { useCan } from '../../lib/permissions'
 
 /**
  * Printable Vehicle History Report (FR-047). Rendered outside the app layout.
@@ -30,6 +31,11 @@ export function HistoryPrintPage() {
   const errorText = useErrorText()
   const [costs, setCosts] = useState(true)
   const [notes, setNotes] = useState(true)
+  const seesCosts = useCan('costs.view')
+  const seesNotes = useCan('notes.view')
+  const seesIds = useCan('vehicle_ids.view')
+  const seesServices = useCan('service_logs.view')
+  const seesRepairs = useCan('repairs.view')
   const params = { include_costs: costs, include_notes: notes }
   const history = useQuery({
     queryKey: queryKeys.history(vehicleId, params),
@@ -51,8 +57,8 @@ export function HistoryPrintPage() {
           {t('history.back')}
         </Link>
         <span className="flex-1" />
-        <Checkbox label={t('history.includeCosts')} checked={costs} onChange={setCosts} />
-        <Checkbox label={t('history.includeNotes')} checked={notes} onChange={setNotes} />
+        {seesCosts && <Checkbox label={t('history.includeCosts')} checked={costs} onChange={setCosts} />}
+        {seesNotes && <Checkbox label={t('history.includeNotes')} checked={notes} onChange={setNotes} />}
         <Button variant="primary" onClick={() => { window.print() }}>
           <Printer size={15} />
           {t('history.print')}
@@ -98,8 +104,7 @@ export function HistoryPrintPage() {
                 [t('vehicles:fields.fuelType'), h.vehicle.fuel_type ? t(`vehicles:fuel.${h.vehicle.fuel_type}`) : none],
                 [t('vehicles:fields.hsnTsn'), h.vehicle.hsn || h.vehicle.tsn ? `${h.vehicle.hsn ?? '—'} / ${h.vehicle.tsn ?? '—'}` : none],
                 [t('vehicles:fields.modelYear'), h.vehicle.model_year ?? none],
-                [t('vehicles:fields.vin'), h.vehicle.vin ?? none],
-                [t('vehicles:fields.licensePlate'), h.vehicle.license_plate ?? none],
+                ...(seesIds ? [[t('vehicles:fields.vin'), h.vehicle.vin ?? none], [t('vehicles:fields.licensePlate'), h.vehicle.license_plate ?? none]] : []),
                 ...(h.vehicle.has_odometer ? [[t('vehicles:fields.odometer'), fmt.distance(h.vehicle.current_odometer_km, h.vehicle.odometer_unit)]] : []),
                 ...h.vehicle.hour_meters.map((m) => [m.name, fmt.hours(m.current_hours)]),
               ].map(([label, value]) => (
@@ -123,7 +128,7 @@ export function HistoryPrintPage() {
             </ul>
           </section>
 
-          <section>
+          {seesServices && <section>
             <h2 className="mb-2 text-base font-semibold">{t('history.services')}</h2>
             {h.service_logs.length === 0 && <p className="text-zinc-400">{t('history.noServices')}</p>}
             <div className="space-y-3">
@@ -145,9 +150,9 @@ export function HistoryPrintPage() {
                 </div>
               ))}
             </div>
-          </section>
+          </section>}
 
-          <section>
+          {seesRepairs && <section>
             <h2 className="mb-2 text-base font-semibold">{t('history.repairs')}</h2>
             {h.repairs.length === 0 && <p className="text-zinc-400">{t('history.noRepairs')}</p>}
             <div className="space-y-4">
@@ -175,7 +180,7 @@ export function HistoryPrintPage() {
                 </div>
               ))}
             </div>
-          </section>
+          </section>}
         </article>
       )}
     </div>

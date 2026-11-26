@@ -28,7 +28,7 @@ import { TagInput } from './TagInput'
 import { TagList } from './tags'
 import { PartsTable } from './PartsTable'
 import { BackLink } from '../../components/BackLink'
-import { canOn } from '../../lib/permissions'
+import { canOn, useCan } from '../../lib/permissions'
 import { entryReading } from '../vehicles/readings'
 
 export function RepairDetailPage() {
@@ -45,6 +45,9 @@ export function RepairDetailPage() {
   const [editing, setEditing] = useState(false)
   const [completing, setCompleting] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const seesCosts = useCan('costs.view')
+  const seesNotes = useCan('notes.view')
+  const seesAttachments = useCan('attachments.view')
   const remove = useMutation({
     mutationFn: () => api.del(`/repairs/${repairId}`),
     onSuccess: async () => {
@@ -101,7 +104,7 @@ export function RepairDetailPage() {
                 { label: t('fields.startedOn'), value: r.started_on ? fmt.date(r.started_on) : none },
                 { label: t('fields.completedOn'), value: r.status === 'completed' && r.completed_on ? fmt.date(r.completed_on) : none },
                 { label: r.status === 'completed' && !r.completion_odometer_recorded ? t('fields.completionReading') : t('fields.completionOdometer'), value: r.status === 'completed' && r.completion_odometer_km !== null ? entryReading(fmt, odometerUnit(r.vehicle_id), r.completion_odometer_km, r.completion_odometer_recorded, r.completion_meter_readings) : none },
-                { label: t('parts.total'), value: <span className="tabular-nums">{fmt.money(r.parts_total_cents)}</span> },
+                ...(seesCosts ? [{ label: t('parts.total'), value: <span className="tabular-nums">{fmt.money(r.parts_total_cents)}</span> }] : []),
               ]}
             />
           </div>
@@ -163,18 +166,18 @@ export function RepairDetailPage() {
         </Card>
       </div>
 
-      <Card title={t('sections.procedure')}>
+      {seesNotes && <Card title={t('sections.procedure')}>
         {r.procedure_notes ? <p className="whitespace-pre-wrap text-sm text-zinc-200">{r.procedure_notes}</p> : <p className="text-sm text-zinc-400">{none}</p>}
-      </Card>
+      </Card>}
 
       <PartsTable repair={r} canEdit={canEdit} />
 
-      <Card title={t('sections.attachments')}>
+      {seesAttachments && <Card title={t('sections.attachments')}>
         <div className="space-y-4">
           <AttachmentGallery items={r.attachments} onChanged={refresh} readOnly={!canEdit} />
           {canEdit && <FileDrop path={`/repairs/${r.id}/attachments`} onUploaded={refresh} />}
         </div>
-      </Card>
+      </Card>}
 
       {editing && <EditRepairDialog repair={r} unit={odometerUnit(r.vehicle_id)} onClose={() => { setEditing(false) }} />}
       {completing && <CompleteRepairDialog repair={r} onClose={() => { setCompleting(false) }} />}
@@ -208,6 +211,7 @@ let torqueKey = 1
 
 function EditRepairDialog({ repair, unit, onClose }: { repair: Repair; unit: DistanceUnit; onClose: () => void }) {
   const { t } = useTranslation('repairs')
+  const seesNotes = useCan('notes.view')
   const { user } = useSession()
   const nf = user.number_format
   const qc = useQueryClient()
@@ -309,7 +313,7 @@ function EditRepairDialog({ repair, unit, onClose }: { repair: Repair; unit: Dis
         <TextAreaField label={t('fields.symptom')} value={symptom} onChange={setSymptom} error={fe.symptom} rows={3} optional />
         <FaultCodeInput value={codes} onChange={setCodes} />
         <TextAreaField label={t('fields.rootCause')} value={rootCause} onChange={setRootCause} error={fe.root_cause} rows={2} optional />
-        <TextAreaField label={t('fields.procedure')} value={procedure} onChange={setProcedure} error={fe.procedure_notes} rows={8} optional />
+        {seesNotes && <TextAreaField label={t('fields.procedure')} value={procedure} onChange={setProcedure} error={fe.procedure_notes} rows={8} optional />}
         <TextAreaField label={t('fields.specialTools')} value={tools} onChange={setTools} hint={t('fields.specialToolsHint')} error={fe.special_tools} rows={3} optional />
         <fieldset className="space-y-2">
           <legend className="text-sm font-medium text-zinc-300">{t('fields.torqueSpecs')}</legend>

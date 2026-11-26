@@ -4,12 +4,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { I18nextProvider } from 'react-i18next'
 import i18n from '../i18n'
 import { SessionContext, type Session } from '../app/session'
-import { garagePermissions, vehiclePermissions } from '../lib/permissions'
+import { garagePermissions, vehiclePermissions, viewPermissions } from '../lib/permissions'
 
 export const testSession: Session = {
   user: {
     id: 1, username: 'marek', display_name: 'Marek', role: 'admin', role_id: 1, role_name: 'Administrator', role_builtin_key: 'admin',
-    permissions: [...vehiclePermissions, ...garagePermissions], all_vehicles: true, mfa_enabled: false, mfa_required: false, locale: 'en', date_format: 'YYYY-MM-DD',
+    permissions: [...vehiclePermissions, ...garagePermissions, ...viewPermissions], all_vehicles: true, mfa_enabled: false, mfa_required: false, locale: 'en', date_format: 'YYYY-MM-DD',
     number_format: 'point', time_format: '24h', currency_code: 'EUR', currency_symbol: null, power_unit: 'kw', distance_unit: 'km',
     volume_unit: 'l', torque_unit: 'nm', pressure_unit: 'bar', displacement_unit: 'cc', priority_display: 'both', card_tag_limit: 3, disabled: false,
   },

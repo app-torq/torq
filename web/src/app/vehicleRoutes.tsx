@@ -6,6 +6,7 @@ import { ServiceLogListPage } from '../features/service-log/ServiceLogListPage'
 import { ReminderListPage } from '../features/reminders/ReminderListPage'
 import { RepairBoardPage } from '../features/repairs/RepairBoardPage'
 import { TimelinePage } from '../features/reports/TimelinePage'
+import { RequirePermission } from './RequireAdmin'
 
 function VehicleServiceTab() {
   return <ServiceLogListPage vehicleId={useVehicleContext().id} />
@@ -23,8 +24,8 @@ function VehicleRemindersTab() {
 export const vehicleChildRoutes: RouteObject[] = [
   { index: true, element: <VehicleOverview /> },
   { path: 'specs', element: <SpecSheetPage /> },
-  { path: 'service', element: <VehicleServiceTab /> },
-  { path: 'reminders', element: <VehicleRemindersTab /> },
-  { path: 'repairs', element: <VehicleRepairsTab /> },
-  { path: 'history', element: <TimelinePage /> },
+  { path: 'service', element: <RequirePermission permission="service_logs.view"><VehicleServiceTab /></RequirePermission> },
+  { path: 'reminders', element: <RequirePermission permission="reminders.view"><VehicleRemindersTab /></RequirePermission> },
+  { path: 'repairs', element: <RequirePermission permission="repairs.view"><VehicleRepairsTab /></RequirePermission> },
+  { path: 'history', element: <RequirePermission permission="reports.view"><TimelinePage /></RequirePermission> },
 ]

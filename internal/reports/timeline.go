@@ -30,7 +30,9 @@ type TimelineItem struct {
 
 // Timeline merges service logs (by service_date) and completed repairs (by
 // completed_on), newest first.
-func (s *Service) Timeline(ctx context.Context, vehicleID int64, from, to string, limit, offset int64) ([]TimelineItem, int64, error) {
+//
+// Kinds the reader's role doesn't see are left out before paging (#49).
+func (s *Service) Timeline(ctx context.Context, vehicleID int64, from, to string, limit, offset int64, kinds TimelineKinds) ([]TimelineItem, int64, error) {
 	lo, hi, err := bounds(from, to)
 	if err != nil {
 		return nil, 0, err
@@ -46,6 +48,12 @@ func (s *Service) Timeline(ctx context.Context, vehicleID int64, from, to string
 	reps, err := q.TimelineRepairs(ctx, store.TimelineRepairsParams{VehicleID: vehicleID, FromDate: sqlStr(lo), ToDate: sqlStr(hi)})
 	if err != nil {
 		return nil, 0, err
+	}
+	if !kinds.Services {
+		logs = nil
+	}
+	if !kinds.Repairs {
+		reps = nil
 	}
 
 	services := make([]TimelineItem, 0, len(logs))
@@ -112,6 +120,12 @@ func (s *Service) Timeline(ctx context.Context, vehicleID int64, from, to string
 	end := min(offset+limit, total)
 	return merged[offset:end], total, nil
 }
+
+// TimelineKinds says which kinds of entries the timeline contains.
+type TimelineKinds struct{ Services, Repairs bool }
+
+// AllKinds is a timeline with every kind of entry.
+var AllKinds = TimelineKinds{Services: true, Repairs: true}
 
 func newer(a, b TimelineItem) bool {
 	if a.Date != b.Date {

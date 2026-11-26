@@ -20,6 +20,8 @@ export type Permission =
   | 'vehicles.edit' | 'vehicles.delete' | 'specs.edit' | 'service_logs.write' | 'service_logs.delete'
   | 'reminders.write' | 'repairs.write' | 'repairs.delete' | 'shares.manage' | 'history.export'
   | 'vehicles.create' | 'categories.manage' | 'repair_lists.manage' | 'catalog.update'
+  | 'costs.view' | 'service_logs.view' | 'repairs.view' | 'reminders.view' | 'reports.view'
+  | 'attachments.view' | 'notes.view' | 'vehicle_ids.view'
 
 export type RoleBuiltinKey = 'admin' | 'member' | 'viewer'
 
@@ -61,7 +63,8 @@ export type MfaMethod = 'totp' | 'recovery_code' | 'passkey'
 
 export interface PermissionInfo {
   key: Permission
-  scope: 'vehicle' | 'garage'
+  /** view: what the user sees on every visible vehicle (API level 12). */
+  scope: 'vehicle' | 'garage' | 'view'
 }
 
 export type AccessLevel = 'view' | 'edit'

@@ -25,6 +25,17 @@ const (
 	PermCategoriesManage  Permission = "categories.manage"
 	PermRepairListsManage Permission = "repair_lists.manage"
 	PermCatalogUpdate     Permission = "catalog.update"
+
+	// What a role sees within the vehicles it sees (#49). Administrators
+	// see everything.
+	PermCostsView       Permission = "costs.view"
+	PermServiceLogsView Permission = "service_logs.view"
+	PermRepairsView     Permission = "repairs.view"
+	PermRemindersView   Permission = "reminders.view"
+	PermReportsView     Permission = "reports.view"
+	PermAttachmentsView Permission = "attachments.view"
+	PermNotesView       Permission = "notes.view"
+	PermVehicleIDsView  Permission = "vehicle_ids.view"
 )
 
 // Scope says whether a permission applies per vehicle or to the whole garage.
@@ -33,6 +44,8 @@ type Scope string
 const (
 	ScopeVehicle Scope = "vehicle"
 	ScopeGarage  Scope = "garage"
+	// ScopeView permissions decide what a role sees in the vehicles it sees.
+	ScopeView Scope = "view"
 )
 
 // PermissionInfo describes one permission for role editors.
@@ -57,6 +70,35 @@ var Permissions = []PermissionInfo{
 	{PermCategoriesManage, ScopeGarage},
 	{PermRepairListsManage, ScopeGarage},
 	{PermCatalogUpdate, ScopeGarage},
+	{PermCostsView, ScopeView},
+	{PermServiceLogsView, ScopeView},
+	{PermRepairsView, ScopeView},
+	{PermRemindersView, ScopeView},
+	{PermReportsView, ScopeView},
+	{PermAttachmentsView, ScopeView},
+	{PermNotesView, ScopeView},
+	{PermVehicleIDsView, ScopeView},
+}
+
+// needsView is the area a change permission works in: changing an area
+// takes seeing it.
+var needsView = map[Permission]Permission{
+	PermServiceLogsWrite:  PermServiceLogsView,
+	PermServiceLogsDelete: PermServiceLogsView,
+	PermRepairsWrite:      PermRepairsView,
+	PermRepairsDelete:     PermRepairsView,
+	PermRemindersWrite:    PermRemindersView,
+}
+
+// ViewPermissions returns the "see" permissions; new roles start with them.
+func ViewPermissions() []Permission {
+	var out []Permission
+	for _, info := range Permissions {
+		if info.Scope == ScopeView {
+			out = append(out, info.Key)
+		}
+	}
+	return out
 }
 
 // ScopeOf returns the permission's scope; ok is false for unknown keys.

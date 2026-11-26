@@ -49,14 +49,23 @@ func toAttachmentList(rows []store.Attachment, err error) ([]attachmentJSON, err
 func nid(id int64) sql.NullInt64 { return sql.NullInt64{Int64: id, Valid: true} }
 
 func (s *Server) serviceLogAttachments(ctx context.Context, id int64) ([]attachmentJSON, error) {
+	if !visibilityOf(ctx).attachments {
+		return []attachmentJSON{}, nil
+	}
 	return toAttachmentList(store.New(s.DB.Reader).ListAttachmentsForServiceLog(ctx, nid(id)))
 }
 
 func (s *Server) repairAttachments(ctx context.Context, id int64) ([]attachmentJSON, error) {
+	if !visibilityOf(ctx).attachments {
+		return []attachmentJSON{}, nil
+	}
 	return toAttachmentList(store.New(s.DB.Reader).ListAttachmentsForRepair(ctx, nid(id)))
 }
 
 func (s *Server) specEntryAttachments(ctx context.Context, id int64) ([]attachmentJSON, error) {
+	if !visibilityOf(ctx).attachments {
+		return []attachmentJSON{}, nil
+	}
 	return toAttachmentList(store.New(s.DB.Reader).ListAttachmentsForSpecEntry(ctx, nid(id)))
 }
 
@@ -120,6 +129,9 @@ func (s *Server) uploadTo(owner func(id int64) attachments.Owner) handlerFunc {
 		}
 		if err := s.guardOwner(r, owner(id)); err != nil {
 			return err
+		}
+		if !currentUser(r).Access.Can(auth.PermAttachmentsView) {
+			return apperr.Forbidden("auth.forbidden")
 		}
 		a, err := s.receiveUpload(w, r, owner(id), attachments.PurposeFile)
 		if err != nil {
@@ -287,5 +299,13 @@ func (s *Server) guardAttachment(r *http.Request, id int64, write bool) error {
 			p = auth.PermVehiclesEdit
 		}
 	}
-	return s.vehicleGuard(r, row.OwnerVehicleID, p)
+	if err := s.vehicleGuard(r, row.OwnerVehicleID, p); err != nil {
+		return err
+	}
+	// The vehicle photo is part of the profile; other attachments can be
+	// hidden by the role (#49).
+	if !row.AvatarVehicleID.Valid && !currentUser(r).Access.Can(auth.PermAttachmentsView) {
+		return apperr.Forbidden("auth.forbidden")
+	}
+	return nil
 }

@@ -8,11 +8,12 @@ import { RolesPage } from './RolesPage'
 const permissions: PermissionInfo[] = [
   { key: 'service_logs.write', scope: 'vehicle' }, { key: 'service_logs.delete', scope: 'vehicle' },
   { key: 'vehicles.create', scope: 'garage' },
+  { key: 'service_logs.view', scope: 'view' }, { key: 'costs.view', scope: 'view' },
 ]
 const roles: Role[] = [
   { id: 1, name: 'Administrator', custom_name: null, builtin_key: 'admin', description: '', all_vehicles: true, permissions: [], user_count: 1, require_mfa: false },
   { id: 2, name: 'Member', custom_name: null, builtin_key: 'member', description: '', all_vehicles: true, permissions: ['service_logs.write'], user_count: 2, require_mfa: false },
-  { id: 4, name: 'Customer', custom_name: 'Customer', builtin_key: null, description: 'Own cars only', all_vehicles: false, permissions: ['service_logs.write'], user_count: 3, require_mfa: false },
+  { id: 4, name: 'Customer', custom_name: 'Customer', builtin_key: null, description: 'Own cars only', all_vehicles: false, permissions: ['service_logs.view', 'service_logs.write'], user_count: 3, require_mfa: false },
 ]
 
 function respond() {
@@ -56,8 +57,30 @@ describe('RolesPage', () => {
     const patch = fetchSpy.mock.calls.find(([, init]) => init?.method === 'PATCH')
     expect(patch?.[0]).toBe('/api/v1/roles/4')
     expect(JSON.parse(patch?.[1]?.body as string)).toMatchObject({
-      name: 'Customer', all_vehicles: false, require_mfa: false, permissions: ['service_logs.write', 'service_logs.delete', 'vehicles.create'],
+      name: 'Customer', all_vehicles: false, require_mfa: false, permissions: ['service_logs.view', 'service_logs.write', 'service_logs.delete', 'vehicles.create'],
     })
+  })
+
+  it('couples changing an area to seeing it; new roles see everything', async () => {
+    const fetchSpy = respond()
+    renderWithApp(<RolesPage />)
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit Customer' }))
+    const see = screen.getByRole('checkbox', { name: 'See the Service Logbook' })
+    await userEvent.click(see)
+    expect(see).not.toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Add and edit service entries' })).not.toBeChecked()
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Delete service entries' }))
+    expect(see).toBeChecked()
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add role' }))
+    expect(screen.getByRole('checkbox', { name: 'See costs' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Add and edit service entries' })).not.toBeChecked()
+    await userEvent.type(screen.getByRole('textbox', { name: 'Name' }), 'Helper')
+    await userEvent.click(screen.getByRole('checkbox', { name: 'See costs' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+    const post = fetchSpy.mock.calls.find(([, init]) => init?.method === 'POST')
+    expect((JSON.parse(post?.[1]?.body as string) as { permissions: string[] }).permissions).not.toContain('costs.view')
   })
 
   it('asks where the users go when deleting a role that has some', async () => {

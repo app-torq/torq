@@ -40,6 +40,10 @@ func (s *Server) costReport(w http.ResponseWriter, r *http.Request) error {
 	if vehicleID != 0 && !currentUser(r).Access.Sees(vehicleID) {
 		return apperr.NotFound()
 	}
+	// The report is all costs.
+	if !visibilityOf(r.Context()).costs {
+		return apperr.Forbidden("auth.forbidden")
+	}
 	q := r.URL.Query()
 	rep, err := s.reports.CostReport(r.Context(), vehicleID, q.Get("from"), q.Get("to"), visibleVehicles(r))
 	if err != nil {
@@ -88,14 +92,19 @@ func (s *Server) timeline(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	q := r.URL.Query()
-	items, total, err := s.reports.Timeline(r.Context(), id, q.Get("from"), q.Get("to"), limit, offset)
+	v := visibilityOf(r.Context())
+	items, total, err := s.reports.Timeline(r.Context(), id, q.Get("from"), q.Get("to"), limit, offset, reports.TimelineKinds{Services: v.serviceLogs, Repairs: v.repairs})
 	if err != nil {
 		return err
 	}
 	out := make([]timelineJSON, 0, len(items))
 	for _, it := range items {
-		out = append(out, timelineJSON{Kind: it.Kind, ID: it.ID, Date: it.Date, OdometerKm: it.OdometerKm, Title: it.Title, CategoryIDs: it.CategoryIDs,
-			TotalCents: it.TotalCents, OdometerRecorded: it.OdometerRecorded, MeterReadings: readingsOut(it.MeterReadings)})
+		j := timelineJSON{Kind: it.Kind, ID: it.ID, Date: it.Date, OdometerKm: it.OdometerKm, Title: it.Title, CategoryIDs: it.CategoryIDs,
+			TotalCents: it.TotalCents, OdometerRecorded: it.OdometerRecorded, MeterReadings: readingsOut(it.MeterReadings)}
+		if !v.costs {
+			j.TotalCents = 0
+		}
+		out = append(out, j)
 	}
 	writeJSON(w, http.StatusOK, newList(out, total))
 	return nil
@@ -134,8 +143,10 @@ func (s *Server) history(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	u := currentUser(r)
+	v := visibilityOf(r.Context())
 	h, err := s.reports.History(r.Context(), id, reports.ExportOptions{
-		IncludeCosts: costs, IncludeNotes: notes,
+		IncludeCosts: costs && v.costs, IncludeNotes: notes && v.notes,
+		OmitServices: !v.serviceLogs, OmitRepairs: !v.repairs, OmitAttachments: !v.attachments, OmitVehicleIDs: !v.vehicleIDs,
 		Locale: i18n.Locale{Lang: u.Prefs.Locale, DateFormat: u.Prefs.DateFormat, NumberFormat: u.Prefs.NumberFormat},
 	})
 	if err != nil {

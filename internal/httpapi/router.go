@@ -60,6 +60,14 @@ type access struct {
 	perm    auth.Permission
 	vehicle bool
 	setup   bool
+	// see is the "see" permission of the area the route belongs to (#49).
+	see auth.Permission
+}
+
+// seeing marks a route as part of an area a role may hide.
+func (a access) seeing(p auth.Permission) access {
+	a.see = p
+	return a
 }
 
 var (
@@ -82,7 +90,7 @@ func onVehicle(p auth.Permission) access { return access{level: levelMember, per
 // info.version in openapi.yaml. Within /api/v1 changes are additive only, and
 // every release that adds operations, fields or capabilities raises it by one
 // so clients can detect features (research M7).
-const APIVersion = 11
+const APIVersion = 12
 
 // Server holds the handler dependencies, domain services and the route table.
 type Server struct {

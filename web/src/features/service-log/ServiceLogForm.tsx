@@ -8,7 +8,7 @@ import { queryKeys } from '../../lib/queryKeys'
 import { distanceField, hoursToInput, metricField, type MetricField, parseHours, parseMoneyToCents, readDistance, readMetricField, toInputValue } from '../../lib/format'
 import { QUANTITY, QUANTITY_UNITS, type QuantityUnit } from '../../lib/units'
 import { fieldErrors, useErrorText } from '../../lib/errors'
-import { canOn } from '../../lib/permissions'
+import { canOn, useCan } from '../../lib/permissions'
 import { vehicleName, type CostType, type ServiceCategory, type ServiceLog } from '../../lib/types'
 import { useSession } from '../../app/session'
 import { Button, IconButton } from '../../components/Button'
@@ -32,6 +32,8 @@ interface ItemDraft {
   aftermarketPart: string
   cost: string
   costType: CostType | ''
+  /** The stored item this one edits, so the server keeps what the user doesn't see. */
+  id?: number
 }
 
 let nextKey = 1
@@ -60,6 +62,8 @@ function ServiceLogForm({ log }: { log?: ServiceLog }) {
   const { t } = useTranslation('service')
   const { user } = useSession()
   const nf = user.number_format
+  const seesCosts = useCan('costs.view')
+  const seesNotes = useCan('notes.view')
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const qc = useQueryClient()
@@ -86,6 +90,7 @@ function ServiceLogForm({ log }: { log?: ServiceLog }) {
     log
       ? log.items.map((it) => ({
           key: nextKey++,
+          id: it.id,
           categoryId: String(it.category_id),
           brand: it.brand,
           specification: it.specification,
@@ -144,6 +149,7 @@ function ServiceLogForm({ log }: { log?: ServiceLog }) {
         if (costCents === null) errs[`${p}cost_cents`] = 'validation.number'
       }
       return {
+        ...(it.id !== undefined ? { id: it.id } : {}),
         category_id: Number(it.categoryId),
         brand: it.brand,
         specification: it.specification,
@@ -240,15 +246,15 @@ function ServiceLogForm({ log }: { log?: ServiceLog }) {
                         className="w-24"
                       />
                     </FieldPair>
-                    <NumberField label={t('fields.cost')} value={it.cost} onChange={(v) => { update(it.key, { cost: v }) }} error={fe[`${p}cost_cents`]} optional />
+                    {seesCosts && <NumberField label={t('fields.cost')} value={it.cost} onChange={(v) => { update(it.key, { cost: v }) }} error={fe[`${p}cost_cents`]} optional />}
                     <TextField label={t('fields.oemPart')} value={it.oemPart} onChange={(v) => { update(it.key, { oemPart: v }) }} error={fe[`${p}oem_part_number`]} optional />
                     <TextField label={t('fields.aftermarketPart')} value={it.aftermarketPart} onChange={(v) => { update(it.key, { aftermarketPart: v }) }} error={fe[`${p}aftermarket_part_number`]} optional />
-                    <SelectField
+                    {seesCosts && <SelectField
                       label={t('fields.costType')}
                       value={it.costType || costTypeDefault(cat)}
                       onChange={(v) => { update(it.key, { costType: v as CostType }) }}
                       options={[{ value: 'parts', label: t('costTypes.parts') }, { value: 'fluids', label: t('costTypes.fluids') }]}
-                    />
+                    />}
                   </div>
                 </fieldset>
               )
@@ -256,13 +262,15 @@ function ServiceLogForm({ log }: { log?: ServiceLog }) {
           </div>
         </Card>
 
-        <Card>
+        {(seesCosts || seesNotes) && <Card>
           <div className="form-grid grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {seesCosts && <>
             <NumberField label={t('fields.extraCost')} value={extraCost} onChange={setExtraCost} error={fe.extra_cost_cents} optional />
             <TextField label={t('fields.extraCostLabel')} value={extraLabel} onChange={setExtraLabel} hint={t('fields.extraCostHint')} error={fe.extra_cost_label} optional />
-            <TextAreaField label={t('fields.notes')} value={notes} onChange={setNotes} error={fe.notes} className="sm:col-span-2" optional />
+            </>}
+            {seesNotes && <TextAreaField label={t('fields.notes')} value={notes} onChange={setNotes} error={fe.notes} className="sm:col-span-2" optional />}
           </div>
-        </Card>
+        </Card>}
 
         <div className="flex gap-2">
           <Button type="submit" variant="primary" disabled={save.isPending}>

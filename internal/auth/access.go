@@ -53,6 +53,9 @@ func (a Access) CanOn(p Permission, vehicleID int64) bool {
 	if !a.Perms[p] {
 		return false
 	}
+	if v, ok := needsView[p]; ok && !a.Perms[v] {
+		return false
+	}
 	return a.AllVehicles || a.Vehicles[vehicleID] == LevelEdit
 }
 

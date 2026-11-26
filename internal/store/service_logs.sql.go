@@ -46,7 +46,7 @@ WHERE (CAST(?1 AS INTEGER) = 0 OR sl.vehicle_id = ?1)
   AND (CAST(?4 AS TEXT) = '' OR sl.service_date >= ?4)
   AND (CAST(?5 AS TEXT) = '' OR sl.service_date <= ?5)
   AND (CAST(?6 AS TEXT) = ''
-       OR sl.notes LIKE '%' || ?6 || '%'
+       OR (CAST(?7 AS INTEGER) = 0 AND sl.notes LIKE '%' || ?6 || '%')
        OR EXISTS (SELECT 1 FROM service_log_items i WHERE i.service_log_id = sl.id
                   AND (i.brand LIKE '%' || ?6 || '%' OR i.specification LIKE '%' || ?6 || '%'
                        OR i.oem_part_number LIKE '%' || ?6 || '%' OR i.aftermarket_part_number LIKE '%' || ?6 || '%')))
@@ -59,6 +59,7 @@ type CountServiceLogsParams struct {
 	FromDate   string
 	ToDate     string
 	Q          string
+	SkipNotes  int64
 }
 
 func (q *Queries) CountServiceLogs(ctx context.Context, arg CountServiceLogsParams) (int64, error) {
@@ -69,6 +70,7 @@ func (q *Queries) CountServiceLogs(ctx context.Context, arg CountServiceLogsPara
 		arg.FromDate,
 		arg.ToDate,
 		arg.Q,
+		arg.SkipNotes,
 	)
 	var count int64
 	err := row.Scan(&count)
@@ -325,12 +327,12 @@ WHERE (CAST(?1 AS INTEGER) = 0 OR sl.vehicle_id = ?1)
   AND (CAST(?4 AS TEXT) = '' OR sl.service_date >= ?4)
   AND (CAST(?5 AS TEXT) = '' OR sl.service_date <= ?5)
   AND (CAST(?6 AS TEXT) = ''
-       OR sl.notes LIKE '%' || ?6 || '%'
+       OR (CAST(?7 AS INTEGER) = 0 AND sl.notes LIKE '%' || ?6 || '%')
        OR EXISTS (SELECT 1 FROM service_log_items i WHERE i.service_log_id = sl.id
                   AND (i.brand LIKE '%' || ?6 || '%' OR i.specification LIKE '%' || ?6 || '%'
                        OR i.oem_part_number LIKE '%' || ?6 || '%' OR i.aftermarket_part_number LIKE '%' || ?6 || '%')))
 ORDER BY sl.service_date DESC, sl.odometer_km DESC, sl.id DESC
-LIMIT ?8 OFFSET ?7
+LIMIT ?9 OFFSET ?8
 `
 
 type ListServiceLogsParams struct {
@@ -340,6 +342,7 @@ type ListServiceLogsParams struct {
 	FromDate   string
 	ToDate     string
 	Q          string
+	SkipNotes  int64
 	Off        int64
 	Lim        int64
 }
@@ -352,6 +355,7 @@ func (q *Queries) ListServiceLogs(ctx context.Context, arg ListServiceLogsParams
 		arg.FromDate,
 		arg.ToDate,
 		arg.Q,
+		arg.SkipNotes,
 		arg.Off,
 		arg.Lim,
 	)

@@ -16,7 +16,7 @@ WHERE (CAST(sqlc.arg(vehicle_id) AS INTEGER) = 0 OR sl.vehicle_id = sqlc.arg(veh
   AND (CAST(sqlc.arg(from_date) AS TEXT) = '' OR sl.service_date >= sqlc.arg(from_date))
   AND (CAST(sqlc.arg(to_date) AS TEXT) = '' OR sl.service_date <= sqlc.arg(to_date))
   AND (CAST(sqlc.arg(q) AS TEXT) = ''
-       OR sl.notes LIKE '%' || sqlc.arg(q) || '%'
+       OR (CAST(sqlc.arg(skip_notes) AS INTEGER) = 0 AND sl.notes LIKE '%' || sqlc.arg(q) || '%')
        OR EXISTS (SELECT 1 FROM service_log_items i WHERE i.service_log_id = sl.id
                   AND (i.brand LIKE '%' || sqlc.arg(q) || '%' OR i.specification LIKE '%' || sqlc.arg(q) || '%'
                        OR i.oem_part_number LIKE '%' || sqlc.arg(q) || '%' OR i.aftermarket_part_number LIKE '%' || sqlc.arg(q) || '%')))
@@ -32,7 +32,7 @@ WHERE (CAST(sqlc.arg(vehicle_id) AS INTEGER) = 0 OR sl.vehicle_id = sqlc.arg(veh
   AND (CAST(sqlc.arg(from_date) AS TEXT) = '' OR sl.service_date >= sqlc.arg(from_date))
   AND (CAST(sqlc.arg(to_date) AS TEXT) = '' OR sl.service_date <= sqlc.arg(to_date))
   AND (CAST(sqlc.arg(q) AS TEXT) = ''
-       OR sl.notes LIKE '%' || sqlc.arg(q) || '%'
+       OR (CAST(sqlc.arg(skip_notes) AS INTEGER) = 0 AND sl.notes LIKE '%' || sqlc.arg(q) || '%')
        OR EXISTS (SELECT 1 FROM service_log_items i WHERE i.service_log_id = sl.id
                   AND (i.brand LIKE '%' || sqlc.arg(q) || '%' OR i.specification LIKE '%' || sqlc.arg(q) || '%'
                        OR i.oem_part_number LIKE '%' || sqlc.arg(q) || '%' OR i.aftermarket_part_number LIKE '%' || sqlc.arg(q) || '%')));

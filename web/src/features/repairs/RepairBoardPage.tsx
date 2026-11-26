@@ -11,7 +11,7 @@ import { Button } from '../../components/Button'
 import { inputClass } from '../../components/Field'
 import { Badge, EmptyState, ErrorBanner, Loading, PageHeader, Table } from '../../components/ui'
 import { useAnyVehicleCan, useVehicles } from '../vehicles/hooks'
-import { canOn } from '../../lib/permissions'
+import { canOn, useCan } from '../../lib/permissions'
 import { invalidateRepairs, repairSorts, repairStatuses, statusTone, useRepairs, type RepairSort } from './hooks'
 import { ProjectPriority } from './priorities'
 import { PriorityFilter } from './PriorityFilter'
@@ -265,6 +265,7 @@ function RepairTable({ items, vehicleById, showVehicle }: { items: RepairSummary
   const { t } = useTranslation('repairs')
   const fmt = useFormat()
   const { user } = useSession()
+  const seesCosts = useCan('costs.view')
   return (
     <Table>
       <thead>
@@ -275,7 +276,7 @@ function RepairTable({ items, vehicleById, showVehicle }: { items: RepairSummary
           <th>{t('fields.status')}</th>
           <th>{t('fields.faultCodes')}</th>
           <th>{t('fields.completedOn')}</th>
-          <th className="text-right">{t('parts.total')}</th>
+          {seesCosts && <th className="text-right">{t('parts.total')}</th>}
         </tr>
       </thead>
       <tbody>
@@ -292,7 +293,7 @@ function RepairTable({ items, vehicleById, showVehicle }: { items: RepairSummary
               <td><Badge tone={statusTone[r.status]}>{t(`statuses.${r.status}`)}</Badge></td>
               <td className="font-mono text-xs text-amber-200">{r.fault_codes.join(', ')}</td>
               <td className="tabular-nums text-zinc-400">{r.completed_on && r.status === 'completed' ? fmt.date(r.completed_on) : ''}</td>
-              <td className="text-right tabular-nums">{fmt.money(r.parts_total_cents)}</td>
+              {seesCosts && <td className="text-right tabular-nums">{fmt.money(r.parts_total_cents)}</td>}
             </tr>
           )
         })}

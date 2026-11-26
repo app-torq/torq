@@ -7,15 +7,17 @@ export interface NavItem {
   labelKey: string
   icon: LucideIcon
   end?: boolean
+  /** Shown only to users who see these areas. */
+  sees?: Permission[]
 }
 
 export const mainNav: NavItem[] = [
   { to: '/', labelKey: 'nav.dashboard', icon: LayoutDashboard, end: true },
   { to: '/vehicles', labelKey: 'nav.vehicles', icon: Car },
-  { to: '/service', labelKey: 'nav.serviceLog', icon: NotebookPen },
-  { to: '/repairs', labelKey: 'nav.repairs', icon: Hammer },
-  { to: '/reminders', labelKey: 'nav.reminders', icon: Bell },
-  { to: '/reports', labelKey: 'nav.reports', icon: ChartColumn },
+  { to: '/service', labelKey: 'nav.serviceLog', icon: NotebookPen, sees: ['service_logs.view'] },
+  { to: '/repairs', labelKey: 'nav.repairs', icon: Hammer, sees: ['repairs.view'] },
+  { to: '/reminders', labelKey: 'nav.reminders', icon: Bell, sees: ['reminders.view'] },
+  { to: '/reports', labelKey: 'nav.reports', icon: ChartColumn, sees: ['reports.view', 'costs.view'] },
   { to: '/settings', labelKey: 'nav.settings', icon: Cog },
 ]
 

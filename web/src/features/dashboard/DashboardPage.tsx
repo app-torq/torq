@@ -5,7 +5,8 @@ import { useErrorText } from '../../lib/errors'
 import { vehicleName } from '../../lib/types'
 import { Badge, Card, EmptyState, ErrorBanner, Loading, PageHeader } from '../../components/ui'
 import { useVehicles } from '../vehicles/hooks'
-import { useCan } from '../../lib/permissions'
+import { useCan, userCan } from '../../lib/permissions'
+import { useSession } from '../../app/session'
 import { VehicleAvatar } from '../vehicles/VehicleAvatar'
 import { VehicleReadingUpdate } from '../vehicles/VehicleReadingUpdate'
 import { currentReading } from '../vehicles/readings'
@@ -18,12 +19,13 @@ export function DashboardPage() {
   const errorText = useErrorText()
   const vehicles = useVehicles('false')
   const canCreate = useCan('vehicles.create')
+  const { user } = useSession()
 
   return (
     <div className="space-y-6">
       <PageHeader title={t('dashboard.title')} />
       <InstallHint />
-      {dashboardPanels.map((Panel, i) => <Panel key={i} />)}
+      {dashboardPanels.filter((p) => userCan(user, p.sees)).map(({ Panel }, i) => <Panel key={i} />)}
       <section>
         <h2 className="mb-3 text-sm font-semibold text-zinc-300">{t('dashboard.garage')}</h2>
         {vehicles.isPending && <Loading />}

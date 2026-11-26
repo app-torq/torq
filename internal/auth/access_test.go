@@ -7,8 +7,8 @@ import (
 
 func TestAccess(t *testing.T) {
 	admin := Access{Admin: true}
-	member := Access{AllVehicles: true, Perms: map[Permission]bool{PermServiceLogsWrite: true, PermVehiclesCreate: true}}
-	scoped := Access{Perms: map[Permission]bool{PermServiceLogsWrite: true}, Vehicles: map[int64]Level{1: LevelEdit, 2: LevelView}}
+	member := Access{AllVehicles: true, Perms: map[Permission]bool{PermServiceLogsWrite: true, PermServiceLogsView: true, PermVehiclesCreate: true}}
+	scoped := Access{Perms: map[Permission]bool{PermServiceLogsWrite: true, PermServiceLogsView: true}, Vehicles: map[int64]Level{1: LevelEdit, 2: LevelView}}
 
 	for _, c := range []struct {
 		name string
@@ -56,5 +56,18 @@ func TestParsePermissions(t *testing.T) {
 	}
 	if _, err := ParsePermissions([]string{"users.manage"}); err == nil {
 		t.Fatal("accepted an unknown permission")
+	}
+}
+
+func TestChangeNeedsView(t *testing.T) {
+	a := Access{AllVehicles: true, Perms: map[Permission]bool{PermServiceLogsWrite: true, PermRepairsWrite: true, PermRepairsView: true}}
+	if a.CanOn(PermServiceLogsWrite, 1) {
+		t.Error("changes service entries without seeing them")
+	}
+	if !a.CanOn(PermRepairsWrite, 1) {
+		t.Error("can't change projects it sees")
+	}
+	if len(ViewPermissions()) != 8 {
+		t.Errorf("view permissions %v", ViewPermissions())
 	}
 }

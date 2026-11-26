@@ -11,6 +11,7 @@ import { Checkbox, SelectField, TextAreaField, TextField } from '../../component
 import { ConfirmDialog, Dialog } from '../../components/Dialog'
 import { Badge, ErrorBanner, Loading, Notice, PageHeader, Table } from '../../components/ui'
 import { useSession } from '../../app/session'
+import { needsView, viewPermissions } from '../../lib/permissions'
 
 export interface RolesResponse {
   items: Role[]
@@ -101,7 +102,8 @@ function RoleDialog({ role, permissions, onClose }: { role: Role | null; permiss
   const [name, setName] = useState(role?.custom_name ?? (role ? role.name : ''))
   const [description, setDescription] = useState(role?.description ?? '')
   const [allVehicles, setAllVehicles] = useState(role?.all_vehicles ?? true)
-  const [granted, setGranted] = useState<Permission[]>(role?.permissions ?? [])
+  // A new role sees everything until the administrator hides something.
+  const [granted, setGranted] = useState<Permission[]>(role?.permissions ?? viewPermissions)
   const [requireMfa, setRequireMfa] = useState(role?.require_mfa ?? false)
   const builtin = role?.builtin_key != null
   // The Administrator role can only require a second factor.
@@ -133,18 +135,28 @@ function RoleDialog({ role, permissions, onClose }: { role: Role | null; permiss
     },
   })
   const fe = fieldErrors(save.error)
+  // Changing an area needs seeing it: ticking a change ticks its "see"
+  // permission, unticking a "see" permission unticks its changes.
   const toggle = (p: Permission, on: boolean) => {
-    setGranted((g) => (on ? [...g, p] : g.filter((x) => x !== p)))
+    setGranted((g) => {
+      if (!on) return g.filter((x) => x !== p && needsView[x] !== p)
+      const view = needsView[p]
+      return [...g, p, ...(view && !g.includes(view) ? [view] : [])]
+    })
   }
   const group = (scope: PermissionInfo['scope']) => (
     <fieldset className="space-y-2">
       <legend className="mb-1 text-sm font-medium text-zinc-200">{t(`roles.scope.${scope}`)}</legend>
       <p className="text-xs text-zinc-400">{t(`roles.scopeHint.${scope}`)}</p>
-      {permissions.filter((p) => p.scope === scope).map((p) => (
-        <div key={p.key}>
-          <Checkbox label={t(`roles.permission.${p.key}`, { defaultValue: p.key })} checked={granted.includes(p.key)} onChange={(on) => { toggle(p.key, on) }} />
-        </div>
-      ))}
+      {permissions.filter((p) => p.scope === scope).map((p) => {
+        const view = needsView[p.key]
+        return (
+          <div key={p.key}>
+            <Checkbox label={t(`roles.permission.${p.key}`, { defaultValue: p.key })} checked={granted.includes(p.key)} onChange={(on) => { toggle(p.key, on) }} />
+            {view && <p className="ml-6 text-xs text-zinc-500">{t('roles.needsView', { permission: t(`roles.permission.${view}`) })}</p>}
+          </div>
+        )
+      })}
     </fieldset>
   )
   const losingVehicles = role !== null && role.all_vehicles && !allVehicles && role.user_count > 0
@@ -193,6 +205,7 @@ function RoleDialog({ role, permissions, onClose }: { role: Role | null; permiss
         />
         {losingVehicles && <Notice tone="amber">{t('roles.losingVehicles', { count: role.user_count })}</Notice>}
         {fe.permissions && <ErrorBanner message={errorText(save.error)} />}
+        {group('view')}
         <div className="grid gap-6 sm:grid-cols-2">
           {group('vehicle')}
           {group('garage')}

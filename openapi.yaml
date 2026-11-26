@@ -5,13 +5,13 @@
 openapi: "3.1.0"
 info:
   title: torq API
-  version: "11"
+  version: "12"
   description: |-
     The REST API of torq, a self-hosted vehicle maintenance and DIY repair tracker. It is used by the web app and the torq mobile app.
 
     **Authentication.** Browsers use the `torq_session` cookie and send `X-Torq-Request: 1` on every request that is not GET or HEAD. Apps and other clients sign in with `"token": true` and send the token as `Authorization: Bearer <token>`; such requests need no extra header. Tokens expire after 30 days without use and can be revoked under `/me/sessions`.
 
-    **Errors.** Errors are JSON with a dotted code (`{"error": {"code": "validation.failed", "fields": {...}}}`), never prose. Every operation can return `auth.unauthenticated` (401), `request.malformed` (400) and `internal` (500); operations with a path ID can return `not_found` (404); cookie requests can return `csrf.missing_header` and `csrf.origin_mismatch` (403). `x-torq-error-codes` lists the codes specific to an operation. `x-torq-access` states who may call it: `public`, `member` (any signed-in user) or `admin`. `x-torq-permission` names the permission a `member` operation also needs: garage-wide permissions are checked for every call, per-vehicle ones on the vehicle the request is about. A vehicle the caller can't see answers `not_found` like a missing one; a visible vehicle without the permission answers `auth.forbidden` (403). Operations on a vehicle's data without `x-torq-permission` only need the vehicle to be visible. While a user must set up a second factor first, only operations with `x-torq-mfa-setup: true` are allowed; all others answer `auth.mfa_setup_required` (403).
+    **Errors.** Errors are JSON with a dotted code (`{"error": {"code": "validation.failed", "fields": {...}}}`), never prose. Every operation can return `auth.unauthenticated` (401), `request.malformed` (400) and `internal` (500); operations with a path ID can return `not_found` (404); cookie requests can return `csrf.missing_header` and `csrf.origin_mismatch` (403). `x-torq-error-codes` lists the codes specific to an operation. `x-torq-access` states who may call it: `public`, `member` (any signed-in user) or `admin`. `x-torq-permission` names the permission a `member` operation also needs: garage-wide permissions are checked for every call, per-vehicle ones on the vehicle the request is about. A vehicle the caller can't see answers `not_found` like a missing one; a visible vehicle without the permission answers `auth.forbidden` (403). Operations on a vehicle's data without `x-torq-permission` only need the vehicle to be visible. While a user must set up a second factor first, only operations with `x-torq-mfa-setup: true` are allowed; all others answer `auth.mfa_setup_required` (403). `x-torq-see` (API level 12) names the "see" permission an operation also needs: without it the area is hidden and the operation answers `auth.forbidden` (403). Values a role doesn't see (costs, notes, attachments, VIN and license plate) are left out of responses: fields that can be `null` are `null` or empty, totals are 0.
 
     **Compatibility.** Within `/api/v1`, changes are additive only: no operation, field or error code is removed or renamed, no new request field becomes required, and no field changes its meaning. Clients must ignore fields they don't know, and handle unknown values in fields whose description lists the possible values: such lists can grow. `info.version` is the API level; it is also returned as `api_version` by `GET /instance` and rises by one with every release that adds operations, fields or capabilities, so clients can detect features. Servers older than torq 1.1.0 have no `GET /instance` and answer 404: treat that as level 0.
   license:
@@ -1176,7 +1176,7 @@ paths:
                           type: string
                         scope:
                           type: string
-                          description: "vehicle (applies to vehicles the user may edit) or garage."
+                          description: "vehicle (applies to vehicles the user may edit), garage, or view (API level 12: what the user sees on every visible vehicle)."
         default:
           $ref: "#/components/responses/Error"
     post:
@@ -2539,6 +2539,7 @@ paths:
       operationId: listServiceLogs
       summary: Service logbook entries
       x-torq-access: member
+      x-torq-see: service_logs.view
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2602,6 +2603,7 @@ paths:
       operationId: createServiceLog
       summary: Log a service
       x-torq-access: member
+      x-torq-see: service_logs.view
       x-torq-permission: service_logs.write
       security:
         - cookieAuth: []
@@ -2644,6 +2646,7 @@ paths:
       operationId: getServiceLog
       summary: Get a service logbook entry
       x-torq-access: member
+      x-torq-see: service_logs.view
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2667,6 +2670,7 @@ paths:
       operationId: replaceServiceLog
       summary: Replace a service logbook entry
       x-torq-access: member
+      x-torq-see: service_logs.view
       x-torq-permission: service_logs.write
       security:
         - cookieAuth: []
@@ -2704,6 +2708,7 @@ paths:
       operationId: deleteServiceLog
       summary: Delete a service logbook entry
       x-torq-access: member
+      x-torq-see: service_logs.view
       x-torq-permission: service_logs.delete
       security:
         - cookieAuth: []
@@ -2731,6 +2736,7 @@ paths:
       operationId: listReminders
       summary: Service reminders
       x-torq-access: member
+      x-torq-see: reminders.view
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2781,6 +2787,7 @@ paths:
       operationId: createReminder
       summary: Create a reminder
       x-torq-access: member
+      x-torq-see: reminders.view
       x-torq-permission: reminders.write
       security:
         - cookieAuth: []
@@ -2813,6 +2820,7 @@ paths:
       operationId: getReminder
       summary: Get a reminder
       x-torq-access: member
+      x-torq-see: reminders.view
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2836,6 +2844,7 @@ paths:
       operationId: updateReminder
       summary: Update a reminder
       x-torq-access: member
+      x-torq-see: reminders.view
       x-torq-permission: reminders.write
       security:
         - cookieAuth: []
@@ -2866,6 +2875,7 @@ paths:
       operationId: deleteReminder
       summary: Delete a reminder
       x-torq-access: member
+      x-torq-see: reminders.view
       x-torq-permission: reminders.write
       security:
         - cookieAuth: []
@@ -2882,6 +2892,7 @@ paths:
       operationId: markReminderDone
       summary: Mark a reminder as done without a logbook entry
       x-torq-access: member
+      x-torq-see: reminders.view
       x-torq-permission: reminders.write
       security:
         - cookieAuth: []
@@ -2932,6 +2943,7 @@ paths:
       operationId: pauseReminder
       summary: Pause a reminder
       x-torq-access: member
+      x-torq-see: reminders.view
       x-torq-permission: reminders.write
       security:
         - cookieAuth: []
@@ -2957,6 +2969,7 @@ paths:
       operationId: resumeReminder
       summary: Resume a paused reminder
       x-torq-access: member
+      x-torq-see: reminders.view
       x-torq-permission: reminders.write
       security:
         - cookieAuth: []
@@ -3016,6 +3029,7 @@ paths:
       operationId: listRepairs
       summary: Self-repair projects
       x-torq-access: member
+      x-torq-see: repairs.view
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -3098,6 +3112,7 @@ paths:
       operationId: createRepair
       summary: Create a repair project
       x-torq-access: member
+      x-torq-see: repairs.view
       x-torq-permission: repairs.write
       security:
         - cookieAuth: []
@@ -3130,6 +3145,7 @@ paths:
       operationId: getRepair
       summary: Get a repair project
       x-torq-access: member
+      x-torq-see: repairs.view
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -3153,6 +3169,7 @@ paths:
       operationId: updateRepair
       summary: Update a repair project
       x-torq-access: member
+      x-torq-see: repairs.view
       x-torq-permission: repairs.write
       security:
         - cookieAuth: []
@@ -3187,6 +3204,7 @@ paths:
       operationId: deleteRepair
       summary: Delete a repair project
       x-torq-access: member
+      x-torq-see: repairs.view
       x-torq-permission: repairs.delete
       security:
         - cookieAuth: []
@@ -3203,6 +3221,7 @@ paths:
       operationId: setRepairStatus
       summary: Change a repair project's status
       x-torq-access: member
+      x-torq-see: repairs.view
       x-torq-permission: repairs.write
       security:
         - cookieAuth: []
@@ -3263,6 +3282,7 @@ paths:
       operationId: createPart
       summary: Add a part to a repair project
       x-torq-access: member
+      x-torq-see: repairs.view
       x-torq-permission: repairs.write
       security:
         - cookieAuth: []
@@ -3294,6 +3314,7 @@ paths:
       operationId: reorderParts
       summary: Reorder a repair project's parts
       x-torq-access: member
+      x-torq-see: repairs.view
       x-torq-permission: repairs.write
       security:
         - cookieAuth: []
@@ -3333,6 +3354,7 @@ paths:
       operationId: updatePart
       summary: Update a part
       x-torq-access: member
+      x-torq-see: repairs.view
       x-torq-permission: repairs.write
       security:
         - cookieAuth: []
@@ -3363,6 +3385,7 @@ paths:
       operationId: deletePart
       summary: Delete a part
       x-torq-access: member
+      x-torq-see: repairs.view
       x-torq-permission: repairs.write
       security:
         - cookieAuth: []
@@ -3379,6 +3402,7 @@ paths:
       operationId: listRepairPriorities
       summary: Project priorities in order
       x-torq-access: member
+      x-torq-see: repairs.view
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -3405,6 +3429,7 @@ paths:
       operationId: createRepairPriority
       summary: Add a project priority at the end of the list
       x-torq-access: member
+      x-torq-see: repairs.view
       x-torq-permission: repair_lists.manage
       security:
         - cookieAuth: []
@@ -3440,6 +3465,7 @@ paths:
       operationId: reorderRepairPriorities
       summary: Set the order of all project priorities
       x-torq-access: member
+      x-torq-see: repairs.view
       x-torq-permission: repair_lists.manage
       security:
         - cookieAuth: []
@@ -3483,6 +3509,7 @@ paths:
       operationId: updateRepairPriority
       summary: Rename, recolor or set a project priority as the default
       x-torq-access: member
+      x-torq-see: repairs.view
       x-torq-permission: repair_lists.manage
       security:
         - cookieAuth: []
@@ -3518,6 +3545,7 @@ paths:
       operationId: deleteRepairPriority
       summary: Delete a project priority
       x-torq-access: member
+      x-torq-see: repairs.view
       x-torq-permission: repair_lists.manage
       security:
         - cookieAuth: []
@@ -3543,6 +3571,7 @@ paths:
       summary: Project tags by name
       description: Tags are created by giving them to a project; tags no project uses stay until deleted.
       x-torq-access: member
+      x-torq-see: repairs.view
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -3570,6 +3599,7 @@ paths:
       operationId: renameRepairTag
       summary: Rename a project tag on every project
       x-torq-access: member
+      x-torq-see: repairs.view
       x-torq-permission: repair_lists.manage
       security:
         - cookieAuth: []
@@ -3611,6 +3641,7 @@ paths:
       operationId: deleteRepairTag
       summary: Delete a project tag from every project
       x-torq-access: member
+      x-torq-see: repairs.view
       x-torq-permission: repair_lists.manage
       security:
         - cookieAuth: []
@@ -3627,6 +3658,7 @@ paths:
       operationId: uploadServiceLogAttachment
       summary: Attach a photo or PDF to a logbook entry
       x-torq-access: member
+      x-torq-see: service_logs.view
       x-torq-permission: service_logs.write
       security:
         - cookieAuth: []
@@ -3669,6 +3701,7 @@ paths:
       operationId: uploadRepairAttachment
       summary: Attach a photo or PDF to a repair project
       x-torq-access: member
+      x-torq-see: repairs.view
       x-torq-permission: repairs.write
       security:
         - cookieAuth: []
@@ -3711,6 +3744,7 @@ paths:
       operationId: uploadSpecEntryAttachment
       summary: Attach a photo or PDF to a spec entry
       x-torq-access: member
+      x-torq-see: attachments.view
       x-torq-permission: specs.edit
       security:
         - cookieAuth: []
@@ -4348,6 +4382,7 @@ paths:
       operationId: costReport
       summary: Costs per category, overall or per vehicle
       x-torq-access: member
+      x-torq-see: reports.view
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -4381,6 +4416,7 @@ paths:
       operationId: timeline
       summary: Combined service and repair timeline
       x-torq-access: member
+      x-torq-see: reports.view
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -6883,6 +6919,9 @@ components:
                 type: string
               category_id:
                 type: integer
+              id:
+                type: integer
+                description: "API level 12: the ID of an existing item this one replaces, so values the user doesn't see (its cost) are kept. Items without an ID are new."
               cost_cents:
                 type:
                   - integer

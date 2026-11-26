@@ -152,6 +152,7 @@ const dependants: Record<TaxonomyField, TaxonomyField[]> = {
 }
 
 function VehicleForm({ vehicle }: { vehicle?: Vehicle }) {
+  const seesIds = useCan('vehicle_ids.view')
   const { t } = useTranslation('vehicles')
   const { user } = useSession()
   const navigate = useNavigate()
@@ -286,7 +287,8 @@ function VehicleForm({ vehicle }: { vehicle?: Vehicle }) {
     if (w === undefined) errs.power_kw = 'validation.number'
     const body: Record<string, unknown> = {
       vehicle_type: v.vehicleType, make: v.make, model: v.model, chassis_code: v.chassis, model_year: yearNum, engine_code: v.engine,
-      vin: v.vin.trim() === '' ? null : v.vin, license_plate: v.plate.trim() === '' ? null : v.plate,
+      // Hidden VIN and plate aren't sent; the server keeps them.
+      ...(seesIds ? { vin: v.vin.trim() === '' ? null : v.vin, license_plate: v.plate.trim() === '' ? null : v.plate } : {}),
       // HSN/TSN are saved whenever present, whether or not they matched (FR-022).
       hsn: v.hsn === '' ? null : v.hsn, tsn: v.tsn === '' ? null : v.tsn,
       // power_w is the precise value; power_kw (whole kW) is sent too so that clearing works on update.
@@ -468,8 +470,10 @@ function VehicleForm({ vehicle }: { vehicle?: Vehicle }) {
                 error={fe.odometer_unit}
               />
             )}
+            {seesIds && <>
             <TextField label={t('fields.vin')} value={values.vin} onChange={set('vin')} error={fe.vin} hint={vinHint} maxLength={32} optional />
             <TextField label={t('fields.licensePlate')} value={values.plate} onChange={set('plate')} error={fe.license_plate} maxLength={16} optional />
+            </>}
           </div>
           <div className="flex gap-2">
             <Button type="submit" variant="primary" disabled={save.isPending}>

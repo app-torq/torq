@@ -11,7 +11,7 @@ import { fieldErrors, useErrorText } from '../../lib/errors'
 import { FINAL_DRIVES, type AutofillValue, type MotoFieldKey, type SpecEntry, type SpecFieldKey, type SpecMeta, type VehicleSpecs } from '../../lib/types'
 import { useSession } from '../../app/session'
 import { Button, IconButton } from '../../components/Button'
-import { canOn } from '../../lib/permissions'
+import { canOn, useCan } from '../../lib/permissions'
 import { Checkbox, SelectField, TextAreaField, TextField } from '../../components/Field'
 import { NumberField, NumberRangeField } from '../../components/NumberField'
 import { ConfirmDialog, Dialog } from '../../components/Dialog'
@@ -393,6 +393,7 @@ function CustomEntries({ vehicleId, entries, canEdit }: { vehicleId: number; ent
   const { t } = useTranslation('specs')
   const qc = useQueryClient()
   const errorText = useErrorText()
+  const seesAttachments = useCan('attachments.view')
   const [editing, setEditing] = useState<SpecEntry | 'new' | null>(null)
   const [deleting, setDeleting] = useState<SpecEntry | null>(null)
   const invalidate = () => qc.invalidateQueries({ queryKey: queryKeys.specs(vehicleId) })
@@ -435,7 +436,7 @@ function CustomEntries({ vehicleId, entries, canEdit }: { vehicleId: number; ent
             <div className="min-w-0 flex-1">
               <div className="text-sm font-medium text-zinc-100">{e.label}</div>
               {e.value && <div className="whitespace-pre-wrap text-sm text-zinc-300">{e.value}</div>}
-              <SpecEntryAttachments entry={e} vehicleId={vehicleId} canEdit={canEdit} />
+              {seesAttachments && <SpecEntryAttachments entry={e} vehicleId={vehicleId} canEdit={canEdit} />}
             </div>
             {canEdit && <div className="flex shrink-0 items-start gap-0.5">
               <IconButton aria-label={t('common:actions.moveUp')} disabled={i === 0 || reorder.isPending} onClick={() => { move(i, -1) }}>

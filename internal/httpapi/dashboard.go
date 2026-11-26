@@ -27,7 +27,11 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	attention := make([]reminderJSON, 0)
+	vis := visibilityOf(ctx)
 	for _, v := range views {
+		if !vis.reminders {
+			break
+		}
 		if v.Status.State == engine.Overdue || v.Status.State == engine.DueSoon {
 			attention = append(attention, toReminderJSON(v))
 		}
@@ -35,6 +39,9 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) error {
 	open, err := s.openRepairs(ctx, visibleVehicles(r))
 	if err != nil {
 		return err
+	}
+	if !vis.repairs {
+		open = []repairSummaryJSON{}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"vehicles": vs, "attention": attention, "open_repairs": open})
 	return nil

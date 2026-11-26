@@ -650,8 +650,8 @@ func TestRolesMigration(t *testing.T) {
 	}
 	var member, viewer, admin, access int
 	if err := d.Reader.QueryRowContext(ctx, `SELECT
-		(SELECT count(*) FROM role_permissions JOIN roles ON roles.id = role_id WHERE builtin_key = 'member'),
-		(SELECT count(*) FROM role_permissions JOIN roles ON roles.id = role_id WHERE builtin_key = 'viewer'),
+		(SELECT count(*) FROM role_permissions JOIN roles ON roles.id = role_id WHERE builtin_key = 'member' AND permission NOT LIKE '%.view'),
+		(SELECT count(*) FROM role_permissions JOIN roles ON roles.id = role_id WHERE builtin_key = 'viewer' AND permission NOT LIKE '%.view'),
 		(SELECT count(*) FROM role_permissions JOIN roles ON roles.id = role_id WHERE builtin_key = 'admin'),
 		(SELECT count(*) FROM vehicle_access)`).Scan(&member, &viewer, &admin, &access); err != nil {
 		t.Fatal(err)
@@ -760,5 +760,52 @@ func TestTwoFactorMigration(t *testing.T) {
 	if err := d.Reader.QueryRowContext(ctx, `SELECT (SELECT count(*) FROM user_totp) + (SELECT count(*) FROM user_recovery_codes)
 		+ (SELECT count(*) FROM user_webauthn) + (SELECT count(*) FROM user_passkeys)`).Scan(&left); err != nil || left != 0 {
 		t.Fatalf("credentials survived their user: %d %v", left, err)
+	}
+}
+
+// TestViewPermissionsMigration covers migration 00023: every existing role
+// keeps seeing everything.
+func TestViewPermissionsMigration(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	d, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	sub, err := fs.Sub(migrationsFS, "migrations")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := goose.NewProvider(goose.DialectSQLite3, d.Writer, sub)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.UpTo(ctx, 22); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.Writer.ExecContext(ctx, `INSERT INTO roles (custom_name, all_vehicles, created_at, updated_at) VALUES ('Customer', 0, 'x', 'x')`); err != nil {
+		t.Fatal(err)
+	}
+	if err := Migrate(ctx, d, dir); err != nil {
+		t.Fatal(err)
+	}
+	rows, err := d.Reader.QueryContext(ctx, `SELECT COALESCE(r.builtin_key, r.custom_name), count(rp.permission)
+		FROM roles r LEFT JOIN role_permissions rp ON rp.role_id = r.id AND rp.permission LIKE '%.view'
+		GROUP BY r.id ORDER BY r.id`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	want := map[string]int{"admin": 0, "member": 8, "viewer": 8, "Customer": 8}
+	for rows.Next() {
+		var name string
+		var n int
+		if err := rows.Scan(&name, &n); err != nil {
+			t.Fatal(err)
+		}
+		if n != want[name] {
+			t.Errorf("%s has %d view permissions, want %d", name, n, want[name])
+		}
 	}
 }

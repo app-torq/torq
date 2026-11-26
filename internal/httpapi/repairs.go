@@ -105,6 +105,7 @@ func (s *Server) toRepairJSON(ctx context.Context, r repairs.Repair) (repairJSON
 	}
 	var err error
 	out.Attachments, err = s.repairAttachments(ctx, r.ID)
+	visibilityOf(ctx).repair(&out)
 	return out, err
 }
 
@@ -113,9 +114,12 @@ func (s *Server) openRepairs(ctx context.Context, visible []int64) ([]repairSumm
 	if err != nil {
 		return nil, err
 	}
+	v := visibilityOf(ctx)
 	out := make([]repairSummaryJSON, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, toRepairSummary(r))
+		j := toRepairSummary(r)
+		v.repairSummary(&j)
+		out = append(out, j)
 	}
 	return out, nil
 }
@@ -197,7 +201,9 @@ func (s *Server) listRepairs(w http.ResponseWriter, r *http.Request) error {
 	}
 	items := make([]repairSummaryJSON, 0, len(rows))
 	for _, rep := range rows {
-		items = append(items, toRepairSummary(rep))
+		j := toRepairSummary(rep)
+		visibilityOf(r.Context()).repairSummary(&j)
+		items = append(items, j)
 	}
 	writeJSON(w, http.StatusOK, newList(items, total))
 	return nil
@@ -212,6 +218,9 @@ func (s *Server) createRepair(w http.ResponseWriter, r *http.Request) error {
 		if err := s.guard(r, in.VehicleID); err != nil {
 			return err
 		}
+	}
+	if !visibilityOf(r.Context()).notes {
+		in.ProcedureNotes = "" // what the user can't see stays empty (#49)
 	}
 	d, err := in.domain()
 	if err != nil {
@@ -263,6 +272,9 @@ func (s *Server) updateRepair(w http.ResponseWriter, r *http.Request) error {
 	if in.VehicleID != cur.VehicleID {
 		return apperr.BadRequest("repair.vehicle_immutable")
 	}
+	if !visibilityOf(r.Context()).notes {
+		in.ProcedureNotes = cur.ProcedureNotes // can't change what it can't see (#49)
+	}
 	d, err := in.domain()
 	if err != nil {
 		return err
@@ -313,7 +325,7 @@ func (s *Server) setRepairStatus(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"repair": out, "vehicle": vj, "reminders": rems})
+	writeJSON(w, http.StatusOK, map[string]any{"repair": out, "vehicle": vj, "reminders": visibilityOf(r.Context()).reminderList(rems)})
 	return nil
 }
 
@@ -358,11 +370,16 @@ func (s *Server) createPart(w http.ResponseWriter, r *http.Request) error {
 	if err := decodeJSON(w, r, &in); err != nil {
 		return err
 	}
+	if !visibilityOf(r.Context()).costs {
+		in.UnitCostCents = nil // what the user can't see stays empty (#49)
+	}
 	p, err := s.repairs.CreatePart(r.Context(), id, in.domain())
 	if err != nil {
 		return err
 	}
-	writeJSON(w, http.StatusCreated, map[string]any{"part": toPartJSON(p)})
+	j := toPartJSON(p)
+	visibilityOf(r.Context()).part(&j)
+	writeJSON(w, http.StatusCreated, map[string]any{"part": j})
 	return nil
 }
 
@@ -383,11 +400,16 @@ func (s *Server) updatePart(w http.ResponseWriter, r *http.Request) error {
 	if err := decodeJSON(w, r, &in); err != nil {
 		return err
 	}
+	if !visibilityOf(r.Context()).costs {
+		in.UnitCostCents, in.CostType = intPtr(cur.UnitCostCents), cur.CostType // can't change what it can't see (#49)
+	}
 	p, err := s.repairs.UpdatePart(r.Context(), id, in.domain())
 	if err != nil {
 		return err
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"part": toPartJSON(p)})
+	j := toPartJSON(p)
+	visibilityOf(r.Context()).part(&j)
+	writeJSON(w, http.StatusOK, map[string]any{"part": j})
 	return nil
 }
 
@@ -420,7 +442,9 @@ func (s *Server) reorderParts(w http.ResponseWriter, r *http.Request) error {
 	}
 	out := make([]partJSON, 0, len(parts))
 	for _, p := range parts {
-		out = append(out, toPartJSON(p))
+		j := toPartJSON(p)
+		visibilityOf(r.Context()).part(&j)
+		out = append(out, j)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"parts": out})
 	return nil

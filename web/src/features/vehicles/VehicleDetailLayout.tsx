@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { Pencil } from 'lucide-react'
 import { useFormat } from '../../lib/useFormat'
 import { useErrorText } from '../../lib/errors'
-import { canOn } from '../../lib/permissions'
+import { canOn, userCan } from '../../lib/permissions'
+import { useSession } from '../../app/session'
 import { vehicleName, type Vehicle } from '../../lib/types'
 import { Badge, ErrorBanner, Loading } from '../../components/ui'
 import { useVehicle } from './hooks'
@@ -22,6 +23,7 @@ export function VehicleDetailLayout() {
   const fmt = useFormat()
   const errorText = useErrorText()
   const vehicle = useVehicle(vehicleId)
+  const { user } = useSession()
 
   if (vehicle.isPending) return <Loading />
   if (vehicle.isError) return <ErrorBanner message={errorText(vehicle.error)} onRetry={() => void vehicle.refetch()} />
@@ -48,7 +50,7 @@ export function VehicleDetailLayout() {
         )}
       </div>
       <nav className="mb-6 flex gap-1 overflow-x-auto border-b border-zinc-800">
-        {vehicleTabs.map((tab) => (
+        {vehicleTabs.filter((tab) => !tab.sees || userCan(user, tab.sees)).map((tab) => (
           <NavLink
             key={tab.to}
             to={tab.to === '' ? `/vehicles/${v.id}` : `/vehicles/${v.id}/${tab.to}`}

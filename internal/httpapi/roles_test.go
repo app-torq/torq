@@ -98,9 +98,9 @@ func TestRoleManagement(t *testing.T) {
 		Role roleJSON `json:"role"`
 	}
 	adm.call(http.MethodPost, "/roles", map[string]any{
-		"name": " Helper ", "description": "Adds service entries", "permissions": []string{"service_logs.write", "reminders.write", "service_logs.write"},
+		"name": " Helper ", "description": "Adds service entries", "permissions": []string{"service_logs.write", "reminders.write", "service_logs.write", "service_logs.view", "reminders.view"},
 	}, http.StatusCreated, &helper)
-	if helper.Role.Name != "Helper" || !helper.Role.AllVehicles || !slices.Equal(helper.Role.Permissions, []auth.Permission{auth.PermServiceLogsWrite, auth.PermRemindersWrite}) {
+	if helper.Role.Name != "Helper" || !helper.Role.AllVehicles || !slices.Equal(helper.Role.Permissions, []auth.Permission{auth.PermServiceLogsWrite, auth.PermRemindersWrite, auth.PermServiceLogsView, auth.PermRemindersView}) {
 		t.Fatalf("helper %+v", helper.Role)
 	}
 
@@ -174,7 +174,7 @@ func TestRoleManagement(t *testing.T) {
 	if code := c.errorCode(http.MethodPost, "/vehicles", map[string]any{"make": "VW", "model": "Golf", "current_odometer_km": 1}, http.StatusForbidden); code != "auth.forbidden" {
 		t.Fatalf("code %q", code)
 	}
-	adm.call(http.MethodPatch, "/roles/"+itoa(helperRole), map[string]any{"permissions": []string{"service_logs.write", "service_logs.delete"}}, http.StatusOK, nil)
+	adm.call(http.MethodPatch, "/roles/"+itoa(helperRole), map[string]any{"permissions": []string{"service_logs.write", "service_logs.delete", "service_logs.view"}}, http.StatusOK, nil)
 	c.call(http.MethodDelete, "/service-logs/"+itoa(log.ServiceLog.ID), nil, http.StatusOK, nil)
 
 	// Deleting a role with users needs somewhere to move them.
@@ -187,7 +187,7 @@ func TestRoleManagement(t *testing.T) {
 	viewer := builtinRole(t, adm, "viewer")
 	adm.call(http.MethodDelete, "/roles/"+itoa(helperRole)+"?move_to="+itoa(viewer.ID), nil, http.StatusNoContent, nil)
 	c.call(http.MethodGet, "/auth/me", nil, http.StatusOK, &u)
-	if u.User.RoleID != viewer.ID || len(*u.User.Permissions) != 0 {
+	if u.User.RoleID != viewer.ID || len(*u.User.Permissions) != len(auth.ViewPermissions()) {
 		t.Fatalf("moved user %+v", u.User)
 	}
 }
