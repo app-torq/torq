@@ -20,7 +20,9 @@ func buildVehicle(t *testing.T, c *client, name string, category int64) garageFi
 	t.Helper()
 	var f garageFixture
 	var v vehicleResp
-	c.call(http.MethodPost, "/vehicles", map[string]any{"make": name, "model": name + " model", "current_odometer_km": 1000}, http.StatusCreated, &v)
+	c.call(http.MethodPost, "/vehicles", map[string]any{
+		"make": name, "model": name + " model", "current_odometer_km": 1000, "license_plate": name + "-PLATE", "vin": name[:1] + "VWZZZ1KZAW123456",
+	}, http.StatusCreated, &v)
 	f.vehicle = v.Vehicle.ID
 	base := "/vehicles/" + itoa(f.vehicle)
 
@@ -41,7 +43,7 @@ func buildVehicle(t *testing.T, c *client, name string, category int64) garageFi
 	}
 	c.call(http.MethodPost, "/service-logs", map[string]any{
 		"vehicle_id": f.vehicle, "service_date": "2026-10-01", "odometer_km": 1000, "notes": name + " notes",
-		"items": []map[string]any{{"category_id": category, "brand": name + " brand", "cost_cents": 1000}},
+		"items": []map[string]any{{"category_id": category, "brand": name + " brand", "cost_cents": 43219}},
 	}, http.StatusCreated, &log)
 	f.log = log.ServiceLog.ID
 
@@ -52,12 +54,14 @@ func buildVehicle(t *testing.T, c *client, name string, category int64) garageFi
 	f.reminder = rem.Reminder.ID
 
 	var rep repairResp
-	c.call(http.MethodPost, "/repairs", map[string]any{"vehicle_id": f.vehicle, "title": name + " project", "tags": []string{name + "-tag"}}, http.StatusCreated, &rep)
+	c.call(http.MethodPost, "/repairs", map[string]any{
+		"vehicle_id": f.vehicle, "title": name + " project", "tags": []string{name + "-tag"}, "procedure_notes": name + " procedure",
+	}, http.StatusCreated, &rep)
 	f.repair = rep.Repair.ID
 	var part struct {
 		Part partJSON `json:"part"`
 	}
-	c.call(http.MethodPost, "/repairs/"+itoa(f.repair)+"/parts", map[string]any{"name": name + " part"}, http.StatusCreated, &part)
+	c.call(http.MethodPost, "/repairs/"+itoa(f.repair)+"/parts", map[string]any{"name": name + " part", "unit_cost_cents": 77713}, http.StatusCreated, &part)
 	f.part = part.Part.ID
 
 	c.call(http.MethodPut, base+"/share", map[string]any{}, http.StatusCreated, nil)
@@ -229,7 +233,7 @@ func accessUsers(t *testing.T) (e *env, adm, scoped, viewOnly, viewer *client, a
 
 	vehiclePerms := []string{}
 	for _, p := range auth.Permissions {
-		if p.Scope == auth.ScopeVehicle {
+		if p.Scope == auth.ScopeVehicle || p.Scope == auth.ScopeView {
 			vehiclePerms = append(vehiclePerms, string(p.Key))
 		}
 	}
@@ -375,11 +379,11 @@ func TestListsCoverVisibleVehicles(t *testing.T) {
 		} `json:"by_vehicle"`
 	}
 	scoped.call(http.MethodGet, "/reports/costs?from=2026-01-01&to=2026-12-31", nil, http.StatusOK, &costs)
-	if costs.TotalCents != 1000 || len(costs.ByVehicle) != 1 || costs.ByVehicle[0].VehicleID != a.vehicle {
+	if costs.TotalCents != 43219 || len(costs.ByVehicle) != 1 || costs.ByVehicle[0].VehicleID != a.vehicle {
 		t.Fatalf("costs %+v", costs)
 	}
 	adm.call(http.MethodGet, "/reports/costs?from=2026-01-01&to=2026-12-31", nil, http.StatusOK, &costs)
-	if costs.TotalCents != 2000 {
+	if costs.TotalCents != 2*43219 {
 		t.Fatalf("admin costs %+v", costs)
 	}
 }

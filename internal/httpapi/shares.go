@@ -71,6 +71,11 @@ func (s *Server) putShare(w http.ResponseWriter, r *http.Request) error {
 	if err := decodeJSON(w, r, &in); err != nil {
 		return err
 	}
+	// Only who sees costs, VIN and plate may publish them (#49).
+	v := visibilityOf(r.Context())
+	if (in.IncludeCosts != nil && !v.costs) || ((in.IncludeVIN != nil || in.IncludeLicensePlate != nil) && !v.vehicleIDs) {
+		return apperr.Forbidden("auth.forbidden")
+	}
 	// Omitted options keep their current value (off for a new link).
 	var opts vehicles.ShareOptions
 	if cur, err := s.vehicles.Share(r.Context(), id); err == nil {

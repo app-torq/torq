@@ -69,6 +69,7 @@ func (s *Server) toVehicleJSON(v store.Vehicle, x vehicleExtras) vehicleJSON {
 	if url, ok := x.avatar[v.ID]; ok {
 		out.AvatarURL = &url
 	}
+	visibilityFor(x.access).vehicle(&out)
 	return out
 }
 
@@ -181,6 +182,9 @@ func (s *Server) createVehicle(w http.ResponseWriter, r *http.Request) error {
 	if err := decodeJSON(w, r, &in); err != nil {
 		return err
 	}
+	if !visibilityOf(r.Context()).vehicleIDs {
+		in.VIN, in.LicensePlate = nil, nil // what the user can't see stays empty (#49)
+	}
 	if in.OdometerUnit == nil {
 		unit := currentUser(r).Prefs.DistanceUnit
 		in.OdometerUnit = &unit
@@ -265,6 +269,9 @@ func (s *Server) updateVehicle(w http.ResponseWriter, r *http.Request) error {
 	}
 	if err := decodeJSON(w, r, &in); err != nil {
 		return err
+	}
+	if !visibilityOf(r.Context()).vehicleIDs {
+		in.VIN, in.LicensePlate = strPtr(cur.Vin), strPtr(cur.LicensePlate) // can't change what it can't see (#49)
 	}
 	// A client that only knows power_kw sends back the rounded value; keep the
 	// precise power_w then instead of overwriting it with whole kW.
@@ -362,7 +369,7 @@ func (s *Server) writeVehicleWithReminders(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		return err
 	}
-	writeJSON(w, status, map[string]any{"vehicle": out, "reminders": rems})
+	writeJSON(w, status, map[string]any{"vehicle": out, "reminders": visibilityOf(r.Context()).reminderList(rems)})
 	return nil
 }
 

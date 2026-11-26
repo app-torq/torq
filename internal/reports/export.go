@@ -23,7 +23,9 @@ func sqlStr(s string) sql.NullString { return sql.NullString{String: s, Valid: t
 type ExportOptions struct {
 	IncludeCosts bool
 	IncludeNotes bool
-	Locale       i18n.Locale // localizes built-in category names
+	// The Omit fields leave out what the reader's role doesn't see (#49).
+	OmitServices, OmitRepairs, OmitAttachments, OmitVehicleIDs bool
+	Locale                                                     i18n.Locale // localizes built-in category names
 }
 
 // History is the torq.vehicle-history/v1 document (research R19).
@@ -257,6 +259,9 @@ func (s *Service) History(ctx context.Context, vehicleID int64, opt ExportOption
 	if err != nil {
 		return History{}, err
 	}
+	if opt.OmitServices {
+		logs = nil
+	}
 	for _, l := range logs {
 		atts, err := q.ListAttachmentsForServiceLog(ctx, sql.NullInt64{Int64: l.ID, Valid: true})
 		if err != nil {
@@ -286,6 +291,9 @@ func (s *Service) History(ctx context.Context, vehicleID int64, opt ExportOption
 	reps, _, err := s.Repairs.List(ctx, repairs.Filter{VehicleID: vehicleID, Statuses: []string{repairs.StatusCompleted}, Limit: 1 << 30})
 	if err != nil {
 		return History{}, err
+	}
+	if opt.OmitRepairs {
+		reps = nil
 	}
 	for _, summary := range reps {
 		r, err := s.Repairs.Get(ctx, summary.ID)
@@ -322,6 +330,17 @@ func (s *Service) History(ctx context.Context, vehicleID int64, opt ExportOption
 			hr.Parts = append(hr.Parts, hp)
 		}
 		h.Repairs = append(h.Repairs, hr)
+	}
+	if opt.OmitVehicleIDs {
+		h.Vehicle.VIN, h.Vehicle.LicensePlate = nil, nil
+	}
+	if opt.OmitAttachments {
+		for i := range h.Services {
+			h.Services[i].Attachments = []HistoryAttachment{}
+		}
+		for i := range h.Repairs {
+			h.Repairs[i].Attachments = []HistoryAttachment{}
+		}
 	}
 	return h, nil
 }

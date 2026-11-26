@@ -276,11 +276,13 @@
     "moveTo": "Move users to",
     "scope": {
       "vehicle": "Per vehicle",
-      "garage": "Garage-wide"
+      "garage": "Garage-wide",
+      "view": "Sees"
     },
     "scopeHint": {
       "vehicle": "On vehicles the user may edit.",
-      "garage": "Settings shared by the whole garage."
+      "garage": "Settings shared by the whole garage.",
+      "view": "What users see on every vehicle visible to them."
     },
     "permission": {
       "vehicles.edit": "Edit vehicles (profile, readings, hour meters, photo, archive)",
@@ -296,8 +298,17 @@
       "vehicles.create": "Add vehicles",
       "categories.manage": "Manage service categories",
       "repair_lists.manage": "Manage project priorities and tags",
-      "catalog.update": "Update the vehicle catalog online"
+      "catalog.update": "Update the vehicle catalog online",
+      "service_logs.view": "See the Service Logbook",
+      "repairs.view": "See self-repair projects",
+      "reminders.view": "See reminders",
+      "reports.view": "See reports and the vehicle history",
+      "costs.view": "See costs",
+      "notes.view": "See notes",
+      "attachments.view": "See attachments",
+      "vehicle_ids.view": "See VIN and license plate"
     },
+    "needsView": "Needs “{{permission}}”",
     "mfaBadge": "2FA required",
     "requireMfa": "Require two-factor sign-in",
     "requireMfaHint": "Users with this role must set up an authenticator app or a passkey after their next sign-in before they can do anything else.",

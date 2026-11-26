@@ -56,6 +56,14 @@ describe('VehicleQrCard', () => {
     expect(put?.[1]?.body).toBe(JSON.stringify({ include_costs: true }))
   })
 
+  it('offers only the options the role sees', async () => {
+    respond({ share })
+    const user = { ...testSession.user, role: 'member' as const, permissions: (testSession.user.permissions ?? []).filter((p) => p !== 'costs.view') }
+    renderCard({ ...testSession, user })
+    expect(await screen.findByRole('checkbox', { name: 'License plate' })).toBeInTheDocument()
+    expect(screen.queryByRole('checkbox', { name: 'Costs' })).toBeNull()
+  })
+
   it('hides the public link when the server has it turned off', () => {
     const fetchSpy = respond({ share })
     renderCard({ ...testSession, instance: { ...testSession.instance, public_links: false } })

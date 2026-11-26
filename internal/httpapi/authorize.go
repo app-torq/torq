@@ -37,6 +37,9 @@ func (s *Server) authorize(r *http.Request, a access) (*http.Request, error) {
 	if a.level == levelAdmin && !user.Access.Admin {
 		return r, apperr.Forbidden("auth.forbidden")
 	}
+	if a.see != "" && !user.Access.Can(a.see) {
+		return r, apperr.Forbidden("auth.forbidden")
+	}
 	if a.perm != "" && !a.vehicle && !user.Access.Can(a.perm) {
 		return r, apperr.Forbidden("auth.forbidden")
 	}

@@ -8,7 +8,7 @@ import { queryKeys } from '../../lib/queryKeys'
 import { useFormat } from '../../lib/useFormat'
 import { powerW } from '../../lib/format'
 import { useErrorText } from '../../lib/errors'
-import { canOn, useIsAdmin } from '../../lib/permissions'
+import { canOn, useCan, useIsAdmin } from '../../lib/permissions'
 import { vehicleName, type ListResponse, type OdometerReading } from '../../lib/types'
 import { Button } from '../../components/Button'
 import { ConfirmDialog } from '../../components/Dialog'
@@ -31,6 +31,7 @@ export function VehicleOverview() {
   const canEdit = canOn(v, 'vehicles.edit')
   const canDelete = canOn(v, 'vehicles.delete')
   const isAdmin = useIsAdmin()
+  const seesIds = useCan('vehicle_ids.view')
 
   const readings = useQuery({
     queryKey: queryKeys.odometerReadings(v.id),
@@ -67,8 +68,10 @@ export function VehicleOverview() {
             { label: t('fields.fuelType'), value: v.fuel_type ? t(`fuel.${v.fuel_type}`) : none },
             { label: t('fields.hsnTsn'), value: v.hsn || v.tsn ? <span className="font-mono">{`${v.hsn ?? '—'} / ${v.tsn ?? '—'}`}</span> : none },
             { label: t('fields.modelYear'), value: v.model_year ?? none },
-            { label: t('fields.licensePlate'), value: v.license_plate ?? none },
-            { label: t('fields.vin'), value: <span className="font-mono">{v.vin ?? none}</span> },
+            ...(seesIds ? [
+              { label: t('fields.licensePlate'), value: v.license_plate ?? none },
+              { label: t('fields.vin'), value: <span className="font-mono">{v.vin ?? none}</span> },
+            ] : []),
             ...(v.has_odometer ? [{ label: t('fields.odometer'), value: <span className="tabular-nums">{fmt.distance(v.current_odometer_km, v.odometer_unit)}</span> }] : []),
             ...v.hour_meters.map((m) => ({ label: m.name, value: <span className="tabular-nums">{fmt.hours(m.current_hours)}</span> })),
           ]}

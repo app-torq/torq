@@ -1,4 +1,4 @@
-import { canOn } from '../../lib/permissions'
+import { canOn, useCan } from '../../lib/permissions'
 import { Link } from 'react-router'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -22,6 +22,7 @@ export function TimelinePage() {
   const { t } = useTranslation('reports')
   const fmt = useFormat()
   const errorText = useErrorText()
+  const seesCosts = useCan('costs.view')
   const categories = useCategories(true)
   const catById = new Map(categories.data?.items.map((c) => [c.id, c]))
   const timeline = useInfiniteQuery({
@@ -61,7 +62,7 @@ export function TimelinePage() {
                 </div>
                 <div className="mt-1 flex items-center justify-between gap-2">
                   <span className="text-sm text-zinc-100">{label}</span>
-                  <span className="text-sm tabular-nums text-zinc-300">{fmt.money(it.total_cents)}</span>
+                  {seesCosts && <span className="text-sm tabular-nums text-zinc-300">{fmt.money(it.total_cents)}</span>}
                 </div>
               </Link>
             </li>

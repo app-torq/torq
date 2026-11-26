@@ -276,11 +276,13 @@
     "moveTo": "Benutzer verschieben nach",
     "scope": {
       "vehicle": "Pro Fahrzeug",
-      "garage": "Für die ganze Garage"
+      "garage": "Für die ganze Garage",
+      "view": "Sieht"
     },
     "scopeHint": {
       "vehicle": "Bei Fahrzeugen, die der Benutzer bearbeiten darf.",
-      "garage": "Einstellungen, die die ganze Garage teilt."
+      "garage": "Einstellungen, die die ganze Garage teilt.",
+      "view": "Was Benutzer bei jedem für sie sichtbaren Fahrzeug sehen."
     },
     "permission": {
       "vehicles.edit": "Fahrzeuge bearbeiten (Profil, Stände, Betriebsstundenzähler, Foto, Archiv)",
@@ -296,8 +298,17 @@
       "vehicles.create": "Fahrzeuge hinzufügen",
       "categories.manage": "Servicekategorien verwalten",
       "repair_lists.manage": "Projektprioritäten und Tags verwalten",
-      "catalog.update": "Fahrzeugkatalog online aktualisieren"
+      "catalog.update": "Fahrzeugkatalog online aktualisieren",
+      "service_logs.view": "Wartungsheft sehen",
+      "repairs.view": "Reparaturprojekte sehen",
+      "reminders.view": "Erinnerungen sehen",
+      "reports.view": "Auswertungen und Historie sehen",
+      "costs.view": "Kosten sehen",
+      "notes.view": "Notizen sehen",
+      "attachments.view": "Anhänge sehen",
+      "vehicle_ids.view": "FIN und Kennzeichen sehen"
     },
+    "needsView": "Braucht „{{permission}}“",
     "mfaBadge": "2FA Pflicht",
     "requireMfa": "Zwei-Faktor-Anmeldung verlangen",
     "requireMfaHint": "Benutzer mit dieser Rolle müssen nach ihrer nächsten Anmeldung eine Authenticator-App oder einen Passkey einrichten, bevor sie etwas anderes tun können.",

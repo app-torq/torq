@@ -174,6 +174,9 @@ type serviceLogInput struct {
 	ExtraCostLabel string             `json:"extra_cost_label"`
 	MeterReadings  []meterReadingJSON `json:"meter_readings"`
 	Items          []struct {
+		// ID names a stored item on replace, so values the user can't see
+		// are kept (#49).
+		ID                    *int64 `json:"id"`
 		CategoryID            int64  `json:"category_id"`
 		Brand                 string `json:"brand"`
 		Specification         string `json:"specification"`
@@ -256,14 +259,17 @@ func (s *Server) listServiceLogs(w http.ResponseWriter, r *http.Request) error {
 	q := r.URL.Query()
 	logs, total, err := s.servicelog.List(r.Context(), servicelog.Filter{
 		VehicleID: vehicleID, CategoryID: categoryID, From: q.Get("from"), To: q.Get("to"), Q: q.Get("q"), Limit: limit, Offset: offset,
-		VehicleIDs: visibleVehicles(r),
+		VehicleIDs: visibleVehicles(r), SkipNotes: !visibilityOf(r.Context()).notes,
 	})
 	if err != nil {
 		return err
 	}
+	v := visibilityOf(r.Context())
 	items := make([]serviceLogJSON, 0, len(logs))
 	for _, l := range logs {
-		items = append(items, toServiceLogJSON(l))
+		j := toServiceLogJSON(l)
+		v.serviceLog(&j)
+		items = append(items, j)
 	}
 	writeJSON(w, http.StatusOK, newList(items, total))
 	return nil
@@ -280,6 +286,9 @@ func (s *Server) writeServiceLog(w http.ResponseWriter, r *http.Request, status 
 	if err != nil {
 		return err
 	}
+	v := visibilityOf(r.Context())
+	v.serviceLog(&out)
+	rems = v.reminderList(rems)
 	body := map[string]any{"service_log": out, "reminders": rems}
 	if len(warnings) > 0 {
 		body["warnings"] = warnings
@@ -302,6 +311,7 @@ func (s *Server) createServiceLog(w http.ResponseWriter, r *http.Request) error 
 	if err != nil {
 		return err
 	}
+	keepHiddenServiceFields(visibilityOf(r.Context()), in, &d, nil)
 	l, warnings, err := s.servicelog.Create(r.Context(), d, currentUser(r).ID)
 	if err != nil {
 		return err
@@ -322,6 +332,7 @@ func (s *Server) getServiceLog(w http.ResponseWriter, r *http.Request) error {
 	if out.Attachments, err = s.serviceLogAttachments(r.Context(), id); err != nil {
 		return err
 	}
+	visibilityOf(r.Context()).serviceLog(&out)
 	writeJSON(w, http.StatusOK, map[string]any{"service_log": out})
 	return nil
 }
@@ -345,6 +356,13 @@ func (s *Server) replaceServiceLog(w http.ResponseWriter, r *http.Request) error
 	if err != nil {
 		return err
 	}
+	if v := visibilityOf(r.Context()); !v.costs || !v.notes {
+		cur, err := s.servicelog.Get(r.Context(), id)
+		if err != nil {
+			return err
+		}
+		keepHiddenServiceFields(v, in, &d, &cur)
+	}
 	l, warnings, err := s.servicelog.Replace(r.Context(), id, d)
 	if err != nil {
 		return err
@@ -365,7 +383,7 @@ func (s *Server) deleteServiceLog(w http.ResponseWriter, r *http.Request) error 
 	if err != nil {
 		return err
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"reminders": rems})
+	writeJSON(w, http.StatusOK, map[string]any{"reminders": visibilityOf(r.Context()).reminderList(rems)})
 	return nil
 }
 
@@ -380,4 +398,35 @@ func (s *Server) pathServiceLog(r *http.Request) (id, vehicleID int64, err error
 		return 0, 0, err
 	}
 	return id, l.VehicleID, s.guard(r, l.VehicleID)
+}
+
+// keepHiddenServiceFields stops a user from changing what they can't see:
+// costs and notes come from the stored entry (cur, nil for a new one).
+// Items keep their costs by id; new items get none.
+func keepHiddenServiceFields(v visibility, in serviceLogInput, d *servicelog.Input, cur *servicelog.Log) {
+	if !v.notes {
+		d.Notes = ""
+		if cur != nil {
+			d.Notes = cur.Notes
+		}
+	}
+	if v.costs {
+		return
+	}
+	d.ExtraCostCents, d.ExtraCostLabel = 0, ""
+	stored := map[int64]store.ServiceLogItem{}
+	if cur != nil {
+		d.ExtraCostCents, d.ExtraCostLabel = cur.ExtraCostCents, cur.ExtraCostLabel
+		for _, it := range cur.Items {
+			stored[it.ID] = it
+		}
+	}
+	for i := range d.Items {
+		d.Items[i].CostCents, d.Items[i].CostType = nil, ""
+		if i < len(in.Items) && in.Items[i].ID != nil {
+			if it, ok := stored[*in.Items[i].ID]; ok {
+				d.Items[i].CostCents, d.Items[i].CostType = intPtr(it.CostCents), it.CostType
+			}
+		}
+	}
 }

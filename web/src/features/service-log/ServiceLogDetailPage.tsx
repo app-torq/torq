@@ -7,7 +7,7 @@ import { api } from '../../lib/api'
 import { queryKeys } from '../../lib/queryKeys'
 import { useFormat } from '../../lib/useFormat'
 import { useErrorText } from '../../lib/errors'
-import { canOn } from '../../lib/permissions'
+import { canOn, useCan } from '../../lib/permissions'
 import { vehicleName, type ServiceLog } from '../../lib/types'
 import { Button } from '../../components/Button'
 import { ConfirmDialog } from '../../components/Dialog'
@@ -30,6 +30,8 @@ export function ServiceLogDetailPage() {
   const errorText = useErrorText()
   const categories = useCategories(true)
   const [deleting, setDeleting] = useState(false)
+  const seesCosts = useCan('costs.view')
+  const seesAttachments = useCan('attachments.view')
   const warnings = (location.state as { warnings?: string[] } | null)?.warnings ?? []
 
   const log = useQuery({
@@ -81,8 +83,8 @@ export function ServiceLogDetailPage() {
           items={[
             { label: t('fields.date'), value: fmt.date(l.service_date) },
             { label: l.odometer_recorded ? t('fields.odometer') : t('fields.reading'), value: <span className="tabular-nums">{entryReading(fmt, odometerUnit(l.vehicle_id), l.odometer_km, l.odometer_recorded, l.meter_readings)}</span> },
-            { label: t('fields.total'), value: <span className="tabular-nums">{fmt.money(l.total_cents)}</span> },
-            ...(l.extra_cost_cents > 0 ? [{ label: l.extra_cost_label || t('fields.extraCost'), value: <span className="tabular-nums">{fmt.money(l.extra_cost_cents)}</span> }] : []),
+            ...(seesCosts ? [{ label: t('fields.total'), value: <span className="tabular-nums">{fmt.money(l.total_cents)}</span> }] : []),
+            ...(seesCosts && l.extra_cost_cents > 0 ? [{ label: l.extra_cost_label || t('fields.extraCost'), value: <span className="tabular-nums">{fmt.money(l.extra_cost_cents)}</span> }] : []),
           ]}
         />
         {l.notes && <p className="mt-4 whitespace-pre-wrap border-t border-zinc-800 pt-4 text-sm text-zinc-300">{l.notes}</p>}
@@ -97,8 +99,8 @@ export function ServiceLogDetailPage() {
               <th>{t('fields.quantity')}</th>
               <th>{t('fields.oemPart')}</th>
               <th>{t('fields.aftermarketPart')}</th>
-              <th>{t('fields.costType')}</th>
-              <th className="text-right">{t('fields.cost')}</th>
+              {seesCosts && <th>{t('fields.costType')}</th>}
+              {seesCosts && <th className="text-right">{t('fields.cost')}</th>}
             </tr>
           </thead>
           <tbody>
@@ -110,14 +112,14 @@ export function ServiceLogDetailPage() {
                 <td className="tabular-nums">{it.quantity_ml !== null && it.quantity_unit ? fmt.quantity(it.quantity_ml, it.quantity_unit) : none}</td>
                 <td className="font-mono text-xs">{it.oem_part_number || none}</td>
                 <td className="font-mono text-xs">{it.aftermarket_part_number || none}</td>
-                <td className="text-zinc-400">{t(`costTypes.${it.cost_type}`)}</td>
-                <td className="text-right tabular-nums">{it.cost_cents !== null ? fmt.money(it.cost_cents) : none}</td>
+                {seesCosts && <td className="text-zinc-400">{t(`costTypes.${it.cost_type}`)}</td>}
+                {seesCosts && <td className="text-right tabular-nums">{it.cost_cents !== null ? fmt.money(it.cost_cents) : none}</td>}
               </tr>
             ))}
           </tbody>
         </Table>
       </Card>
-      <ServiceLogAttachments log={l} canEdit={canOn(vehicle.data, 'service_logs.write')} />
+      {seesAttachments && <ServiceLogAttachments log={l} canEdit={canOn(vehicle.data, 'service_logs.write')} />}
       <ConfirmDialog
         open={deleting}
         title={t('deleteTitle')}

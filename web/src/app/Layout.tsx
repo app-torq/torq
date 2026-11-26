@@ -8,6 +8,7 @@ import { QUICK_ACTIONS_HOTKEY } from '../lib/brand'
 import { queryKeys } from '../lib/queryKeys'
 import { IconButton } from '../components/Button'
 import { HomeLink } from '../components/Logo'
+import { userCan } from '../lib/permissions'
 import { mainNav } from './nav'
 import { QuickActions, useQuickActionsHotkey } from './QuickActions'
 import { VehicleSwitcher } from './VehicleSwitcher'
@@ -44,7 +45,7 @@ export function Layout() {
 
   const nav = (
     <nav aria-label={t('nav.main')} className="flex flex-col gap-0.5 px-3">
-      {mainNav.map((item) => (
+      {mainNav.filter((item) => (item.sees ?? []).every((p) => userCan(user, p))).map((item) => (
         <NavLink
           key={item.to}
           to={item.to}

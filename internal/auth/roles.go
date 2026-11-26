@@ -218,7 +218,8 @@ func (s *Roles) Create(ctx context.Context, in RoleInput) (RoleInfo, error) {
 			return err
 		}
 		validateDescription(in.Description, &v)
-		var perms []Permission
+		// A new role sees everything unless told otherwise.
+		perms := ViewPermissions()
 		if in.Permissions != nil {
 			var err error
 			if perms, err = ParsePermissions(*in.Permissions); err != nil {

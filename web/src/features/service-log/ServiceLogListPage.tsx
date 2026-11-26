@@ -12,7 +12,7 @@ import { Button } from '../../components/Button'
 import { inputClass } from '../../components/Field'
 import { Badge, EmptyState, ErrorBanner, Loading, PageHeader, Table } from '../../components/ui'
 import { useAnyVehicleCan, useOdometerUnit, useVehicles } from '../vehicles/hooks'
-import { canOn } from '../../lib/permissions'
+import { canOn, useCan } from '../../lib/permissions'
 import { categoryLabel, useCategories } from './hooks'
 import { entryReading } from '../vehicles/readings'
 
@@ -58,6 +58,7 @@ export function ServiceLogListPage({ vehicleId }: { vehicleId?: number }) {
   const total = logs.data?.pages[0]?.total ?? 0
   const newLink = `/service/new${filters.vehicle_id ? `?vehicle=${filters.vehicle_id}` : ''}`
   const anyCan = useAnyVehicleCan('service_logs.write')
+  const seesCosts = useCan('costs.view')
   const canAdd = vehicleId === undefined ? anyCan : canOn(vehicleById.get(vehicleId), 'service_logs.write')
 
   return (
@@ -111,7 +112,7 @@ export function ServiceLogListPage({ vehicleId }: { vehicleId?: number }) {
               {vehicleId === undefined && <th>{t('fields.vehicle')}</th>}
               <th>{t('fields.odometer')}</th>
               <th>{t('items.title')}</th>
-              <th className="text-right">{t('fields.total')}</th>
+              {seesCosts && <th className="text-right">{t('fields.total')}</th>}
             </tr>
           </thead>
           <tbody>
@@ -129,7 +130,7 @@ export function ServiceLogListPage({ vehicleId }: { vehicleId?: number }) {
                       {l.items.map((it) => <Badge key={it.id}>{categoryLabel(catById.get(it.category_id), t)}</Badge>)}
                     </div>
                   </td>
-                  <td className="text-right tabular-nums text-zinc-100">{fmt.money(l.total_cents)}</td>
+                  {seesCosts && <td className="text-right tabular-nums text-zinc-100">{fmt.money(l.total_cents)}</td>}
                 </tr>
               )
             })}

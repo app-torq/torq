@@ -140,14 +140,14 @@ func TestCostReportExact(t *testing.T) {
 func TestTimeline(t *testing.T) {
 	f := setup(t)
 	f.seed2026(t)
-	items, total, err := f.r.Timeline(f.ctx, f.vid, "", "", 50, 0)
+	items, total, err := f.r.Timeline(f.ctx, f.vid, "", "", 50, 0, AllKinds)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if total != 4 || items[0].Kind != KindRepair || items[0].Date != "2026-11-20" || items[len(items)-1].Date != "2025-12-01" {
 		t.Fatalf("timeline %+v", items)
 	}
-	page, _, _ := f.r.Timeline(f.ctx, f.vid, "", "", 2, 2)
+	page, _, _ := f.r.Timeline(f.ctx, f.vid, "", "", 2, 2, AllKinds)
 	if len(page) != 2 || page[0].Date != "2026-01-10" {
 		t.Fatalf("page %+v", page)
 	}
@@ -342,7 +342,7 @@ func TestHoursReports(t *testing.T) {
 		t.Fatalf("service row %v", s)
 	}
 
-	items, _, err := f.r.Timeline(f.ctx, tractor.ID, "", "", 50, 0)
+	items, _, err := f.r.Timeline(f.ctx, tractor.ID, "", "", 50, 0, AllKinds)
 	if err != nil {
 		t.Fatal(err)
 	}

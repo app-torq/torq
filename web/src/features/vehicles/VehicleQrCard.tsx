@@ -9,7 +9,7 @@ import { useFormat } from '../../lib/useFormat'
 import { queryKeys } from '../../lib/queryKeys'
 import { qrPng, isLocalAddress } from '../../lib/qr'
 import { vehicleName, type Share, type Vehicle } from '../../lib/types'
-import { canOn } from '../../lib/permissions'
+import { canOn, useCan } from '../../lib/permissions'
 import { useSession } from '../../app/session'
 import { Button } from '../../components/Button'
 import { ConfirmDialog } from '../../components/Dialog'
@@ -124,6 +124,10 @@ function PublicLink({ vehicle, link, demo, canManage, onOff }: { vehicle: Vehicl
   const path = `/vehicles/${String(vehicle.id)}/share`
   const [confirm, setConfirm] = useState<'renew' | 'off' | null>(null)
   const [copied, setCopied] = useState(false)
+  // Only who sees costs, VIN and plate may publish them.
+  const seesCosts = useCan('costs.view')
+  const seesIds = useCan('vehicle_ids.view')
+  const options = (['include_costs', 'include_license_plate', 'include_vin'] as const).filter((k) => (k === 'include_costs' ? seesCosts : seesIds))
   const saved = (data: { share: Share | null }) => {
     qc.setQueryData(queryKeys.share(vehicle.id), data)
     void qc.invalidateQueries({ queryKey: queryKeys.shares })
@@ -189,14 +193,14 @@ function PublicLink({ vehicle, link, demo, canManage, onOff }: { vehicle: Vehicl
             </Button>
           </div>
           {canManage && (<>
-          <fieldset className="space-y-1.5">
+          {options.length > 0 && <fieldset className="space-y-1.5">
             <legend className="mb-1 text-sm text-zinc-300">{t('share.alsoShow')}</legend>
-            {(['include_costs', 'include_license_plate', 'include_vin'] as const).map((k) => (
+            {options.map((k) => (
               <div key={k}>
                 <Checkbox label={t(`share.options.${k}`)} checked={link[k]} disabled={demo || renew.isPending || off.isPending} onChange={(v) => { put.mutate({ [k]: v }) }} />
               </div>
             ))}
-          </fieldset>
+          </fieldset>}
           <p className="text-xs text-zinc-500">
             {link.last_opened_at ? t('share.lastOpened', { date: fmt.dateTime(link.last_opened_at) }) : t('share.neverOpened')}
           </p>

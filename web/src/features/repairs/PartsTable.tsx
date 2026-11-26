@@ -14,6 +14,7 @@ import { NumberField } from '../../components/NumberField'
 import { ConfirmDialog, Dialog } from '../../components/Dialog'
 import { Badge, Card, ErrorBanner, Table } from '../../components/ui'
 import { invalidateRepairs } from './hooks'
+import { useCan } from '../../lib/permissions'
 
 const partStatuses: PartStatus[] = ['needed', 'ordered', 'in_stock', 'installed']
 const partTone = { needed: 'red', ordered: 'amber', in_stock: 'sky', installed: 'emerald' } as const
@@ -21,6 +22,7 @@ const partTone = { needed: 'red', ordered: 'amber', in_stock: 'sky', installed: 
 /** Parts bill of materials with totals and per-status counts (FR-024, FR-025). */
 export function PartsTable({ repair, canEdit }: { repair: Repair; canEdit: boolean }) {
   const { t } = useTranslation('repairs')
+  const seesCosts = useCan('costs.view')
   const fmt = useFormat()
   const qc = useQueryClient()
   const errorText = useErrorText()
@@ -70,8 +72,8 @@ export function PartsTable({ repair, canEdit }: { repair: Repair; canEdit: boole
               <th>{t('parts.aftermarketBrand')}</th>
               <th>{t('parts.aftermarketNumber')}</th>
               <th className="text-right">{t('parts.quantity')}</th>
-              <th className="text-right">{t('parts.unitCost')}</th>
-              <th className="text-right">{t('parts.lineTotal')}</th>
+              {seesCosts && <th className="text-right">{t('parts.unitCost')}</th>}
+              {seesCosts && <th className="text-right">{t('parts.lineTotal')}</th>}
               <th>{t('parts.status')}</th>
               <th />
             </tr>
@@ -88,14 +90,14 @@ export function PartsTable({ repair, canEdit }: { repair: Repair; canEdit: boole
                       </a>
                     )}
                   </div>
-                  {p.cost_type === 'fluids' && <span className="text-xs text-zinc-400">{t('service:costTypes.fluids')}</span>}
+                  {seesCosts && p.cost_type === 'fluids' && <span className="text-xs text-zinc-400">{t('service:costTypes.fluids')}</span>}
                 </td>
                 <td className="font-mono text-xs">{p.oem_part_number || none}</td>
                 <td>{p.aftermarket_brand || none}</td>
                 <td className="font-mono text-xs">{p.aftermarket_part_number || none}</td>
                 <td className="text-right tabular-nums">{fmt.number(p.quantity)}</td>
-                <td className="text-right tabular-nums">{p.unit_cost_cents !== null ? fmt.money(p.unit_cost_cents) : none}</td>
-                <td className="text-right tabular-nums text-zinc-100">{fmt.money(p.line_total_cents)}</td>
+                {seesCosts && <td className="text-right tabular-nums">{p.unit_cost_cents !== null ? fmt.money(p.unit_cost_cents) : none}</td>}
+                {seesCosts && <td className="text-right tabular-nums text-zinc-100">{fmt.money(p.line_total_cents)}</td>}
                 <td>
                   {canEdit ? <select
                     aria-label={t('parts.status')}
@@ -119,12 +121,12 @@ export function PartsTable({ repair, canEdit }: { repair: Repair; canEdit: boole
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={6} className="border-t border-zinc-800 px-3 py-2">
+              <td colSpan={seesCosts ? 6 : 5} className="border-t border-zinc-800 px-3 py-2">
                 <div className="flex flex-wrap gap-1.5">
                   {partStatuses.map((s) => <Badge key={s} tone={partTone[s]}>{`${t(`parts.statuses.${s}`)}: ${fmt.number(repair.part_status_counts[s])}`}</Badge>)}
                 </div>
               </td>
-              <td className="border-t border-zinc-800 px-3 py-2 text-right font-semibold tabular-nums text-zinc-100">{fmt.money(repair.parts_total_cents)}</td>
+              {seesCosts && <td className="border-t border-zinc-800 px-3 py-2 text-right font-semibold tabular-nums text-zinc-100">{fmt.money(repair.parts_total_cents)}</td>}
               <td colSpan={2} className="border-t border-zinc-800" />
             </tr>
           </tfoot>
@@ -149,6 +151,7 @@ export function PartsTable({ repair, canEdit }: { repair: Repair; canEdit: boole
 
 function PartDialog({ repairId, part, onClose }: { repairId: number; part: RepairPart | null; onClose: () => void }) {
   const { t } = useTranslation('repairs')
+  const seesCosts = useCan('costs.view')
   const { user } = useSession()
   const nf = user.number_format
   const qc = useQueryClient()
@@ -209,6 +212,7 @@ function PartDialog({ repairId, part, onClose }: { repairId: number; part: Repai
           <TextField label={t('parts.aftermarketNumber')} value={number} onChange={setNumber} error={fe.aftermarket_part_number} optional />
           <TextField label={t('parts.supplier')} type="url" value={url} onChange={setUrl} error={fe.supplier_url} placeholder="https://" optional />
           <NumberField label={t('parts.quantity')} decimal={false} value={qty} onChange={setQty} error={fe.quantity} />
+          {seesCosts && <>
           <NumberField label={t('parts.unitCost')} value={cost} onChange={setCost} error={fe.unit_cost_cents} optional />
           <SelectField
             label={t('parts.costType')}
@@ -216,6 +220,7 @@ function PartDialog({ repairId, part, onClose }: { repairId: number; part: Repai
             onChange={(v) => { setCostType(v as CostType) }}
             options={[{ value: 'parts', label: t('service:costTypes.parts') }, { value: 'fluids', label: t('service:costTypes.fluids') }]}
           />
+          </>}
           <SelectField
             label={t('parts.status')}
             value={status}
