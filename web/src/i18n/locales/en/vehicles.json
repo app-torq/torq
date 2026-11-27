@@ -230,6 +230,24 @@
       "view": "View",
       "edit": "Edit"
     },
-    "manage": "Manage users and access"
+    "manage": "Manage users and access",
+    "origin": {
+      "created": "Added the vehicle",
+      "shared": "Shared by {{name}}"
+    }
+  },
+  "sharedWith": {
+    "title": "Shared with",
+    "intro": "Give other users of this torq access to this vehicle. What they may change also depends on their role.",
+    "username": "Username",
+    "usernameHint": "Their exact username; ask them for it.",
+    "level": "Access",
+    "add": "Share",
+    "empty": "Not shared with anyone yet.",
+    "remove": "Take back",
+    "removeLabel": "Take back from {{name}}",
+    "levelLabel": "Access for {{name}}",
+    "noPermission": "Your role no longer allows sharing. You can still take back what you shared.",
+    "sharedByYou": "Shared with you by {{name}}"
   }
 }

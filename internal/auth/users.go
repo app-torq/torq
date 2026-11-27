@@ -304,6 +304,9 @@ func (u *Users) Update(ctx context.Context, id int64, p UserPatch) (User, error)
 			}); err != nil {
 				return err
 			}
+			if err := pruneShares(ctx, q); err != nil {
+				return err
+			}
 		}
 		if p.MFARequired != nil {
 			if err := q.SetUserMFARequired(ctx, store.SetUserMFARequiredParams{MfaRequired: boolInt(*p.MFARequired), UpdatedAt: now, ID: id}); err != nil {

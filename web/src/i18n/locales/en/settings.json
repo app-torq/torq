@@ -122,7 +122,11 @@
     "access": {
       "none": "None",
       "view": "View",
-      "edit": "Edit"
+      "edit": "Edit",
+      "origin": {
+        "created": "added it",
+        "shared": "shared by {{name}}"
+      }
     },
     "mfa": "Two-factor",
     "mfaOn": "On",
@@ -294,6 +298,7 @@
       "repairs.write": "Add and edit projects",
       "repairs.delete": "Delete projects",
       "shares.manage": "Manage public links",
+      "vehicle_access.share": "Share own vehicles with other users",
       "history.export": "Export and print the history",
       "vehicles.create": "Add vehicles",
       "categories.manage": "Manage service categories",
@@ -313,7 +318,10 @@
     "requireMfa": "Require two-factor sign-in",
     "requireMfaHint": "Users with this role must set up an authenticator app or a passkey after their next sign-in before they can do anything else.",
     "requireMfaSelf": "This is your role and you have no second factor yet: right after saving you can only set one up.",
-    "adminRole": "The Administrator role always may do everything. Here you can only require two-factor sign-in for it."
+    "adminRole": "The Administrator role always may do everything. Here you can only require two-factor sign-in for it.",
+    "permissionHint": {
+      "vehicle_access.share": "Users can give other users View or Edit on vehicles they may edit themselves, by username. They can’t pass on vehicles shared with them."
+    }
   },
   "security": {
     "title": "Sign-in & security",

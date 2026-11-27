@@ -25,6 +25,9 @@ type Access struct {
 	Perms       map[Permission]bool
 	// Vehicles are the assignments; only used when AllVehicles is false.
 	Vehicles map[int64]Level
+	// Received are the assigned vehicles another user shared with this one;
+	// they can't be shared on (#50).
+	Received map[int64]bool
 	// MFARequired says the role or the user requires a second factor;
 	// MFASetupRequired that one is required and none is set up yet, so the
 	// user may only set one up.
@@ -56,7 +59,39 @@ func (a Access) CanOn(p Permission, vehicleID int64) bool {
 	if v, ok := needsView[p]; ok && !a.Perms[v] {
 		return false
 	}
+	if p == PermVehicleAccessShare {
+		return a.holdsForSharing(vehicleID)
+	}
 	return a.AllVehicles || a.Vehicles[vehicleID] == LevelEdit
+}
+
+// holdsForSharing reports whether the user holds the vehicle in a way that
+// lets them share it, leaving the share permission itself aside: a role that
+// sees all vehicles and may change something on them, or an Edit assignment
+// that didn't come from another user's share.
+func (a Access) holdsForSharing(vehicleID int64) bool {
+	if a.Admin {
+		return true
+	}
+	if a.AllVehicles {
+		for _, info := range Permissions {
+			if info.Scope == ScopeVehicle && changesVehicle(info.Key) && a.CanOn(info.Key, vehicleID) {
+				return true
+			}
+		}
+		return false
+	}
+	return a.Vehicles[vehicleID] == LevelEdit && !a.Received[vehicleID]
+}
+
+// changesVehicle reports whether a per-vehicle permission changes the
+// vehicle's records (unlike exporting, the public link or sharing).
+func changesVehicle(p Permission) bool {
+	switch p {
+	case PermHistoryExport, PermSharesManage, PermVehicleAccessShare:
+		return false
+	}
+	return true
 }
 
 // Scope returns the visible vehicle IDs; all is true when every vehicle is
@@ -139,8 +174,12 @@ func LoadAccess(ctx context.Context, q *store.Queries, u User) (Access, error) {
 		return Access{}, err
 	}
 	a.Vehicles = make(map[int64]Level, len(rows))
+	a.Received = map[int64]bool{}
 	for _, r := range rows {
 		a.Vehicles[r.VehicleID] = Level(r.Level)
+		if r.Origin == OriginShared {
+			a.Received[r.VehicleID] = true
+		}
 	}
 	return a, nil
 }

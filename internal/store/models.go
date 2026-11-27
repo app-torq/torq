@@ -413,6 +413,8 @@ type VehicleAccess struct {
 	VehicleID int64
 	Level     string
 	CreatedAt string
+	Origin    string
+	GrantedBy sql.NullInt64
 }
 
 type VehicleShare struct {

@@ -5,7 +5,7 @@
 openapi: "3.1.0"
 info:
   title: torq API
-  version: "12"
+  version: "13"
   description: |-
     The REST API of torq, a self-hosted vehicle maintenance and DIY repair tracker. It is used by the web app and the torq mobile app.
 
@@ -1783,6 +1783,110 @@ paths:
                         level:
                           type: string
                           description: "view or edit (edit for users who see the vehicle through their role)."
+                        origin:
+                          type:
+                            - string
+                            - "null"
+                          description: "API level 13. How the assignment came about: admin (an administrator assigned it), created (the user added the vehicle) or shared (another user shared it, see granted_by). Null via role."
+                        granted_by:
+                          description: API level 13. The user who shared the vehicle, for origin shared; otherwise null.
+                          oneOf:
+                            - $ref: "#/components/schemas/UserRef"
+                            - type: "null"
+        default:
+          $ref: "#/components/responses/Error"
+  "/vehicles/{id}/shared-with":
+    get:
+      operationId: listSharedWith
+      summary: Users the caller shared the vehicle with
+      description: "API level 13. Only the shares the caller made on this vehicle; works without vehicle_access.share, so a user who lost the permission can still see and take back what they shared."
+      x-torq-access: member
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/SharedWith"
+        default:
+          $ref: "#/components/responses/Error"
+    put:
+      operationId: putSharedWith
+      summary: Share the vehicle with a user, or change the level
+      description: "API level 13. Gives the user named by their exact username (case-insensitive) view or edit access, or changes the level of a share the caller made before. Recipients are active users whose role sees only assigned vehicles. Every recipient that can't receive the vehicle (unknown, disabled, administrator, a role that sees all vehicles, the caller, or someone who holds the vehicle through another assignment) gets the same sharing.refused, so the answer doesn't reveal which accounts exist; repeated refusals answer auth.throttled. Vehicles the caller holds through someone else's share can't be shared on. What edit allows is still decided by the recipient's role."
+      x-torq-access: member
+      x-torq-permission: vehicle_access.share
+      x-torq-error-codes:
+        - sharing.refused
+        - auth.throttled
+        - validation.failed
+        - demo.accounts_locked
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - level
+              properties:
+                username:
+                  type: string
+                level:
+                  type: string
+                  description: view or edit.
+              additionalProperties: false
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - share
+                properties:
+                  share:
+                    $ref: "#/components/schemas/SharedWith"
+        default:
+          $ref: "#/components/responses/Error"
+  "/vehicles/{id}/shared-with/{user_id}":
+    delete:
+      operationId: deleteSharedWith
+      summary: Take back a share
+      description: "API level 13. Ends the share the caller gave this user on the vehicle; not_found if the caller made no such share."
+      x-torq-access: member
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Taken back.
         default:
           $ref: "#/components/responses/Error"
   "/vehicles/{id}/archive":
@@ -6577,7 +6681,48 @@ components:
         level:
           type: string
           description: "view (read only) or edit (the role's per-vehicle permissions apply)."
+        origin:
+          type: string
+          description: "API level 13, read only (ignored in requests). admin, created (the user added the vehicle) or shared (another user shared it, see granted_by). An assignment an administrator adds or whose level they change becomes admin; unchanged ones keep their origin."
+        granted_by:
+          description: API level 13, read only. The user who shared the vehicle, for origin shared; otherwise null.
+          oneOf:
+            - $ref: "#/components/schemas/UserRef"
+            - type: "null"
       additionalProperties: false
+    UserRef:
+      type: object
+      required:
+        - user_id
+        - username
+        - display_name
+      properties:
+        user_id:
+          type: integer
+        username:
+          type: string
+        display_name:
+          type: string
+    SharedWith:
+      type: object
+      required:
+        - user_id
+        - username
+        - display_name
+        - level
+        - created_at
+      properties:
+        user_id:
+          type: integer
+        username:
+          type: string
+        display_name:
+          type: string
+        level:
+          type: string
+          description: view or edit.
+        created_at:
+          type: string
     VehicleAccess:
       type: object
       required:
@@ -7271,6 +7416,16 @@ components:
           description: "The caller's per-vehicle permissions on this vehicle (see x-torq-permission). Empty when they may only read it."
           items:
             type: string
+        shared_by:
+          description: "API level 13. Who shared the vehicle with the caller, when they hold it through another user's share; otherwise null."
+          oneOf:
+            - type: object
+              required:
+                - display_name
+              properties:
+                display_name:
+                  type: string
+            - type: "null"
         archived:
           type: boolean
         avatar_url:

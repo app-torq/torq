@@ -48,6 +48,7 @@ function AccessForm({ user, access, vehicles, onClose }: { user: User; access: V
     Object.fromEntries(access.items.map((a) => [a.vehicle_id, a.level])),
   )
   const [query, setQuery] = useState('')
+  const origins = new Map(access.items.map((a) => [a.vehicle_id, a]))
   const save = useMutation({
     mutationFn: () => api.put(`/users/${user.id}/vehicle-access`, {
       items: Object.entries(choices)
@@ -92,6 +93,7 @@ function AccessForm({ user, access, vehicles, onClose }: { user: User; access: V
               <span className="min-w-0 text-sm text-zinc-100">
                 {name}
                 {v.license_plate && <span className="ml-2 text-xs text-zinc-400">{v.license_plate}</span>}
+                <OriginNote assignment={origins.get(v.id)} />
               </span>
               <div role="radiogroup" aria-label={name} className="inline-flex rounded-md border border-zinc-700 p-0.5">
                 {options.map((o) => (
@@ -119,4 +121,16 @@ function AccessForm({ user, access, vehicles, onClose }: { user: User; access: V
       </div>
     </div>
   )
+}
+
+/** How an assignment came about, when not by an administrator (#50). */
+function OriginNote({ assignment }: { assignment: VehicleAssignment | undefined }) {
+  const { t } = useTranslation('settings')
+  if (assignment?.origin === 'shared' && assignment.granted_by) {
+    return <span className="ml-2 text-xs text-zinc-400">{t('users.access.origin.shared', { name: assignment.granted_by.display_name })}</span>
+  }
+  if (assignment?.origin === 'created') {
+    return <span className="ml-2 text-xs text-zinc-400">{t('users.access.origin.created')}</span>
+  }
+  return null
 }

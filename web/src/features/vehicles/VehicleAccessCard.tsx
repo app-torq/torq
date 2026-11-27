@@ -27,6 +27,10 @@ export function VehicleAccessCard({ vehicle }: { vehicle: Vehicle }) {
               <span className="text-zinc-100">
                 {u.display_name}
                 <span className="ml-2 text-xs text-zinc-400">{u.role_name}</span>
+                {u.origin === 'shared' && u.granted_by && (
+                  <span className="block text-xs text-zinc-400">{t('access.origin.shared', { name: u.granted_by.display_name })}</span>
+                )}
+                {u.origin === 'created' && <span className="block text-xs text-zinc-400">{t('access.origin.created')}</span>}
               </span>
               <Badge tone={u.via === 'role' ? 'zinc' : u.level === 'edit' ? 'sky' : 'amber'}>
                 {u.via === 'role' ? t('access.viaRole') : t(`access.level.${u.level}`)}

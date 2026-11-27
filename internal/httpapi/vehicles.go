@@ -44,16 +44,24 @@ type vehicleJSON struct {
 	ReminderCounts    reminderCounts  `json:"reminder_counts"`
 	// Permissions are the caller's per-vehicle permissions on it.
 	Permissions []auth.Permission `json:"permissions"`
-	CreatedAt   string            `json:"created_at"`
-	UpdatedAt   string            `json:"updated_at"`
+	// SharedBy names who shared the vehicle with the caller, if another user
+	// did (API level 13).
+	SharedBy  *sharedByJSON `json:"shared_by"`
+	CreatedAt string        `json:"created_at"`
+	UpdatedAt string        `json:"updated_at"`
+}
+
+type sharedByJSON struct {
+	DisplayName string `json:"display_name"`
 }
 
 // vehicleExtras are derived values shown on vehicle cards.
 type vehicleExtras struct {
-	counts map[int64]reminderCounts
-	avatar map[int64]string
-	meters map[int64][]store.HourMeter
-	access auth.Access
+	counts  map[int64]reminderCounts
+	avatar  map[int64]string
+	meters  map[int64][]store.HourMeter
+	access  auth.Access
+	sharers map[int64]string
 }
 
 func (s *Server) toVehicleJSON(v store.Vehicle, x vehicleExtras) vehicleJSON {
@@ -69,15 +77,27 @@ func (s *Server) toVehicleJSON(v store.Vehicle, x vehicleExtras) vehicleJSON {
 	if url, ok := x.avatar[v.ID]; ok {
 		out.AvatarURL = &url
 	}
+	if name, ok := x.sharers[v.ID]; ok {
+		out.SharedBy = &sharedByJSON{DisplayName: name}
+	}
 	visibilityFor(x.access).vehicle(&out)
 	return out
 }
 
 // loadVehicleExtras loads reminder counts and avatar URLs for vehicle cards.
 func (s *Server) loadVehicleExtras(ctx context.Context) (vehicleExtras, error) {
-	x := vehicleExtras{counts: map[int64]reminderCounts{}, avatar: map[int64]string{}}
+	x := vehicleExtras{counts: map[int64]reminderCounts{}, avatar: map[int64]string{}, sharers: map[int64]string{}}
 	if u, ok := auth.UserFrom(ctx); ok {
 		x.access = u.Access
+		for id := range u.Access.Received {
+			name, ok, err := s.roles.VehicleSharer(ctx, u.ID, id)
+			if err != nil {
+				return x, err
+			}
+			if ok {
+				x.sharers[id] = name
+			}
+		}
 	}
 	counts, err := s.reminders.CountsByVehicle(ctx)
 	if err != nil {

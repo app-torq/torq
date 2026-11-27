@@ -11,8 +11,8 @@ import (
 )
 
 const addVehicleAccess = `-- name: AddVehicleAccess :exec
-INSERT INTO vehicle_access (user_id, vehicle_id, level, created_at) VALUES (?, ?, ?, ?)
-ON CONFLICT (user_id, vehicle_id) DO UPDATE SET level = excluded.level
+INSERT INTO vehicle_access (user_id, vehicle_id, level, created_at, origin, granted_by) VALUES (?, ?, ?, ?, ?, ?)
+ON CONFLICT (user_id, vehicle_id) DO UPDATE SET level = excluded.level, origin = excluded.origin, granted_by = excluded.granted_by
 `
 
 type AddVehicleAccessParams struct {
@@ -20,6 +20,8 @@ type AddVehicleAccessParams struct {
 	VehicleID int64
 	Level     string
 	CreatedAt string
+	Origin    string
+	GrantedBy sql.NullInt64
 }
 
 func (q *Queries) AddVehicleAccess(ctx context.Context, arg AddVehicleAccessParams) error {
@@ -28,6 +30,8 @@ func (q *Queries) AddVehicleAccess(ctx context.Context, arg AddVehicleAccessPara
 		arg.VehicleID,
 		arg.Level,
 		arg.CreatedAt,
+		arg.Origin,
+		arg.GrantedBy,
 	)
 	return err
 }
@@ -64,33 +68,184 @@ func (q *Queries) CountVehicleAccessByUser(ctx context.Context) ([]CountVehicleA
 	return items, nil
 }
 
-const deleteUserVehicleAccess = `-- name: DeleteUserVehicleAccess :exec
-DELETE FROM vehicle_access WHERE user_id = ?
+const deleteVehicleAccess = `-- name: DeleteVehicleAccess :exec
+DELETE FROM vehicle_access WHERE user_id = ? AND vehicle_id = ?
 `
 
-func (q *Queries) DeleteUserVehicleAccess(ctx context.Context, userID int64) error {
-	_, err := q.db.ExecContext(ctx, deleteUserVehicleAccess, userID)
+type DeleteVehicleAccessParams struct {
+	UserID    int64
+	VehicleID int64
+}
+
+func (q *Queries) DeleteVehicleAccess(ctx context.Context, arg DeleteVehicleAccessParams) error {
+	_, err := q.db.ExecContext(ctx, deleteVehicleAccess, arg.UserID, arg.VehicleID)
 	return err
 }
 
-const listUserVehicleAccess = `-- name: ListUserVehicleAccess :many
-SELECT user_id, vehicle_id, level, created_at FROM vehicle_access WHERE user_id = ? ORDER BY vehicle_id
+const getVehicleAccess = `-- name: GetVehicleAccess :one
+SELECT user_id, vehicle_id, level, created_at, origin, granted_by FROM vehicle_access WHERE user_id = ? AND vehicle_id = ?
 `
 
-func (q *Queries) ListUserVehicleAccess(ctx context.Context, userID int64) ([]VehicleAccess, error) {
+type GetVehicleAccessParams struct {
+	UserID    int64
+	VehicleID int64
+}
+
+func (q *Queries) GetVehicleAccess(ctx context.Context, arg GetVehicleAccessParams) (VehicleAccess, error) {
+	row := q.db.QueryRowContext(ctx, getVehicleAccess, arg.UserID, arg.VehicleID)
+	var i VehicleAccess
+	err := row.Scan(
+		&i.UserID,
+		&i.VehicleID,
+		&i.Level,
+		&i.CreatedAt,
+		&i.Origin,
+		&i.GrantedBy,
+	)
+	return i, err
+}
+
+const getVehicleSharer = `-- name: GetVehicleSharer :one
+SELECT g.display_name
+FROM vehicle_access a
+JOIN users g ON g.id = a.granted_by
+WHERE a.user_id = ? AND a.vehicle_id = ? AND a.origin = 'shared'
+`
+
+type GetVehicleSharerParams struct {
+	UserID    int64
+	VehicleID int64
+}
+
+// Who shared the vehicle with the user, if it came through a share.
+func (q *Queries) GetVehicleSharer(ctx context.Context, arg GetVehicleSharerParams) (string, error) {
+	row := q.db.QueryRowContext(ctx, getVehicleSharer, arg.UserID, arg.VehicleID)
+	var display_name string
+	err := row.Scan(&display_name)
+	return display_name, err
+}
+
+const listAllShares = `-- name: ListAllShares :many
+SELECT user_id, vehicle_id, granted_by FROM vehicle_access WHERE origin = 'shared' ORDER BY granted_by
+`
+
+type ListAllSharesRow struct {
+	UserID    int64
+	VehicleID int64
+	GrantedBy sql.NullInt64
+}
+
+func (q *Queries) ListAllShares(ctx context.Context) ([]ListAllSharesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listAllShares)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListAllSharesRow{}
+	for rows.Next() {
+		var i ListAllSharesRow
+		if err := rows.Scan(&i.UserID, &i.VehicleID, &i.GrantedBy); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSharesBy = `-- name: ListSharesBy :many
+SELECT a.user_id, a.level, a.created_at, u.username, u.display_name
+FROM vehicle_access a
+JOIN users u ON u.id = a.user_id
+WHERE a.origin = 'shared' AND a.granted_by = ? AND a.vehicle_id = ?
+ORDER BY u.username COLLATE NOCASE
+`
+
+type ListSharesByParams struct {
+	GrantedBy sql.NullInt64
+	VehicleID int64
+}
+
+type ListSharesByRow struct {
+	UserID      int64
+	Level       string
+	CreatedAt   string
+	Username    string
+	DisplayName string
+}
+
+// Shares a user made on a vehicle.
+func (q *Queries) ListSharesBy(ctx context.Context, arg ListSharesByParams) ([]ListSharesByRow, error) {
+	rows, err := q.db.QueryContext(ctx, listSharesBy, arg.GrantedBy, arg.VehicleID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListSharesByRow{}
+	for rows.Next() {
+		var i ListSharesByRow
+		if err := rows.Scan(
+			&i.UserID,
+			&i.Level,
+			&i.CreatedAt,
+			&i.Username,
+			&i.DisplayName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUserVehicleAccess = `-- name: ListUserVehicleAccess :many
+SELECT a.user_id, a.vehicle_id, a.level, a.created_at, a.origin, a.granted_by,
+       g.username AS granter_username, g.display_name AS granter_display_name
+FROM vehicle_access a
+LEFT JOIN users g ON g.id = a.granted_by
+WHERE a.user_id = ? ORDER BY a.vehicle_id
+`
+
+type ListUserVehicleAccessRow struct {
+	UserID             int64
+	VehicleID          int64
+	Level              string
+	CreatedAt          string
+	Origin             string
+	GrantedBy          sql.NullInt64
+	GranterUsername    sql.NullString
+	GranterDisplayName sql.NullString
+}
+
+func (q *Queries) ListUserVehicleAccess(ctx context.Context, userID int64) ([]ListUserVehicleAccessRow, error) {
 	rows, err := q.db.QueryContext(ctx, listUserVehicleAccess, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []VehicleAccess{}
+	items := []ListUserVehicleAccessRow{}
 	for rows.Next() {
-		var i VehicleAccess
+		var i ListUserVehicleAccessRow
 		if err := rows.Scan(
 			&i.UserID,
 			&i.VehicleID,
 			&i.Level,
 			&i.CreatedAt,
+			&i.Origin,
+			&i.GrantedBy,
+			&i.GranterUsername,
+			&i.GranterDisplayName,
 		); err != nil {
 			return nil, err
 		}
@@ -108,23 +263,30 @@ func (q *Queries) ListUserVehicleAccess(ctx context.Context, userID int64) ([]Ve
 const listVehicleAccessUsers = `-- name: ListVehicleAccessUsers :many
 SELECT u.id, u.username, u.display_name, u.role_id, r.builtin_key, r.custom_name,
        CAST(CASE WHEN r.all_vehicles = 1 THEN 'role' ELSE 'assignment' END AS TEXT) AS via,
-       CAST(CASE WHEN r.all_vehicles = 1 THEN 'edit' ELSE a.level END AS TEXT) AS level
+       CAST(CASE WHEN r.all_vehicles = 1 THEN 'edit' ELSE a.level END AS TEXT) AS level,
+       CAST(CASE WHEN r.all_vehicles = 1 THEN '' ELSE a.origin END AS TEXT) AS origin,
+       a.granted_by, g.username AS granter_username, g.display_name AS granter_display_name
 FROM users u
 JOIN roles r ON r.id = u.role_id
 LEFT JOIN vehicle_access a ON a.user_id = u.id AND a.vehicle_id = ?1
+LEFT JOIN users g ON g.id = a.granted_by AND r.all_vehicles = 0
 WHERE u.disabled_at IS NULL AND (r.all_vehicles = 1 OR a.vehicle_id IS NOT NULL)
 ORDER BY u.username COLLATE NOCASE
 `
 
 type ListVehicleAccessUsersRow struct {
-	ID          int64
-	Username    string
-	DisplayName string
-	RoleID      sql.NullInt64
-	BuiltinKey  sql.NullString
-	CustomName  sql.NullString
-	Via         string
-	Level       string
+	ID                 int64
+	Username           string
+	DisplayName        string
+	RoleID             sql.NullInt64
+	BuiltinKey         sql.NullString
+	CustomName         sql.NullString
+	Via                string
+	Level              string
+	Origin             string
+	GrantedBy          sql.NullInt64
+	GranterUsername    sql.NullString
+	GranterDisplayName sql.NullString
 }
 
 // Active users who see the vehicle: through a role that sees all vehicles,
@@ -147,6 +309,10 @@ func (q *Queries) ListVehicleAccessUsers(ctx context.Context, vehicleID int64) (
 			&i.CustomName,
 			&i.Via,
 			&i.Level,
+			&i.Origin,
+			&i.GrantedBy,
+			&i.GranterUsername,
+			&i.GranterDisplayName,
 		); err != nil {
 			return nil, err
 		}
@@ -159,4 +325,20 @@ func (q *Queries) ListVehicleAccessUsers(ctx context.Context, vehicleID int64) (
 		return nil, err
 	}
 	return items, nil
+}
+
+const setVehicleAccessLevel = `-- name: SetVehicleAccessLevel :exec
+UPDATE vehicle_access SET level = ?, origin = 'admin', granted_by = NULL WHERE user_id = ? AND vehicle_id = ?
+`
+
+type SetVehicleAccessLevelParams struct {
+	Level     string
+	UserID    int64
+	VehicleID int64
+}
+
+// An administrator's change makes the assignment theirs.
+func (q *Queries) SetVehicleAccessLevel(ctx context.Context, arg SetVehicleAccessLevelParams) error {
+	_, err := q.db.ExecContext(ctx, setVehicleAccessLevel, arg.Level, arg.UserID, arg.VehicleID)
+	return err
 }

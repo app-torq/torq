@@ -154,6 +154,7 @@ function RoleDialog({ role, permissions, onClose }: { role: Role | null; permiss
           <div key={p.key}>
             <Checkbox label={t(`roles.permission.${p.key}`, { defaultValue: p.key })} checked={granted.includes(p.key)} onChange={(on) => { toggle(p.key, on) }} />
             {view && <p className="ml-6 text-xs text-zinc-500">{t('roles.needsView', { permission: t(`roles.permission.${view}`) })}</p>}
+            {p.key === 'vehicle_access.share' && <p className="ml-6 text-xs text-zinc-500">{t('roles.permissionHint.vehicle_access.share')}</p>}
           </div>
         )
       })}

@@ -12,11 +12,12 @@ import { canOn, useCan, useIsAdmin } from '../../lib/permissions'
 import { vehicleName, type ListResponse, type OdometerReading } from '../../lib/types'
 import { Button } from '../../components/Button'
 import { ConfirmDialog } from '../../components/Dialog'
-import { Card, DefinitionList, ErrorBanner, Table } from '../../components/ui'
+import { Card, DefinitionList, ErrorBanner, Notice, Table } from '../../components/ui'
 import { invalidateOdometerDependents } from './hooks'
 import { OdometerQuickUpdate } from './OdometerQuickUpdate'
 import { VehicleQrCard } from './VehicleQrCard'
 import { VehicleAccessCard } from './VehicleAccessCard'
+import { SharedWithCard } from './SharedWithCard'
 import { AddHourMeter, HourMeterCard } from './HourMeterCard'
 import { useVehicleContext } from './VehicleDetailLayout'
 
@@ -55,6 +56,11 @@ export function VehicleOverview() {
   const none = t('common:state.none')
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      {v.shared_by && (
+        <div className="lg:col-span-2">
+          <Notice>{t('sharedWith.sharedByYou', { name: v.shared_by.display_name })}</Notice>
+        </div>
+      )}
       <Card title={t('details')}>
         <DefinitionList
           items={[
@@ -106,7 +112,7 @@ export function VehicleOverview() {
       {v.hour_meters.map((m) => <HourMeterCard key={m.id} vehicle={v} meter={m} />)}
       {v.has_odometer && v.hour_meters.length === 0 && !v.archived && canEdit && <AddHourMeter vehicle={v} />}
       <VehicleQrCard vehicle={v} />
-      {isAdmin && <VehicleAccessCard vehicle={v} />}
+      {isAdmin ? <VehicleAccessCard vehicle={v} /> : <SharedWithCard vehicle={v} />}
       {(canEdit || canDelete) && (
       <Card className="lg:col-span-2">
         <div className="flex flex-wrap items-center justify-between gap-3">

@@ -53,6 +53,7 @@ func TestDemoModeLocksAccountsAndWebhooks(t *testing.T) {
 		{http.MethodDelete, "/settings/instance/logo", nil, brandingLocked},
 		{http.MethodPut, "/vehicles/1/share", map[string]any{}, sharesLocked},
 		{http.MethodPost, "/vehicles/1/share/renew", nil, sharesLocked},
+		{http.MethodPut, "/vehicles/1/shared-with", map[string]any{"username": "lena", "level": "view"}, accountsLocked},
 	}
 	for _, c := range locked {
 		if code := adm.errorCode(c.method, c.path, c.body, http.StatusForbidden); code != c.code {

@@ -53,7 +53,8 @@ func TestRolesKeepExistingBehavior(t *testing.T) {
 	}
 	member := e.login("anna", testPassword)
 	member.call(http.MethodGet, "/auth/me", nil, http.StatusOK, &me)
-	if slices.Contains(*me.User.Permissions, auth.PermCatalogUpdate) || len(*me.User.Permissions) != len(auth.Permissions)-1 {
+	if slices.Contains(*me.User.Permissions, auth.PermCatalogUpdate) || slices.Contains(*me.User.Permissions, auth.PermVehicleAccessShare) ||
+		len(*me.User.Permissions) != len(auth.Permissions)-2 {
 		t.Fatalf("member permissions %v", *me.User.Permissions)
 	}
 	v := createVehicle(t, member, 1000)
@@ -138,7 +139,7 @@ func TestRoleManagement(t *testing.T) {
 		t.Fatalf("renamed %+v", helper.Role)
 	}
 	adm.call(http.MethodPatch, "/roles/"+itoa(member.ID), map[string]any{"name": nil}, http.StatusOK, &helper)
-	if helper.Role.Name != "Member" || helper.Role.CustomName != nil || len(helper.Role.Permissions) != len(auth.Permissions)-1 {
+	if helper.Role.Name != "Member" || helper.Role.CustomName != nil || len(helper.Role.Permissions) != len(auth.Permissions)-2 {
 		t.Fatalf("reset %+v", helper.Role)
 	}
 
@@ -197,7 +198,7 @@ func TestVehicleAccessAssignments(t *testing.T) {
 
 	var vs listResponse[vehicleJSON]
 	scoped.call(http.MethodGet, "/vehicles", nil, http.StatusOK, &vs)
-	if len(vs.Items) != 1 || vs.Items[0].ID != a.vehicle || len(vs.Items[0].Permissions) != 10 {
+	if len(vs.Items) != 1 || vs.Items[0].ID != a.vehicle || len(vs.Items[0].Permissions) != 11 {
 		t.Fatalf("scoped vehicles %+v", vs.Items)
 	}
 	viewOnly.call(http.MethodGet, "/vehicles", nil, http.StatusOK, &vs)
@@ -286,7 +287,7 @@ func TestVehicleAccessAssignments(t *testing.T) {
 	}
 	var own vehicleResp
 	scoped.call(http.MethodPost, "/vehicles", map[string]any{"make": "Own", "model": "Car", "current_odometer_km": 1}, http.StatusCreated, &own)
-	if len(own.Vehicle.Permissions) != 10 {
+	if len(own.Vehicle.Permissions) != 11 {
 		t.Fatalf("own vehicle permissions %v", own.Vehicle.Permissions)
 	}
 	scoped.call(http.MethodPatch, "/vehicles/"+itoa(own.Vehicle.ID), map[string]any{"chassis_code": "X1"}, http.StatusOK, nil)

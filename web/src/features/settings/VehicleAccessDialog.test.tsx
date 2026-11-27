@@ -11,7 +11,10 @@ function respond(allVehicles = false) {
   return vi.spyOn(globalThis, 'fetch').mockImplementation((url) => {
     const body = (typeof url === 'string' ? url : '').startsWith('/api/v1/vehicles')
       ? { items: [vehicle(1, 'Alpha'), vehicle(2, 'Bravo'), vehicle(3, 'Charlie')], total: 3 }
-      : { all_vehicles: allVehicles, items: [{ vehicle_id: 1, level: 'edit' }] }
+      : { all_vehicles: allVehicles, items: [
+          { vehicle_id: 1, level: 'edit', origin: 'admin', granted_by: null },
+          { vehicle_id: 3, level: 'view', origin: 'shared', granted_by: { user_id: 9, username: 'olga', display_name: 'Olga' } },
+        ] }
     return Promise.resolve(new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } }))
   })
 }
@@ -29,7 +32,13 @@ describe('VehicleAccessDialog', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
     const put = fetchSpy.mock.calls.find(([, init]) => init?.method === 'PUT')
     expect(put?.[0]).toBe('/api/v1/users/7/vehicle-access')
-    expect(JSON.parse(put?.[1]?.body as string)).toEqual({ items: [{ vehicle_id: 2, level: 'view' }] })
+    expect(JSON.parse(put?.[1]?.body as string)).toEqual({ items: [{ vehicle_id: 2, level: 'view' }, { vehicle_id: 3, level: 'view' }] })
+  })
+
+  it('names who shared a vehicle', async () => {
+    respond()
+    renderWithApp(<VehicleAccessDialog user={user} onClose={() => undefined} />)
+    expect(await screen.findByText('shared by Olga')).toBeInTheDocument()
   })
 
   it('says when the role sees every vehicle anyway', async () => {
