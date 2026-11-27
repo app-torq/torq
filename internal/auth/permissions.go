@@ -20,11 +20,14 @@ const (
 	PermRepairsWrite      Permission = "repairs.write"
 	PermRepairsDelete     Permission = "repairs.delete"
 	PermSharesManage      Permission = "shares.manage"
-	PermHistoryExport     Permission = "history.export"
-	PermVehiclesCreate    Permission = "vehicles.create"
-	PermCategoriesManage  Permission = "categories.manage"
-	PermRepairListsManage Permission = "repair_lists.manage"
-	PermCatalogUpdate     Permission = "catalog.update"
+	// PermVehicleAccessShare lets users give other users access to vehicles
+	// they hold themselves (#50); see Access.CanOn.
+	PermVehicleAccessShare Permission = "vehicle_access.share"
+	PermHistoryExport      Permission = "history.export"
+	PermVehiclesCreate     Permission = "vehicles.create"
+	PermCategoriesManage   Permission = "categories.manage"
+	PermRepairListsManage  Permission = "repair_lists.manage"
+	PermCatalogUpdate      Permission = "catalog.update"
 
 	// What a role sees within the vehicles it sees (#49). Administrators
 	// see everything.
@@ -65,6 +68,7 @@ var Permissions = []PermissionInfo{
 	{PermRepairsWrite, ScopeVehicle},
 	{PermRepairsDelete, ScopeVehicle},
 	{PermSharesManage, ScopeVehicle},
+	{PermVehicleAccessShare, ScopeVehicle},
 	{PermHistoryExport, ScopeVehicle},
 	{PermVehiclesCreate, ScopeGarage},
 	{PermCategoriesManage, ScopeGarage},

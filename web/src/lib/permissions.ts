@@ -4,7 +4,7 @@ import type { Permission, User, Vehicle } from './types'
 /** Per-vehicle permissions, in the order role editors show them. */
 export const vehiclePermissions: Permission[] = [
   'vehicles.edit', 'vehicles.delete', 'specs.edit', 'service_logs.write', 'service_logs.delete',
-  'reminders.write', 'repairs.write', 'repairs.delete', 'shares.manage', 'history.export',
+  'reminders.write', 'repairs.write', 'repairs.delete', 'shares.manage', 'vehicle_access.share', 'history.export',
 ]
 
 /** Garage-wide permissions. */

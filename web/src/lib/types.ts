@@ -18,7 +18,7 @@ export type LegacyRole = 'admin' | 'member'
  */
 export type Permission =
   | 'vehicles.edit' | 'vehicles.delete' | 'specs.edit' | 'service_logs.write' | 'service_logs.delete'
-  | 'reminders.write' | 'repairs.write' | 'repairs.delete' | 'shares.manage' | 'history.export'
+  | 'reminders.write' | 'repairs.write' | 'repairs.delete' | 'shares.manage' | 'vehicle_access.share' | 'history.export'
   | 'vehicles.create' | 'categories.manage' | 'repair_lists.manage' | 'catalog.update'
   | 'costs.view' | 'service_logs.view' | 'repairs.view' | 'reminders.view' | 'reports.view'
   | 'attachments.view' | 'notes.view' | 'vehicle_ids.view'
@@ -69,9 +69,31 @@ export interface PermissionInfo {
 
 export type AccessLevel = 'view' | 'edit'
 
+/** How an assignment came about (API level 13). */
+export type AssignmentOrigin = 'admin' | 'created' | 'shared'
+
+export interface UserRef {
+  user_id: number
+  username: string
+  display_name: string
+}
+
 export interface VehicleAssignment {
   vehicle_id: number
   level: AccessLevel
+  /** Read only; the server ignores it on save. */
+  origin?: AssignmentOrigin
+  /** Who shared the vehicle, for origin shared. */
+  granted_by?: UserRef | null
+}
+
+/** A user the signed-in user shared a vehicle with. */
+export interface SharedWith {
+  user_id: number
+  username: string
+  display_name: string
+  level: AccessLevel
+  created_at: string
 }
 
 /** A user who can see a vehicle, and how (admin overview). */
@@ -83,6 +105,9 @@ export interface VehicleUser {
   role_name: string
   via: 'role' | 'assignment'
   level: AccessLevel
+  /** null via role (API level 13). */
+  origin?: AssignmentOrigin | null
+  granted_by?: UserRef | null
 }
 
 /** Format and unit preferences; also the instance defaults for new users. */
@@ -318,6 +343,8 @@ export interface Vehicle {
   updated_at: string
   /** The signed-in user's per-vehicle permissions on it; empty when read only. */
   permissions: Permission[]
+  /** Who shared the vehicle with the signed-in user, if another user did (API level 13). */
+  shared_by?: { display_name: string } | null
 }
 
 export interface KbaVariant {

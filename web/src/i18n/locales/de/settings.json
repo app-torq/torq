@@ -122,7 +122,11 @@
     "access": {
       "none": "Keine",
       "view": "Ansehen",
-      "edit": "Bearbeiten"
+      "edit": "Bearbeiten",
+      "origin": {
+        "created": "selbst angelegt",
+        "shared": "geteilt von {{name}}"
+      }
     },
     "mfa": "Zwei-Faktor",
     "mfaOn": "An",
@@ -294,6 +298,7 @@
       "repairs.write": "Projekte anlegen und bearbeiten",
       "repairs.delete": "Projekte löschen",
       "shares.manage": "Öffentliche Links verwalten",
+      "vehicle_access.share": "Eigene Fahrzeuge mit anderen Benutzern teilen",
       "history.export": "Historie exportieren und drucken",
       "vehicles.create": "Fahrzeuge hinzufügen",
       "categories.manage": "Servicekategorien verwalten",
@@ -313,7 +318,10 @@
     "requireMfa": "Zwei-Faktor-Anmeldung verlangen",
     "requireMfaHint": "Benutzer mit dieser Rolle müssen nach ihrer nächsten Anmeldung eine Authenticator-App oder einen Passkey einrichten, bevor sie etwas anderes tun können.",
     "requireMfaSelf": "Das ist deine Rolle und du hast noch keinen zweiten Faktor: Direkt nach dem Speichern kannst du nur noch einen einrichten.",
-    "adminRole": "Die Rolle Administrator darf immer alles. Hier kannst du für sie nur die Zwei-Faktor-Anmeldung verlangen."
+    "adminRole": "Die Rolle Administrator darf immer alles. Hier kannst du für sie nur die Zwei-Faktor-Anmeldung verlangen.",
+    "permissionHint": {
+      "vehicle_access.share": "Benutzer können anderen Benutzern per Benutzername „Ansehen“ oder „Bearbeiten“ für Fahrzeuge geben, die sie selbst bearbeiten dürfen. Mit ihnen geteilte Fahrzeuge können sie nicht weitergeben."
+    }
   },
   "security": {
     "title": "Anmeldung & Sicherheit",

@@ -71,3 +71,26 @@ func TestChangeNeedsView(t *testing.T) {
 		t.Errorf("view permissions %v", ViewPermissions())
 	}
 }
+
+func TestCanShare(t *testing.T) {
+	share := map[Permission]bool{PermVehicleAccessShare: true, PermVehiclesEdit: true}
+	scoped := Access{Perms: share, Vehicles: map[int64]Level{1: LevelEdit, 2: LevelView, 3: LevelEdit}, Received: map[int64]bool{3: true}}
+	for id, want := range map[int64]bool{1: true, 2: false, 3: false, 4: false} {
+		if got := scoped.CanOn(PermVehicleAccessShare, id); got != want {
+			t.Errorf("assigned vehicle %d: %v, want %v", id, got, want)
+		}
+	}
+	if (Access{Perms: map[Permission]bool{PermVehiclesEdit: true}, Vehicles: map[int64]Level{1: LevelEdit}}).CanOn(PermVehicleAccessShare, 1) {
+		t.Error("shares without the permission")
+	}
+	if !(Access{AllVehicles: true, Perms: share}).CanOn(PermVehicleAccessShare, 9) {
+		t.Error("all-vehicles role with edit can't share")
+	}
+	exportOnly := Access{AllVehicles: true, Perms: map[Permission]bool{PermVehicleAccessShare: true, PermHistoryExport: true, PermSharesManage: true}}
+	if exportOnly.CanOn(PermVehicleAccessShare, 9) {
+		t.Error("all-vehicles role without a change permission shares")
+	}
+	if !(Access{Admin: true}).CanOn(PermVehicleAccessShare, 9) {
+		t.Error("admin can't share")
+	}
+}

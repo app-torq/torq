@@ -230,6 +230,24 @@
       "view": "Ansehen",
       "edit": "Bearbeiten"
     },
-    "manage": "Benutzer und Zugriff verwalten"
+    "manage": "Benutzer und Zugriff verwalten",
+    "origin": {
+      "created": "Hat das Fahrzeug angelegt",
+      "shared": "Geteilt von {{name}}"
+    }
+  },
+  "sharedWith": {
+    "title": "Geteilt mit",
+    "intro": "Gib anderen Benutzern dieser torq-Instanz Zugriff auf dieses Fahrzeug. Was sie ändern dürfen, hängt auch von ihrer Rolle ab.",
+    "username": "Benutzername",
+    "usernameHint": "Der genaue Benutzername; frag die Person danach.",
+    "level": "Zugriff",
+    "add": "Teilen",
+    "empty": "Noch mit niemandem geteilt.",
+    "remove": "Zurücknehmen",
+    "removeLabel": "Von {{name}} zurücknehmen",
+    "levelLabel": "Zugriff für {{name}}",
+    "noPermission": "Deine Rolle erlaubt das Teilen nicht mehr. Was du geteilt hast, kannst du weiterhin zurücknehmen.",
+    "sharedByYou": "Mit dir geteilt von {{name}}"
   }
 }

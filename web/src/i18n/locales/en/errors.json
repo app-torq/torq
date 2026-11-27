@@ -163,5 +163,8 @@
     "unavailable": "Passkeys need the server address (TORQ_BASE_URL) to be set.",
     "invalid": "The passkey couldn't be verified.",
     "verification_required": "This passkey can't sign in without a password because it doesn't verify you (PIN or biometrics)."
+  },
+  "sharing": {
+    "refused": "This vehicle can’t be shared with this user. Check the username."
   }
 }

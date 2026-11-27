@@ -142,6 +142,23 @@ func (s *Server) deleteRole(w http.ResponseWriter, r *http.Request) error {
 type assignmentJSON struct {
 	VehicleID int64      `json:"vehicle_id"`
 	Level     auth.Level `json:"level"`
+	// Origin and GrantedBy say how the assignment came about (API level 13);
+	// requests ignore them.
+	Origin    string       `json:"origin"`
+	GrantedBy *userRefJSON `json:"granted_by"`
+}
+
+type userRefJSON struct {
+	UserID      int64  `json:"user_id"`
+	Username    string `json:"username"`
+	DisplayName string `json:"display_name"`
+}
+
+func toUserRefJSON(u *auth.UserRef) *userRefJSON {
+	if u == nil {
+		return nil
+	}
+	return &userRefJSON{UserID: u.UserID, Username: u.Username, DisplayName: u.DisplayName}
 }
 
 func (s *Server) writeVehicleAccess(w http.ResponseWriter, r *http.Request, userID int64, items []auth.Assignment) error {
@@ -155,7 +172,7 @@ func (s *Server) writeVehicleAccess(w http.ResponseWriter, r *http.Request, user
 	}
 	out := make([]assignmentJSON, 0, len(items))
 	for _, it := range items {
-		out = append(out, assignmentJSON{VehicleID: it.VehicleID, Level: it.Level})
+		out = append(out, assignmentJSON{VehicleID: it.VehicleID, Level: it.Level, Origin: it.Origin, GrantedBy: toUserRefJSON(it.GrantedBy)})
 	}
 	all := role.AllVehicles == 1 || role.IsAdmin()
 	writeJSON(w, http.StatusOK, map[string]any{"all_vehicles": all, "items": out})
@@ -204,6 +221,9 @@ type vehicleUserJSON struct {
 	RoleName    string     `json:"role_name"`
 	Via         string     `json:"via"`
 	Level       auth.Level `json:"level"`
+	// Origin is null for users who see the vehicle through their role.
+	Origin    *string      `json:"origin"`
+	GrantedBy *userRefJSON `json:"granted_by"`
 }
 
 // listVehicleUsers lists who can see a vehicle and how (administrators only).
@@ -222,10 +242,15 @@ func (s *Server) listVehicleUsers(w http.ResponseWriter, r *http.Request) error 
 	locale := currentUser(r).Prefs.Locale
 	items := make([]vehicleUserJSON, 0, len(rows))
 	for _, u := range rows {
-		items = append(items, vehicleUserJSON{
+		item := vehicleUserJSON{
 			UserID: u.UserID, Username: u.Username, DisplayName: u.DisplayName,
 			RoleID: u.Role.ID, RoleName: auth.RoleName(u.Role, locale), Via: u.Via, Level: u.Level,
-		})
+			GrantedBy: toUserRefJSON(u.GrantedBy),
+		}
+		if u.Via == "assignment" {
+			item.Origin = &u.Origin
+		}
+		items = append(items, item)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": items})
 	return nil

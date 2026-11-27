@@ -302,6 +302,9 @@ func (s *Roles) Update(ctx context.Context, id int64, in RoleInput) (RoleInfo, e
 				return err
 			}
 		}
+		if err := pruneShares(ctx, q); err != nil {
+			return err
+		}
 		out, err = loadRole(ctx, q, id)
 		return err
 	})
@@ -347,7 +350,10 @@ func (s *Roles) Delete(ctx context.Context, id int64, moveTo *int64) error {
 				return err
 			}
 		}
-		return q.DeleteRole(ctx, id)
+		if err := q.DeleteRole(ctx, id); err != nil {
+			return err
+		}
+		return pruneShares(ctx, q)
 	})
 }
 
@@ -359,10 +365,34 @@ func legacyRole(r store.Role) Role {
 	return RoleMember
 }
 
-// Assignment gives a user access to one vehicle.
+// Origins of a vehicle assignment (#50).
+const (
+	OriginAdmin   = "admin"   // an administrator assigned it
+	OriginCreated = "created" // the user added the vehicle
+	OriginShared  = "shared"  // another user shared it
+)
+
+// UserRef names a user in responses.
+type UserRef struct {
+	UserID      int64
+	Username    string
+	DisplayName string
+}
+
+// Assignment gives a user access to one vehicle. Origin and GrantedBy are
+// read only: SetVehicleAccess ignores them.
 type Assignment struct {
 	VehicleID int64
 	Level     Level
+	Origin    string
+	GrantedBy *UserRef
+}
+
+func granter(id sql.NullInt64, username, displayName sql.NullString) *UserRef {
+	if !id.Valid {
+		return nil
+	}
+	return &UserRef{UserID: id.Int64, Username: username.String, DisplayName: displayName.String}
 }
 
 // VehicleAccess returns the user's vehicle assignments.
@@ -379,12 +409,17 @@ func (s *Roles) VehicleAccess(ctx context.Context, userID int64) ([]Assignment, 
 	}
 	out := make([]Assignment, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, Assignment{VehicleID: r.VehicleID, Level: Level(r.Level)})
+		out = append(out, Assignment{
+			VehicleID: r.VehicleID, Level: Level(r.Level), Origin: r.Origin,
+			GrantedBy: granter(r.GrantedBy, r.GranterUsername, r.GranterDisplayName),
+		})
 	}
 	return out, nil
 }
 
-// SetVehicleAccess replaces the user's vehicle assignments.
+// SetVehicleAccess replaces the user's vehicle assignments. Assignments left
+// unchanged keep their origin; added or changed ones become the
+// administrator's. Shares that lose their footing are removed afterwards.
 func (s *Roles) SetVehicleAccess(ctx context.Context, userID int64, items []Assignment) ([]Assignment, error) {
 	err := s.DB.WithTx(ctx, func(tx *sql.Tx) error {
 		q := store.New(tx)
@@ -415,18 +450,35 @@ func (s *Roles) SetVehicleAccess(ctx context.Context, userID int64, items []Assi
 		if err := v.Err(); err != nil {
 			return err
 		}
-		if err := q.DeleteUserVehicleAccess(ctx, userID); err != nil {
+		current, err := q.ListUserVehicleAccess(ctx, userID)
+		if err != nil {
 			return err
+		}
+		have := make(map[int64]Level, len(current))
+		for _, c := range current {
+			have[c.VehicleID] = Level(c.Level)
+			if !seen[c.VehicleID] {
+				if err := q.DeleteVehicleAccess(ctx, store.DeleteVehicleAccessParams{UserID: userID, VehicleID: c.VehicleID}); err != nil {
+					return err
+				}
+			}
 		}
 		now := clock.Timestamp(s.Clock.Now())
 		for _, it := range items {
-			if err := q.AddVehicleAccess(ctx, store.AddVehicleAccessParams{
-				UserID: userID, VehicleID: it.VehicleID, Level: string(it.Level), CreatedAt: now,
-			}); err != nil {
+			level, ok := have[it.VehicleID]
+			switch {
+			case !ok:
+				err = q.AddVehicleAccess(ctx, store.AddVehicleAccessParams{
+					UserID: userID, VehicleID: it.VehicleID, Level: string(it.Level), CreatedAt: now, Origin: OriginAdmin,
+				})
+			case level != it.Level:
+				err = q.SetVehicleAccessLevel(ctx, store.SetVehicleAccessLevelParams{Level: string(it.Level), UserID: userID, VehicleID: it.VehicleID})
+			}
+			if err != nil {
 				return err
 			}
 		}
-		return nil
+		return pruneShares(ctx, q)
 	})
 	if err != nil {
 		return nil, err
@@ -438,7 +490,7 @@ func (s *Roles) SetVehicleAccess(ctx context.Context, userID int64, items []Assi
 // inside the transaction that created it.
 func GrantVehicle(ctx context.Context, tx *sql.Tx, now string, userID, vehicleID int64) error {
 	return store.New(tx).AddVehicleAccess(ctx, store.AddVehicleAccessParams{
-		UserID: userID, VehicleID: vehicleID, Level: string(LevelEdit), CreatedAt: now,
+		UserID: userID, VehicleID: vehicleID, Level: string(LevelEdit), CreatedAt: now, Origin: OriginCreated,
 	})
 }
 
@@ -463,6 +515,8 @@ type VehicleUser struct {
 	Role        store.Role
 	Via         string // role or assignment
 	Level       Level
+	Origin      string   // for assignments: OriginAdmin, OriginCreated or OriginShared
+	GrantedBy   *UserRef // for shares: who shared it
 }
 
 // VehicleUsers lists the active users who can see the vehicle.
@@ -473,11 +527,15 @@ func (s *Roles) VehicleUsers(ctx context.Context, vehicleID int64) ([]VehicleUse
 	}
 	out := make([]VehicleUser, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, VehicleUser{
+		u := VehicleUser{
 			UserID: r.ID, Username: r.Username, DisplayName: r.DisplayName,
 			Role: store.Role{ID: r.RoleID.Int64, BuiltinKey: r.BuiltinKey, CustomName: r.CustomName},
-			Via:  r.Via, Level: Level(r.Level),
-		})
+			Via:  r.Via, Level: Level(r.Level), Origin: r.Origin,
+		}
+		if r.Via == "assignment" {
+			u.GrantedBy = granter(r.GrantedBy, r.GranterUsername, r.GranterDisplayName)
+		}
+		out = append(out, u)
 	}
 	return out, nil
 }

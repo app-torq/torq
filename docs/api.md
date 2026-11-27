@@ -255,6 +255,29 @@ all eight.
   `id` is new. Share link options for costs, VIN and plate answer `403 auth.forbidden` without the
   matching permission.
 
+### Sharing vehicles (API level 13)
+
+Users whose role has the per-vehicle permission `vehicle_access.share` can give other users access to a
+vehicle themselves. No role has it after the update; administrators grant it in the role editor.
+
+- **Who may share:** the vehicle's `permissions` contain `vehicle_access.share` when the caller may share it:
+  an Edit assignment that didn't come from another user's share (no passing on), or a role that sees all
+  vehicles and may change something on them.
+- **Sharing:** `PUT /vehicles/{id}/shared-with` with `{"username": "…", "level": "view" | "edit"}` creates
+  the caller's share or changes its level. The username is matched exactly (case-insensitive); there is no
+  way for non-administrators to list or search users. Recipients are active users whose role sees only
+  assigned vehicles. Every other recipient (unknown, disabled, administrator, all-vehicles role, the caller,
+  or someone who already holds the vehicle through another assignment) gets the same
+  `422 sharing.refused`; repeated refusals answer `429 auth.throttled`. What Edit allows is still decided by
+  the recipient's role.
+- **Listing and taking back:** `GET /vehicles/{id}/shared-with` lists only the caller's shares on the
+  vehicle, `DELETE /vehicles/{id}/shared-with/{user_id}` ends one. Both work after the caller lost the
+  permission. A share ends by itself when the sharer no longer holds the vehicle as above or is deleted.
+- **Origin:** assignments in `GET/PUT /users/{id}/vehicle-access` and `GET /vehicles/{id}/access` carry
+  `origin` (`admin`, `created`, `shared`) and `granted_by`. An assignment an administrator adds or whose
+  level they change becomes `admin`; unchanged ones keep their origin. Vehicles carry `shared_by` for the
+  user they were shared with.
+
 ## Errors
 
 Errors are JSON with a dotted code and never prose, so each client translates them:

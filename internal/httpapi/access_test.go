@@ -12,6 +12,8 @@ import (
 // garageFixture is one vehicle with a record of every kind.
 type garageFixture struct {
 	vehicle, meter, entry, entryFile, log, logFile, reminder, repair, part, repairFile int64
+	// sharee is a user the vehicle can be shared with (set by accessUsers).
+	sharee int64
 }
 
 // buildVehicle creates a vehicle whose records all carry name, so tests can
@@ -145,6 +147,8 @@ var accessRoutes = []accessRoute{
 	{pattern: "POST /hour-meters/{id}/readings", path: id("/hour-meters/", meterOf, "/readings"), body: func(garageFixture) any { return map[string]any{"hours": 12} }},
 	{pattern: "GET /hour-meters/{id}/readings", path: id("/hour-meters/", meterOf, "/readings")},
 	{pattern: "GET /vehicles/{id}/access", path: id("/vehicles/", vehicleOf, "/access")},
+	{pattern: "GET /vehicles/{id}/shared-with", path: id("/vehicles/", vehicleOf, "/shared-with")},
+	{pattern: "PUT /vehicles/{id}/shared-with", path: id("/vehicles/", vehicleOf, "/shared-with"), body: func(garageFixture) any { return map[string]any{"username": "sharee", "level": "view"} }},
 	{pattern: "GET /vehicles/{id}/share", path: id("/vehicles/", vehicleOf, "/share")},
 	{pattern: "PUT /vehicles/{id}/share", path: id("/vehicles/", vehicleOf, "/share"), body: func(garageFixture) any { return map[string]any{"include_costs": true} }},
 	{pattern: "POST /vehicles/{id}/share/renew", path: id("/vehicles/", vehicleOf, "/share/renew")},
@@ -214,6 +218,9 @@ var accessRoutes = []accessRoute{
 	{pattern: "DELETE /service-logs/{id}", path: id("/service-logs/", logOf, "")},
 	{pattern: "DELETE /repairs/{id}", path: id("/repairs/", repairOf, "")},
 	{pattern: "DELETE /vehicles/{id}/share", path: id("/vehicles/", vehicleOf, "/share")},
+	{pattern: "DELETE /vehicles/{id}/shared-with/{user_id}", path: func(f garageFixture) string {
+		return "/vehicles/" + itoa(f.vehicle) + "/shared-with/" + itoa(f.sharee)
+	}},
 	{pattern: "DELETE /vehicles/{id}", path: id("/vehicles/", vehicleOf, ""), body: func(garageFixture) any { return map[string]any{"confirm_name": "Alpha Alpha model"} }},
 }
 
@@ -251,10 +258,10 @@ func accessUsers(t *testing.T) (e *env, adm, scoped, viewOnly, viewer *client, a
 			viewerRole = r.ID
 		}
 	}
+	var u struct {
+		User userJSON `json:"user"`
+	}
 	newUser := func(name string, roleID int64, level string) *client {
-		var u struct {
-			User userJSON `json:"user"`
-		}
 		adm.call(http.MethodPost, "/users", map[string]any{"username": name, "display_name": name, "password": testPassword, "role_id": roleID}, http.StatusCreated, &u)
 		if level != "" {
 			adm.call(http.MethodPut, "/users/"+itoa(u.User.ID)+"/vehicle-access", map[string]any{
@@ -266,6 +273,8 @@ func accessUsers(t *testing.T) (e *env, adm, scoped, viewOnly, viewer *client, a
 	scoped = newUser("scoped", role.Role.ID, "edit")
 	viewOnly = newUser("viewonly", role.Role.ID, "view")
 	viewer = newUser("viewer", viewerRole, "")
+	newUser("sharee", role.Role.ID, "")
+	a.sharee, b.sharee = u.User.ID, u.User.ID
 	return e, adm, scoped, viewOnly, viewer, a, b
 }
 

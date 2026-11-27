@@ -8,6 +8,7 @@ export const queryKeys = {
   mfa: ['me', 'mfa'] as const,
   vehicleAccess: (userId: number) => ['users', userId, 'vehicle-access'] as const,
   vehicleUsers: (vehicleId: number) => ['vehicles', vehicleId, 'access'] as const,
+  sharedWith: (vehicleId: number) => ['vehicles', vehicleId, 'shared-with'] as const,
   sessions: ['sessions'] as const,
   instance: ['instance-settings'] as const,
   serverInfo: ['server-info'] as const,
